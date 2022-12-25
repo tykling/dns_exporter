@@ -1,61 +1,117 @@
-import urlparse
-from BaseHTTPServer import BaseHTTPRequestHandler
-from BaseHTTPServer import HTTPServer
-from SocketServer import ForkingMixIn
+import time
+import random
+from prometheus_client import Gauge, start_http_server, Counter, Histogram, MetricsHandler
+import dns.query, dns.rcode, dns.opcode, dns.edns, dns.resolver, dns.exception
+from http.server import HTTPServer
+import urllib.parse
+import ipaddress
+import logging
+logger = logging.getLogger(__name__)
 
-from prometheus_client import CONTENT_TYPE_LATEST
+QUERIES = Counter('dns_queries_total', 'DNS queries total.')
+QTIME = Histogram("dns_query_time_seconds", "DNS query time in seconds.", ["server", "protocol", "qname", "qtype", "opcode", "rcode", "nsid", "ip"])
 
-class ForkingHTTPServer(ForkingMixIn, HTTPServer):
-    pass
-
-class DnsExporterHandler(BaseHTTPRequestHandler):
+class DNSRequestHandler(MetricsHandler):
     def do_GET(self):
-        url = urlparse.urlparse(self.path)
-        if url.path == '/metrics':
-            params = urlparse.parse_qs(url.query)
-            required = ["server", "protocol", "qname", "qtype"]
-            for req in required:
-                    if req not in params or len(params) != 4:
-                        self.send_response(400)
-                        self.end_headers()
-                        self.wfile.write(f"Missing '{req}' from parameters")
-                        return
-            output = collect_dns(**params)
-            self.send_response(200)
-            self.send_header('Content-Type', CONTENT_TYPE_LATEST)
+        # parse incoming request
+        parsed_path = urllib.parse.urlsplit(self.path)
+        query = urllib.parse.parse_qs(parsed_path.query)
+
+        # get protocol
+        protocol = query["protocol"][0]
+        if protocol not in ["udp", "tcp", "dot", "doh", "doq"]:
+            self.send_response(400)
             self.end_headers()
-            self.wfile.write(output)
-        elif url.path == '/':
-            self.send_response(200)
+            self.wfile.write(f"Unsupported protocol, use one of: udp, tcp, dot, doh, doq".encode("utf-8"))
+            return
+
+        server = query["server"][0]
+        # the server parameter can be an IP, or a hostname, or a URL
+        try:
+            ipaddress.ip_address(server)
+            ip = server
+        except ValueError:
+            # not an IP, is this a url or a hostname?
+            parsed_server = urllib.parse.urlsplit(server)
+            if parsed_server.scheme == "" and parsed_server.netloc == "":
+                # this looks like a hostname, resolve it and pick an ip
+                res = dns.resolver.Resolver()
+                ans = None
+                if query["family"][0] == "v4":
+                    ans = res.resolve(server, "A")
+                elif query["family"][0] == "v6":
+                    ans = res.resolve(server, "AAAA")
+                # did we get an answer?
+                if ans is None:
+                    self.send_response(400)
+                    self.end_headers()
+                    self.wfile.write("Unsupported address family, use one of: v4, v6".encode("utf-8"))
+                    return
+
+                # pick a random IP
+                if ans:
+                    ip = random.choice(ans)
+                else:
+                    self.send_response(400)
+                    self.end_headers()
+                    self.wfile.write("Invalid server".encode("utf-8"))
+                    return
+
+                if protocol == "doh":
+                    # create url for DoH
+                    server = f"https://{server}/dns-query"
+
+
+        if not isinstance(ip, str):
+            ip = str(ip)
+        logger.debug(f"using server {server} and ip {ip} for dns lookup...")
+        qname = dns.name.from_text(query["qname"][0])
+        q = dns.message.make_query(qname=qname, rdtype=query["qtype"][0])
+        q.use_edns(payload=4096, options=[dns.edns.GenericOption(dns.edns.NSID, '')])
+
+
+        qargs = {"timeout": 5}
+
+        try:
+            start = time.time()
+            if protocol == "udp":
+                logger.warning(f"doing UDP lookup with ip {ip} and server {server} and qname {qname}")
+                r = dns.query.udp(q, ip, **qargs)
+            elif protocol == "tcp":
+                logger.warning(f"doing TCP lookup with ip {ip} and server {server} and qname {qname}")
+                r = dns.query.tcp(q, ip, **qargs)
+            elif protocol == "dot":
+                logger.warning(f"doing DoT lookup with ip {ip} and server {server} and qname {qname}")
+                r = dns.query.tls(q, ip, server_hostname=server, **qargs)
+            elif protocol == "doh":
+                logger.warning(f"doing DoH lookup with ip {ip} and server {server} and qname {qname}")
+                # https://github.com/rthalley/dnspython/issues/875
+                #r = dns.query.https(q=q, where=server, bootstrap_address=ip, **qargs)
+                r = dns.query.https(q=q, where=server, **qargs)
+            elif protocol == "doq":
+                logger.warning(f"doing DoQ lookup with ip {ip} and server {server} and qname {qname}")
+                r = dns.query.quic(q, ip, **qargs)
+            else:
+                self.send_response(400)
+                self.end_headers()
+                self.wfile.write(f"Unsupported protocol, use one of: udp, tcp, dot, doh, doq".encode("utf-8"))
+                return
+        except dns.exception.DNSException as E:
+            self.send_response(400)
             self.end_headers()
-            self.wfile.write("""<html>
-            <head><title>DNS Exporter</title></head>
-            <body>
-            <h1>DNS Exporter</h1>
-            <p>Visit <code>/metrics?dnsserver=192.0.2.53&protocol=dnsudp&query=example.com&type=A</code> to see metrics.</p>
-            </body>
-            </html>""")
-        else:
-            self.send_response(404)
-            self.end_headers()
+            self.wfile.write(f"DNS lookup failed with exception: {E}".encode("utf-8"))
+            return
 
+        qtime = time.time() - start
+        QUERIES.inc()
 
-def start_http_server(config_path, port):
-    handler = lambda *args, **kwargs: DnsExporterHandler(config_path, *args, **kwargs)
-    server = ForkingHTTPServer(('', port), handler)
-    server.serve_forever()
+        nsid=""
+        for opt in r.options:
+            if opt.otype == dns.edns.NSID:
+                # treat as ascii, we need text for prom labels
+                nsid=opt.data.decode("ASCII")
+        QTIME.labels(server=query["server"][0], protocol=query["protocol"][0], qname=query["qname"][0], qtype=query["qtype"][0], opcode=dns.opcode.to_text(r.opcode()), rcode=dns.rcode.to_text(r.rcode()), nsid=nsid, ip=ip).observe(qtime)
+        return super(DNSRequestHandler, self).do_GET()
 
-
-def collect_dns(server, protocol, qname, qtype):
-    """Scrape a host and return prometheus text format for it"""
-    start = time.time()
-    metrics = {}
-
-    class Collector():
-        def collect(self):
-            return metrics.values()
-    registry = CollectorRegistry()
-    registry.register(Collector())
-    duration = Gauge('dns_scrape_duration_seconds', 'Time this DNS query took, in seconds', registry=registry)
-    duration.set(time.time() - start)
-    return generate_latest(registry)
+if __name__ == '__main__':
+    HTTPServer(('127.0.0.1', 15353), DNSRequestHandler).serve_forever()
