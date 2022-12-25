@@ -21,9 +21,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/tykling/dns_exporter",
     packages=["dns_exporter"],
-    entry_points={
-        "console_scripts": ["dns_exporter = dns_exporter.dns_exporter:main"]
-    },
+    entry_points={"console_scripts": ["dns_exporter = dns_exporter.dns_exporter:main"]},
     classifiers=[
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
