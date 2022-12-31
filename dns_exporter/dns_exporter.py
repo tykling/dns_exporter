@@ -8,8 +8,7 @@ import time
 import urllib.parse
 from http.server import HTTPServer
 from ipaddress import IPv4Address, IPv6Address
-from socket import AddressFamily, SocketKind
-from typing import Optional, Tuple, Union
+from typing import Optional, Union
 
 import dns.edns
 import dns.exception
@@ -27,8 +26,6 @@ from prometheus_client import (
     MetricsHandler,
     exposition,
 )
-
-GetAddrInfoReturnType = Tuple[AddressFamily, SocketKind, int, str, Tuple[str, int]]
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
