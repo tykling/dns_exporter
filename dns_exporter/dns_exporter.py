@@ -89,110 +89,6 @@ FAILURES = Counter("dns_query_failures_total", "DNS queries failed total.")
 class DNSRequestHandler(MetricsHandler):
     """MetricsHandler class for incoming scrape requests."""
 
-    def parse_querystring(self) -> None:
-        """Parse the incoming url and then the querystring."""
-        # parse incoming request
-        self.url = urllib.parse.urlsplit(self.path)
-        # querystring values are all lists, so take the first item only,
-        # behold, a valid usecase for dict comprehension:
-        self.qs: dict[str, str] = {
-            k: v[0] for k, v in urllib.parse.parse_qs(self.url.query).items()
-        }
-
-    def validate_query_request(
-        self,
-        query: dict[str, str],
-        config: dict[str, Union[str, int, float, list[str], dict[str, str]]],
-    ) -> bool:
-        """Validate the incoming request before doing the DNS lookup."""
-        # do we have a module in the request?
-        if "module" not in query or query["module"] not in config["modules"]:  # type: ignore
-            self.send_error_response(
-                [
-                    "No module or invalid module specified.\n",
-                    f"Available modules: {','.join(config['modules']).keys()}.\n",  # type: ignore
-                ]
-            )
-            return False
-
-        if "target" not in query:
-            self.send_error_response(["No target specified."])
-            return False
-
-        # all good
-        return True
-
-    def send_error_response(self, messages: list[str]) -> None:
-        """Send an HTTP 400 error message to the client."""
-        self.send_response(400)
-        self.end_headers()
-        for line in messages:
-            self.wfile.write(line.encode("utf-8"))
-        return None
-
-    def get_module(self, qs: dict[str, str]) -> None:
-        """Construct the module from defaults, config file, and querystring."""
-        # get defaults
-        self.module: dict[str, Union[str, int, float, None]] = {
-            "timeout": 5,
-            "force_address_family": "ipv6",
-        }
-        # get module config
-        self.module.update(config["modules"][qs["module"]])
-        # get querystring
-        self.module.update(qs)
-        return None
-
-    def get_target_ip(self, target: str, force_address_family: str) -> Optional[str]:
-        """Determine if target is an IP, or a hostname, or a URL. If hostname or URL the hostname must be resolved."""
-        # first try parsing target as an IP address
-        ip: Optional[Union[IPv4Address, IPv6Address, str]]
-        try:
-            ip = ipaddress.ip_address(target)
-            if ip is not None and ip.version == 4:
-                if force_address_family == "ipv6":
-                    self.send_error_response(
-                        [
-                            f"Unable to query ipv4 target {self.module['target']} with force_address_family=ipv6"
-                        ]
-                    )
-                    return None
-                return str(ip)
-            elif ip is not None and ip.version == 6:
-                if force_address_family == "ipv4":
-                    self.send_error_response(
-                        [
-                            f"Unable to query ipv6 target {self.module['target']} with force_address_family=ipv4"
-                        ]
-                    )
-                    return None
-                return str(ip)
-        except ValueError:
-            pass
-
-        # target is not a valid IP, it could be either a url or a hostname,
-        # first try parsing as a url
-        parsed_target = urllib.parse.urlsplit(target)
-        if parsed_target.hostname:
-            logger.debug(
-                f"target is a url, resolving hostname {parsed_target.hostname} ..."
-            )
-            # target is a url, resolve the hostname
-            ip = self.resolve_ip_getaddrinfo(
-                hostname=parsed_target.hostname,
-                force_address_family=force_address_family,
-            )
-        else:
-            logger.debug(f"target might be a hostname, resolving hostname {target} ...")
-            # target is not a url, it must be a hostname, try a DNS lookup
-            ip = self.resolve_ip_getaddrinfo(
-                hostname=target,
-                force_address_family=force_address_family,
-            )
-        if ip is None:
-            self.send_error_response([f"Unable to resolve target {target} IP address."])
-        return ip
-
     def do_GET(self) -> None:
         """Handle incoming scrape requests."""
         # first parse the scrape request url and querystring,
@@ -207,6 +103,8 @@ class DNSRequestHandler(MetricsHandler):
 
             # assemble module from defaults, config file and request
             self.get_module(qs=self.qs)
+            if not self.validate_module():
+                return
 
             # do we already have an IP in the module?
             if "ip" not in self.module.keys():
@@ -342,6 +240,135 @@ class DNSRequestHandler(MetricsHandler):
             self.end_headers()
             return None
 
+    def parse_querystring(self) -> None:
+        """Parse the incoming url and then the querystring."""
+        # parse incoming request
+        self.url = urllib.parse.urlsplit(self.path)
+        # querystring values are all lists, so take the first item only,
+        # behold, a valid usecase for dict comprehension:
+        self.qs: dict[str, str] = {
+            k: v[0] for k, v in urllib.parse.parse_qs(self.url.query).items()
+        }
+
+    def validate_query_request(
+        self,
+        query: dict[str, str],
+        config: dict[str, Union[str, int, float, list[str], dict[str, str]]],
+    ) -> bool:
+        """Validate the incoming request before doing the DNS lookup."""
+        # do we have a module in the request?
+        if "module" not in query or query["module"] not in config["modules"]:  # type: ignore
+            self.send_error_response(
+                [
+                    "No module or invalid module specified.\n",
+                    f"Available modules: {','.join(config['modules']).keys()}.\n",  # type: ignore
+                ]
+            )
+            return False
+
+        if "target" not in query:
+            self.send_error_response(["No target specified."])
+            return False
+
+        # all good
+        return True
+
+    def get_module(self, qs: dict[str, str]) -> None:
+        """Construct the module from defaults, config file, and querystring."""
+        # get defaults
+        self.module: dict[str, Union[str, int, float, None]] = {
+            "timeout": 5,
+            "force_address_family": "ipv6",
+        }
+        # get module config
+        self.module.update(config["modules"][qs["module"]])
+        # get querystring
+        self.module.update(qs)
+        return None
+
+    def validate_module(self) -> bool:
+        """Make sure the configuration module has all the required values."""
+        if self.module["force_address_family"] not in ["ipv4", "ipv6"]:
+            self.send_error_response(
+                ["Invalid force_address_family, must be 'ipv4' or 'ipv6'"]
+            )
+            return False
+        return True
+
+    def get_target_ip(self, target: str, force_address_family: str) -> Optional[str]:
+        """Determine if target is an IP, or a hostname, or a URL. If hostname or URL the hostname must be resolved."""
+        # first try parsing target as an IP address
+        ip: Optional[Union[IPv4Address, IPv6Address, str]]
+        try:
+            ip = ipaddress.ip_address(target)
+            if ip is not None and ip.version == 4:
+                if force_address_family == "ipv6":
+                    self.send_error_response(
+                        [
+                            f"Unable to query ipv4 target {self.module['target']} with force_address_family=ipv6"
+                        ]
+                    )
+                    return None
+                return str(ip)
+            elif ip is not None and ip.version == 6:
+                if force_address_family == "ipv4":
+                    self.send_error_response(
+                        [
+                            f"Unable to query ipv6 target {self.module['target']} with force_address_family=ipv4"
+                        ]
+                    )
+                    return None
+                return str(ip)
+        except ValueError:
+            pass
+
+        # target is not a valid IP, it could be either a url or a hostname,
+        # first try parsing as a url
+        parsed_target = urllib.parse.urlsplit(target)
+        if parsed_target.hostname:
+            logger.debug(
+                f"target is a url, resolving hostname {parsed_target.hostname} ..."
+            )
+            # target is a url, resolve the hostname
+            ip = self.resolve_ip_getaddrinfo(
+                hostname=parsed_target.hostname,
+                force_address_family=force_address_family,
+            )
+        else:
+            logger.debug(f"target might be a hostname, resolving hostname {target} ...")
+            # target is not a url, it must be a hostname, try a DNS lookup
+            ip = self.resolve_ip_getaddrinfo(
+                hostname=target,
+                force_address_family=force_address_family,
+            )
+        if ip is None:
+            self.send_error_response([f"Unable to resolve target {target} IP address."])
+        return ip
+
+    def resolve_ip_getaddrinfo(
+        self, hostname: str, force_address_family: str
+    ) -> Optional[str]:
+        """Resolve the IP of a DNS server hostname."""
+        logger.debug(
+            f"resolve_ip_getaddrinfo() called with hostname {hostname} and force_address_family {force_address_family}"
+        )
+        # do we want v4?
+        if force_address_family == "ipv4":
+            logger.debug(f"doing getaddrinfo for hostname {hostname} for ipv4")
+            result = socket.getaddrinfo(hostname, 0, family=socket.AF_INET)
+            return str(random.choice(result)[4][0])
+
+        # do we want v6?
+        elif force_address_family == "ipv6":
+            logger.debug(f"doing getaddrinfo for hostname {hostname} for ipv6")
+            result = socket.getaddrinfo(hostname, 0, family=socket.AF_INET6)
+            return str(random.choice(result)[4][0])
+
+        # unknown family
+        else:
+            logger.error(f"Unknown address family {force_address_family}")
+            return None
+
     def get_response(
         self, protocol: str, target: str, ip: str, query: Message, timeout: float
     ) -> Optional[Message]:
@@ -386,6 +413,14 @@ class DNSRequestHandler(MetricsHandler):
             return None
         return r
 
+    def send_error_response(self, messages: list[str]) -> None:
+        """Send an HTTP 400 error message to the client."""
+        self.send_response(400)
+        self.end_headers()
+        for line in messages:
+            self.wfile.write(line.encode("utf-8"))
+        return None
+
     def send_output(self, registry: CollectorRegistry, query: dict[str, str]) -> None:
         """Bake and send output from the provided registry and querystring."""
         # Bake output
@@ -403,30 +438,6 @@ class DNSRequestHandler(MetricsHandler):
         self.end_headers()
         self.wfile.write(output)
         return
-
-    def resolve_ip_getaddrinfo(
-        self, hostname: str, force_address_family: str
-    ) -> Optional[str]:
-        """Resolve the IP of a DNS server hostname."""
-        logger.debug(
-            f"resolve_ip_getaddrinfo() called with hostname {hostname} and force_address_family {force_address_family}"
-        )
-        # do we want v4?
-        if force_address_family == "ipv4":
-            logger.debug(f"doing getaddrinfo for hostname {hostname} for ipv4")
-            result = socket.getaddrinfo(hostname, 0, family=socket.AF_INET)
-            return str(random.choice(result)[4][0])
-
-        # do we want v6?
-        elif force_address_family == "ipv6":
-            logger.debug(f"doing getaddrinfo for hostname {hostname} for ipv6")
-            result = socket.getaddrinfo(hostname, 0, family=socket.AF_INET6)
-            return str(random.choice(result)[4][0])
-
-        # unknown family
-        else:
-            logger.error(f"Unknown address family {force_address_family}")
-            return None
 
 
 if __name__ == "__main__":
