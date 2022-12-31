@@ -110,7 +110,7 @@ class DNSRequestHandler(MetricsHandler):
             if "ip" not in self.module.keys():
                 self.module["ip"] = self.get_target_ip(
                     target=str(self.module["target"]),
-                    force_address_family=str(self.module["force_address_family"]),
+                    family=str(self.module["family"]),
                 )
                 if self.module["ip"] is None:
                     # unable to resolve target, bail out
@@ -278,7 +278,7 @@ class DNSRequestHandler(MetricsHandler):
         # get defaults
         self.module: dict[str, Union[str, int, float, None]] = {
             "timeout": 5,
-            "force_address_family": "ipv6",
+            "family": "ipv6",
         }
         # get module config
         self.module.update(config["modules"][qs["module"]])
@@ -288,33 +288,31 @@ class DNSRequestHandler(MetricsHandler):
 
     def validate_module(self) -> bool:
         """Make sure the configuration module has all the required values."""
-        if self.module["force_address_family"] not in ["ipv4", "ipv6"]:
-            self.send_error_response(
-                ["Invalid force_address_family, must be 'ipv4' or 'ipv6'"]
-            )
+        if self.module["family"] not in ["ipv4", "ipv6"]:
+            self.send_error_response(["Invalid family, must be 'ipv4' or 'ipv6'"])
             return False
         return True
 
-    def get_target_ip(self, target: str, force_address_family: str) -> Optional[str]:
+    def get_target_ip(self, target: str, family: str) -> Optional[str]:
         """Determine if target is an IP, or a hostname, or a URL. If hostname or URL the hostname must be resolved."""
         # first try parsing target as an IP address
         ip: Optional[Union[IPv4Address, IPv6Address, str]]
         try:
             ip = ipaddress.ip_address(target)
             if ip is not None and ip.version == 4:
-                if force_address_family == "ipv6":
+                if family == "ipv6":
                     self.send_error_response(
                         [
-                            f"Unable to query ipv4 target {self.module['target']} with force_address_family=ipv6"
+                            f"Unable to query ipv4 target {self.module['target']} with family=ipv6"
                         ]
                     )
                     return None
                 return str(ip)
             elif ip is not None and ip.version == 6:
-                if force_address_family == "ipv4":
+                if family == "ipv4":
                     self.send_error_response(
                         [
-                            f"Unable to query ipv6 target {self.module['target']} with force_address_family=ipv4"
+                            f"Unable to query ipv6 target {self.module['target']} with family=ipv4"
                         ]
                     )
                     return None
@@ -332,41 +330,39 @@ class DNSRequestHandler(MetricsHandler):
             # target is a url, resolve the hostname
             ip = self.resolve_ip_getaddrinfo(
                 hostname=parsed_target.hostname,
-                force_address_family=force_address_family,
+                family=family,
             )
         else:
             logger.debug(f"target might be a hostname, resolving hostname {target} ...")
             # target is not a url, it must be a hostname, try a DNS lookup
             ip = self.resolve_ip_getaddrinfo(
                 hostname=target,
-                force_address_family=force_address_family,
+                family=family,
             )
         if ip is None:
             self.send_error_response([f"Unable to resolve target {target} IP address."])
         return ip
 
-    def resolve_ip_getaddrinfo(
-        self, hostname: str, force_address_family: str
-    ) -> Optional[str]:
+    def resolve_ip_getaddrinfo(self, hostname: str, family: str) -> Optional[str]:
         """Resolve the IP of a DNS server hostname."""
         logger.debug(
-            f"resolve_ip_getaddrinfo() called with hostname {hostname} and force_address_family {force_address_family}"
+            f"resolve_ip_getaddrinfo() called with hostname {hostname} and family {family}"
         )
         # do we want v4?
-        if force_address_family == "ipv4":
+        if family == "ipv4":
             logger.debug(f"doing getaddrinfo for hostname {hostname} for ipv4")
             result = socket.getaddrinfo(hostname, 0, family=socket.AF_INET)
             return str(random.choice(result)[4][0])
 
         # do we want v6?
-        elif force_address_family == "ipv6":
+        elif family == "ipv6":
             logger.debug(f"doing getaddrinfo for hostname {hostname} for ipv6")
             result = socket.getaddrinfo(hostname, 0, family=socket.AF_INET6)
             return str(random.choice(result)[4][0])
 
         # unknown family
         else:
-            logger.error(f"Unknown address family {force_address_family}")
+            logger.error(f"Unknown address family {family}")
             return None
 
     def get_response(

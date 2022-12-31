@@ -8,7 +8,7 @@ templates:
     query_type: "A"
     query_class: "IN"
     recursion_desired: True
-    force_address_family: "ipv4"
+    family: "ipv4"
 
 modules:
   udp: *template_udp_a_2s
@@ -17,10 +17,10 @@ modules:
     protocol: "tcp"
   ipv4:
     << : *template_udp_a_2s
-    force_address_family: "ipv4"
+    family: "ipv4"
   ipv6:
     << : *template_udp_a_2s
-    force_address_family: "ipv6"
+    family: "ipv6"
   dot:
     << : *template_udp_a_2s
     protocol: "dot"

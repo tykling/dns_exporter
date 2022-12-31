@@ -31,9 +31,6 @@ modules:
     validate_additional_rrs: # do validation of response ADDITIONAL rr
       fail_if_matches_regexp:
         - ".*127.0.0.1"
-  force_v4_example:
+  v4_example:
     << : *mytemplate
-    force_address_family: "ipv4" # when scrape target is a hostname always use ipv4
-  force_v6_example:
-    << : *mytemplate
-    force_address_family: "ipv6" # when scrape target is a hostname always use ipv6
+    family: "ipv4" # when scrape target is a hostname use ipv4/A instead of AAAA
