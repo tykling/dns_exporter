@@ -1,0 +1,39 @@
+---
+templates: # the name of this dict is not important
+  mytemplate: &mytemplate
+    timeout: "2" # query timeout in seconds
+    protocol: "udp" # one of udp, tcp, dot, doh, doq; can also be set in scrape request
+    valid_rcodes:
+      - "NOERROR" # all RCODEs in the list will be considered valid
+    query_name: "example.com" # can also be set in scrape request
+    query_type: "A" # can also be set in scrape request
+    query_class: "IN" # can also be set in scrape request
+    recursion_desired: True # set False e.g. to test caching on recursors
+  slowtemplate: &othertemplate
+    << : *mytemplate
+    timeout: "10s"
+
+modules:
+  validate_example:
+    << : *mytemplate
+    validate_answer_rrs: # do validation of response ANSWER rr
+      fail_if_matches_regexp: # consider request failed if ANY answer matches ANY of these regexes
+        - ".*127.0.0.1"
+      fail_if_all_match_regexp: # consider request failed if ALL answers match ANY of these regexes
+        - ".*127.0.0.1"
+      fail_if_not_matches_regexp: # consider request failed if ANY answer does NOT match ANY of these regexes
+        - "www.prometheus.io.\t300\tIN\tA\t127.0.0.1"
+      fail_if_none_matches_regexp: # consider request failed if NONE of the answers match ANY of these regexes
+        - "127.0.0.1"
+    validate_authority_rrs: # do validation of response AUTHORITY rr
+      fail_if_matches_regexp:
+        - ".*127.0.0.1"
+    validate_additional_rrs: # do validation of response ADDITIONAL rr
+      fail_if_matches_regexp:
+        - ".*127.0.0.1"
+  force_v4_example:
+    << : *mytemplate
+    force_address_family: "ipv4" # when scrape target is a hostname always use ipv4
+  force_v6_example:
+    << : *mytemplate
+    force_address_family: "ipv6" # when scrape target is a hostname always use ipv6

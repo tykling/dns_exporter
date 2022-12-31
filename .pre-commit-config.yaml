@@ -13,13 +13,14 @@ repos:
     rev: 'v0.991'
     hooks:
     - id: "mypy"
-      additional_dependencies: ["types-cryptography", "types-requests", "types-PyYAML"]
-      name: "mypy (client/certgrinder)"
+      additional_dependencies: ["dnspython", "prometheus_client", "types-PyYAML"]
+      name: "mypy"
       args: ["--strict"]
   - repo: "https://github.com/pre-commit/mirrors-isort"
     rev: "v5.10.1"
     hooks:
     - id: "isort"
+      args: ["--profile", "black"]
   - repo: "https://github.com/pycqa/pydocstyle"
     rev: "6.1.1"
     hooks:

@@ -1,0 +1,53 @@
+---
+templates:
+  template_udp_a_2s: &template_udp_a_2s
+    timeout: "2"
+    protocol: "udp"
+    valid_rcodes:
+      - "NOERROR"
+    query_type: "A"
+    query_class: "IN"
+    recursion_desired: True
+    force_address_family: "ipv4"
+
+modules:
+  udp: *template_udp_a_2s
+  tcp:
+    << : *template_udp_a_2s
+    protocol: "tcp"
+  ipv4:
+    << : *template_udp_a_2s
+    force_address_family: "ipv4"
+  ipv6:
+    << : *template_udp_a_2s
+    force_address_family: "ipv6"
+  dot:
+    << : *template_udp_a_2s
+    protocol: "dot"
+  doh:
+    << : *template_udp_a_2s
+    protocol: "doh"
+  doq:
+    << : *template_udp_a_2s
+    protocol: "doq"
+  soa:
+    << : *template_udp_a_2s
+    query_type: "SOA"
+  any:
+    << : *template_udp_a_2s
+    query_type: "ANY"
+  chaos:
+    << : *template_udp_a_2s
+    qclass: "CHAOS"
+  cache:
+    << : *template_udp_a_2s
+    recursion_desired: False
+  fast:
+    << : *template_udp_a_2s
+    timeout: "0.5"
+  forceip:
+    << : *template_udp_a_2s
+    ip: "192.0.2.53"
+  target:
+    << : *template_udp_a_2s
+    target: "doh.example.com"
