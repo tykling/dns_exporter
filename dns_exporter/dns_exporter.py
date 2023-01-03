@@ -433,7 +433,7 @@ class DNSRequestHandler(MetricsHandler):
         return
 
 
-if __name__ == "__main__":
+def main():
     with open("dns_exporter.yml") as f:
         try:
             config = yaml.load(f, Loader=yaml.SafeLoader)
@@ -443,3 +443,6 @@ if __name__ == "__main__":
             )
             sys.exit(1)
     HTTPServer(("127.0.0.1", 15353), DNSRequestHandler).serve_forever()
+
+if __name__ == "__main__":
+    main()

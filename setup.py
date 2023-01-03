@@ -30,6 +30,6 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     python_requires=">=3.9",
-    install_requires=["dnspython", "prometheus_client"],
+    install_requires=["dnspython", "prometheus_client", "PyYAML"],
     include_package_data=True,
 )
