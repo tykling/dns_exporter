@@ -55,6 +55,7 @@ QTIME = Histogram(
     [
         "target",
         "protocol",
+        "family",
         "query_name",
         "query_type",
         "ip",
@@ -95,7 +96,8 @@ class DNSRequestHandler(MetricsHandler):
         # /query is for doing DNS lookups, /metrics is for this exporters own metrics
         if self.url.path == "/query":
             # validate the scrape request and bail out if any issues are found
-            if not self.validate_query_request(query=self.qs, config=config):
+            assert hasattr(self, "config")  # mypy
+            if not self.validate_query_request(query=self.qs, config=self.config):
                 return
 
             # assemble module from defaults, config file and request
@@ -129,6 +131,7 @@ class DNSRequestHandler(MetricsHandler):
             labels: dict[str, str] = {
                 "target": str(self.module["target"]),
                 "protocol": str(self.module["protocol"]),
+                "family": str(self.module["family"]),
                 "query_name": str(self.module["query_name"]),
                 "query_type": str(self.module["query_type"]),
             }
@@ -278,7 +281,8 @@ class DNSRequestHandler(MetricsHandler):
             "family": "ipv6",
         }
         # get module config
-        self.module.update(config["modules"][qs["module"]])
+        assert hasattr(self, "config")  # mypy
+        self.module.update(self.config["modules"][qs["module"]])
         # get querystring
         self.module.update(qs)
         return None
@@ -433,7 +437,8 @@ class DNSRequestHandler(MetricsHandler):
         return
 
 
-def main():
+def main() -> None:
+    """Read config and start exporter."""
     with open("dns_exporter.yml") as f:
         try:
             config = yaml.load(f, Loader=yaml.SafeLoader)
@@ -442,7 +447,10 @@ def main():
                 "Unable to parse YAML config file dns_exporter.yml - bailing out."
             )
             sys.exit(1)
-    HTTPServer(("127.0.0.1", 15353), DNSRequestHandler).serve_forever()
+    handler = DNSRequestHandler
+    handler.config = config  # type: ignore
+    HTTPServer(("127.0.0.1", 15353), handler).serve_forever()
+
 
 if __name__ == "__main__":
     main()
