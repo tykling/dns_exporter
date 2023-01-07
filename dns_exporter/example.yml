@@ -1,36 +1,94 @@
 ---
-templates: # the name of this dict is not important
+some_templates:  # the name of the outer dict is not important
   mytemplate: &mytemplate
-    timeout: "2" # query timeout in seconds
-    protocol: "udp" # one of udp, tcp, dot, doh, doq; can also be set in scrape request
+    timeout: "2"  # query timeout in seconds
+    protocol: "udp"  # one of udp, tcp, dot, doh, doq; all these can also be set in scrape request
     valid_rcodes:
-      - "NOERROR" # all RCODEs in the list will be considered valid
-    query_name: "example.com" # can also be set in scrape request
-    query_type: "A" # can also be set in scrape request
-    query_class: "IN" # can also be set in scrape request
-    recursion_desired: True # set False e.g. to test caching on recursors
+      - "NOERROR"  # all RCODEs in the list will be considered valid
+    query_name: "example.com"  # can also be set in scrape request
+    query_type: "A"  # can also be set in scrape request
+    query_class: "IN"  # can also be set in scrape request
+    recursion_desired: true  # set False e.g. to test caching on recursors
+
   slowtemplate: &othertemplate
-    << : *mytemplate
+    <<: *mytemplate
     timeout: "10s"
 
-modules:
-  validate_example:
-    << : *mytemplate
-    validate_answer_rrs: # do validation of response ANSWER rr
-      fail_if_matches_regexp: # consider request failed if ANY answer matches ANY of these regexes
-        - ".*127.0.0.1"
-      fail_if_all_match_regexp: # consider request failed if ALL answers match ANY of these regexes
-        - ".*127.0.0.1"
-      fail_if_not_matches_regexp: # consider request failed if ANY answer does NOT match ANY of these regexes
-        - "www.prometheus.io.\t300\tIN\tA\t127.0.0.1"
-      fail_if_none_matches_regexp: # consider request failed if NONE of the answers match ANY of these regexes
-        - "127.0.0.1"
-    validate_authority_rrs: # do validation of response AUTHORITY rr
-      fail_if_matches_regexp:
-        - ".*127.0.0.1"
-    validate_additional_rrs: # do validation of response ADDITIONAL rr
-      fail_if_matches_regexp:
-        - ".*127.0.0.1"
   v4_example:
-    << : *mytemplate
-    family: "ipv4" # when scrape target is a hostname use ipv4/A instead of AAAA
+    <<: *mytemplate
+    family: "ipv4"  # when scrape target is a hostname use ipv4/A instead of AAAA
+
+  validation_kitchensink_example:
+    <<: *mytemplate
+    validate_response_flags:  # do validation of the response flags
+      fail_if_any_present:  # consider request failed if any of these flags are present in the response
+        - "AA"
+      fail_if_all_present:  # consider request failed if all these flags are present in the response
+        - "QR"
+        - "AA"
+        - "RD"
+        - "RA"
+      fail_if_any_absent:  # consider request failed if any of these flags are absent from the response
+        - "AD"
+      fail_if_all_absent:  # consider request failed if any of these flags are absent from the response
+        - "AD"
+        - "AA"
+    validate_answer_rrs:  # do validation of response ANSWER rr
+      fail_if_matches_regexp:  # consider request failed if any answer rr matches one of these regexes
+        - ".*127.0.0.1"
+      fail_if_all_match_regexp:  # consider request failed if all answer rrs match one of these regexes
+        - ".*127.0.0.1"
+      fail_if_not_matches_regexp:  # consider request failed if any answer rr does not match one of these regexes
+        - "www.prometheus.io.\t300\tIN\tA\t127.0.0.1"
+      fail_if_none_matches_regexp:  # consider request failed if none of the answer rrs match one of these regexes
+        - ".*127.0.0.1"
+      fail_if_count_eq: 5  # fail if rr count equals 5
+      fail_if_count_ne: 13  # fail if rr count does not equal 13
+      fail_if_count_lt: 2  # fail if rr count is smaller than 2
+      fail_if_count_gt: 3  # fail if rr count is larger than 3
+    validate_authority_rrs:  # do validation of response AUTHORITY rr
+      fail_if_matches_regexp:
+        - ".*127.0.0.1"
+    validate_additional_rrs:  # do validation of response ADDITIONAL rr
+      fail_if_matches_regexp:
+        - ".*127.0.0.1"
+
+modules:
+  google_udp:  # make sure google public dns returns 13 NS records for . over UDP
+    protocol: "udp"
+    target: "dns.google"
+    query_name: "."
+    query_type: "NS"
+    validate_answer_rrs:
+      fail_if_count_ne: 13
+
+  google_tcp:  # make sure google public dns returns 2 A records for dns.google over TCP
+    protocol: "tcp"
+    target: "dns.google"
+    query_name: "dns.google"
+    query_type: "A"
+    validate_answer_rrs:
+      fail_if_count_ne: 2
+      fail_if_not_matches_regexp:
+        - ".*8.8.8.8"
+        - ".*8.8.4.4"
+
+  google_dot:  # make sure google public dns returns the two expected AAAA records for dns.google over DoT
+    protocol: "dot"
+    target: "dns.google"
+    query_name: "dns.google"
+    query_type: "AAAA"
+    validate_answer_rrs:
+      fail_if_count_ne: 2
+      fail_if_not_matches_regexp:
+        - ".*2001:4860:4860::8888"
+        - ".*2001:4860:4860::8844"
+
+  cf_doh:  # make sure cloudflare public dns a DNSSEC validated response for bornhack.dk over DoH
+    protocol: "doh"
+    target: "1dot1dot1dot1.cloudflare-dns.com"
+    query_name: "bornhack.dk"
+    query_type: "NS"
+    validate_response_flags:
+      fail_if_any_absent:
+        - "AD"

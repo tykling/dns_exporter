@@ -1,53 +1,62 @@
 ---
 templates:
-  template_udp_a_2s: &template_udp_a_2s
+  template_v4_2s: &template_v4_2s
     timeout: "2"
-    protocol: "udp"
-    valid_rcodes:
-      - "NOERROR"
-    query_type: "A"
-    query_class: "IN"
-    recursion_desired: True
     family: "ipv4"
 
 modules:
-  udp: *template_udp_a_2s
+  udp: *template_v4_2s
   tcp:
-    << : *template_udp_a_2s
+    <<: *template_v4_2s
     protocol: "tcp"
   ipv4:
-    << : *template_udp_a_2s
+    <<: *template_v4_2s
     family: "ipv4"
   ipv6:
-    << : *template_udp_a_2s
+    <<: *template_v4_2s
     family: "ipv6"
   dot:
-    << : *template_udp_a_2s
+    <<: *template_v4_2s
     protocol: "dot"
   doh:
-    << : *template_udp_a_2s
+    <<: *template_v4_2s
     protocol: "doh"
   doq:
-    << : *template_udp_a_2s
+    <<: *template_v4_2s
     protocol: "doq"
   soa:
-    << : *template_udp_a_2s
+    <<: *template_v4_2s
     query_type: "SOA"
   any:
-    << : *template_udp_a_2s
+    <<: *template_v4_2s
     query_type: "ANY"
   chaos:
-    << : *template_udp_a_2s
+    <<: *template_v4_2s
     qclass: "CHAOS"
   cache:
-    << : *template_udp_a_2s
-    recursion_desired: False
+    <<: *template_v4_2s
+    recursion_desired: false
   fast:
-    << : *template_udp_a_2s
+    <<: *template_v4_2s
     timeout: "0.5"
   forceip:
-    << : *template_udp_a_2s
+    <<: *template_v4_2s
     ip: "192.0.2.53"
   target:
-    << : *template_udp_a_2s
+    <<: *template_v4_2s
     target: "doh.example.com"
+  noedns:
+    <<: *template_v4_2s
+    edns: false
+  dnssecok:
+    <<: *template_v4_2s
+    edns_do: true
+  nsid:
+    <<: *template_v4_2s
+    edns_nsid: true
+  large:
+    <<: *template_v4_2s
+    edns_bufsize: 4000
+  pad:
+    <<: *template_v4_2s
+    edns_pad: 100
