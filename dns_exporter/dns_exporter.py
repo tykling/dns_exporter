@@ -24,12 +24,17 @@ from prometheus_client import (
     CollectorRegistry,
     Counter,
     Enum,
+    Info,
     Gauge,
     Histogram,
     MetricsHandler,
     exposition,
 )
 from prometheus_client.registry import RestrictedRegistry
+
+from setuptools_scm import get_version
+
+__version__ = get_version("..")
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -44,6 +49,8 @@ ch.setFormatter(formatter)
 
 # add ch to logger
 logger.addHandler(ch)
+
+logger.info(f"dns_exporter v{__version__} starting up")
 
 # create seperate registry for the dns query metrics
 dns_registry = CollectorRegistry()
@@ -98,32 +105,40 @@ QUERY_FAILURE = Enum(
 )
 
 # now define the persistent metrics for the exporter itself
+i = Info('dns_exporter_build_version', 'The version of dns_exporter')
+i.info({'version': __version__})
+
 UP = Gauge(
     "up",
     "Is the dns_exporter up and running? 1 for yes and 0 for no.",
 )
 UP.set(1)
+
 HTTP_REQUESTS = Counter(
     "dns_exporter_http_requests_total",
     "The total number of HTTP requests received by this exporter since start. This counter is increased every time any HTTP request is received by the dns_exporter.",
     ["path"],
 )
+
 HTTP_RESPONSES = Counter(
     "dns_exporter_http_responses_total",
     "The total number of HTTP responses sent by this exporter since start. This counter is increased every time an HTTP response is sent from the dns_exporter.",
     ["path", "response_code"],
 )
+
 DNS_QUERIES = Counter(
     "dns_exporter_dns_queries_total",
     "The total number of DNS queries sent by this exporter since start. This counter is increased every time the dns_exporter sends out a DNS query.",
 )
+
 DNS_RESPONSES = Counter(
     "dns_exporter_dns_query_responses_total",
-    "The total number of DNS query responses received since start. This counter is increased every time the dns_exporter receives a query response (before timeout)",
+    "The total number of DNS query responses received since start. This counter is increased every time the dns_exporter receives a query response (before timeout).",
 )
+
 DNS_FAILURES = Counter(
     "dns_exporter_dns_query_failures_total",
-    "The total number of DNS queries considered failed. This counter is increased every time a DNS query is considered failed, including DNS server issues, wrong or missing responses, network problems etc.",
+    "The total number of DNS queries considered failed. This counter is increased every time a DNS query is sent out and a valid response is not received."
 )
 
 INDEX = """<!DOCTYPE html>
@@ -555,13 +570,15 @@ class DNSRequestHandler(MetricsHandler):
         self,
         registry: Union[CollectorRegistry, RestrictedRegistry],
         query: dict[str, str],
+        skip_metrics: Optional[list[str]] = [],
     ) -> None:
         """Bake and send output from the provided registry and querystring."""
         # do we want to include QUERY_FAILURE enum?
-        if QUERY_FAILURE._value == 0:
-            # no failure, remove the failure reason
-            metrics = list(registry._names_to_collectors.keys())  # type: ignore
-            metrics.remove("dns_query_failure_reason")
+        if skip_metrics:
+            # we want to skip some metrics
+            print(list(registry._names_to_collectors.keys()))
+            metrics = [x for x in list(registry._names_to_collectors.keys()) if not x in skip_metrics]  # type: ignore
+            print(metrics)
             registry = registry.restricted_registry(names=metrics)  # type: ignore
 
         # Bake output
@@ -727,13 +744,18 @@ class DNSRequestHandler(MetricsHandler):
 
             # validate response
             success = self.validate_dns_response(response=r)
-            if not success:
+            skip_metrics = []
+            if success:
+                # skip the failure reason enum when rendering metrics
+                skip_metrics.append("dns_query_failure_reason")
+            else:
                 # increase the global failure counter
                 DNS_FAILURES.inc()
+
             # register success or not
             QUERY_SUCCESS.set(success)
             # send the response
-            self.send_metric_response(registry=dns_registry, query=self.qs)
+            self.send_metric_response(registry=dns_registry, query=self.qs, skip_metrics=skip_metrics)
             return
 
         # this endpoint exposes metrics about the exporter itself and the python process
