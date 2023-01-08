@@ -32,9 +32,16 @@ from prometheus_client import (
 )
 from prometheus_client.registry import RestrictedRegistry
 
-from setuptools_scm import get_version
+from importlib.metadata import version, PackageNotFoundError
 
-__version__ = get_version("..")
+try:
+    __version__ = version("dns_exporter")
+except PackageNotFoundError:
+    # package is not installed
+    try:
+        from _version import version as __version__
+    except ImportError:
+        __version__ = "0.0.0"
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
