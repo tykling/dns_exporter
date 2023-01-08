@@ -1,1 +1,1 @@
-from ._version import version as __version__
+"""For now this __init__.py file is empty."""
