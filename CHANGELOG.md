@@ -7,8 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [v0.2.0] - 2022-01-08
 
+This is the initial release.
+
 ### Added
 
 - CHANGELOG.md
-- Initial release
-
+- release.sh

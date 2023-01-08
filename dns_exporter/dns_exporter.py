@@ -8,6 +8,7 @@ import sys
 import time
 import urllib.parse
 from http.server import HTTPServer
+from importlib.metadata import PackageNotFoundError, version
 from ipaddress import IPv4Address, IPv6Address
 from typing import Optional, Union
 
@@ -24,17 +25,23 @@ from prometheus_client import (
     CollectorRegistry,
     Counter,
     Enum,
-    Info,
     Gauge,
     Histogram,
+    Info,
     MetricsHandler,
     exposition,
 )
 from prometheus_client.registry import RestrictedRegistry
 
-from setuptools_scm import get_version
-
-__version__ = get_version("..")
+__version__: str = "0.0.0"
+try:
+    __version__ = version("dns_exporter")
+except PackageNotFoundError:
+    # package is not installed
+    try:
+        from _version import version as __version__  # type: ignore
+    except ImportError:
+        pass
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -105,8 +112,8 @@ QUERY_FAILURE = Enum(
 )
 
 # now define the persistent metrics for the exporter itself
-i = Info('dns_exporter_build_version', 'The version of dns_exporter')
-i.info({'version': __version__})
+i = Info("dns_exporter_build_version", "The version of dns_exporter")
+i.info({"version": __version__})
 
 UP = Gauge(
     "up",
@@ -138,7 +145,7 @@ DNS_RESPONSES = Counter(
 
 DNS_FAILURES = Counter(
     "dns_exporter_dns_query_failures_total",
-    "The total number of DNS queries considered failed. This counter is increased every time a DNS query is sent out and a valid response is not received."
+    "The total number of DNS queries considered failed. This counter is increased every time a DNS query is sent out and a valid response is not received.",
 )
 
 INDEX = """<!DOCTYPE html>
@@ -576,9 +583,7 @@ class DNSRequestHandler(MetricsHandler):
         # do we want to include QUERY_FAILURE enum?
         if skip_metrics:
             # we want to skip some metrics
-            print(list(registry._names_to_collectors.keys()))
-            metrics = [x for x in list(registry._names_to_collectors.keys()) if not x in skip_metrics]  # type: ignore
-            print(metrics)
+            metrics = [x for x in list(registry._names_to_collectors.keys()) if x not in skip_metrics]  # type: ignore
             registry = registry.restricted_registry(names=metrics)  # type: ignore
 
         # Bake output
@@ -755,7 +760,9 @@ class DNSRequestHandler(MetricsHandler):
             # register success or not
             QUERY_SUCCESS.set(success)
             # send the response
-            self.send_metric_response(registry=dns_registry, query=self.qs, skip_metrics=skip_metrics)
+            self.send_metric_response(
+                registry=dns_registry, query=self.qs, skip_metrics=skip_metrics
+            )
             return
 
         # this endpoint exposes metrics about the exporter itself and the python process
