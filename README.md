@@ -14,7 +14,7 @@ A config file is not required for basic operation. Almost all functionality (exc
 
 
 ## Exporter Configuration
-The config file is a yaml file where a root element names `modules` will be read and added to the configuration. Given an example config file with the following settings:
+The config file is a yaml file where a root element named `modules` will be read and added to the configuration. Given an example config file with the following settings:
 
 
 `dns_exporter.yml`:
@@ -108,11 +108,11 @@ This config will result in Prometheus scraping so the `dns_exporter` does a DoT 
 
 
 # Metrics
-The `dns_exporter` returns three metrics for each valid scrape request to `/query`:
+The `dns_exporter` returns two or three metrics for each valid scrape request to `/query`:
 
 * `dns_query_time_seconds` is a timing histogram with a bunch of labels about the DNS query and response
 * `dns_query_success` is always 0 or 1
-* `dns_query_failure_reason` is an enum which carries information about why a query failed. This is only present when `dns_query_success` is 0.
+* `dns_query_failure_reason` is an enum which carries information about why a query failed. This is only included when `dns_query_success` is 0.
 
 This is an example of the metrics returned from a random query:
 
