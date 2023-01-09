@@ -34,30 +34,26 @@ from prometheus_client import (
 )
 from prometheus_client.registry import RestrictedRegistry
 
+# get version number from package metadata if possible
 __version__: str = "0.0.0"
 try:
     __version__ = version("dns_exporter")
 except PackageNotFoundError:
-    # package is not installed
+    # package is not installed, get version from file
     try:
         from _version import version as __version__  # type: ignore
     except ImportError:
+        # this must be a git checkout with no _version.py file, version unknown
         pass
 
+# initialise logger
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
-
-# create formatter
 formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-
-# add formatter to ch
 ch.setFormatter(formatter)
-
-# add ch to logger
 logger.addHandler(ch)
-
 logger.info(f"dns_exporter v{__version__} starting up")
 
 # create seperate registry for the dns query metrics
@@ -95,7 +91,6 @@ QUERY_FAILURE = Enum(
     "dns_query_failure_reason",
     "The reason this DNS query failed",
     states=[
-        "initial_state",
         "invalid_request_module",
         "invalid_request_target",
         "invalid_request_family",
@@ -890,7 +885,7 @@ def main(mockargs: Optional[list[str]] = None) -> None:
     else:
         # we have no config file
         config = {}
-        logger.debug("No modules loaded from config file.")
+        logger.debug("No -c / --config-file found so a config file will not be used.")
 
     # initialise handler and start HTTPServer
     handler = DNSRequestHandler

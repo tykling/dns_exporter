@@ -8,14 +8,16 @@ Note: The well known `Blackbox Exporter` also supports DNS probes and exports me
 ## Installation
 Installation can be done using `pip`:
 
-    `pip install dns_exporter`
+    pip install dns_exporter
 
 A config file is not required for basic operation. Almost all functionality (except answer validation) can be used by passing URL arguments. But defining a config file with one or more modules (groups of settings) makes it possible to reuse settings between scrape jobs. It also makes the Prometheus config much shorter.
 
 
-## Configuration
+## Exporter Configuration
 The config file is a yaml file where a root element names `modules` will be read and added to the configuration. Given an example config file with the following settings:
 
+
+`dns_exporter.yml`:
 ```
 ---
 modules:
@@ -41,7 +43,71 @@ Using yaml anchors and merges means modules can be reused and extended. The pack
 
 You are encouraged to contribute nice modules as a PR to the example config.
 
-## Metrics
+
+## Prometheus Configuration
+The `dns_exporter` follows the same Multi Target Exporter Pattern as Blackbox so the same principles apply regarding rewriting targets. The following is an example where the `dns_exporter` is running at `dnsexp.example.com:15353` and since we will be using the relabel config a few times we defined a yaml anchor named `dnsexp_relabel` which we can reuse in all the scrape jobs:
+
+`prometheus.yml`:
+```
+dnsexp_relabel: &dnsexp_relabel
+  - source_labels:
+      - '__address__'
+    target_label: '__param_target'
+  - source_labels:
+      - '__param_target'
+    target_label: 'instance'
+  - target_label: '__address__'
+    replacement: 'dnsexp.example.com:15353'
+```
+
+We will also be reusing the targets so define an anchor for those too:
+
+`prometheus.yml`:
+```
+mytargets: &dns_targets
+  - "dns.google"
+  - "1dot1dot1dot1.cloudflare-dns.com"
+  - "dns.quad9.net"
+```
+
+And finally the scrape config:
+
+`prometheus.yml`:
+```
+scrape_configs:
+  - name: 'dns_exporter_dot4'
+    scheme: 'https'
+    scrape_interval: '10s'
+    metrics_path: "/query"
+    params:
+      module:
+        - "dot"
+      family:
+        - "ipv4"
+      query_name:
+        - "eff.org"
+    targets: *dns_targets
+    relabel_configs: *dnsexp_relabel
+
+  - name: 'dns_exporter_dot6'
+    scheme: 'https'
+    scrape_interval: '10s'
+    metrics_path: "/query"
+    params:
+      module:
+        - "dot"
+      family:
+        - "ipv6"
+      query_name:
+        - "eff.org"
+    targets: *dns_targets
+    relabel_configs: *dnsexp_relabel
+```
+
+This config will result in Prometheus scraping so the `dns_exporter` does a DoT query over v4 and v6 for `eff.org` to each of the three targets every 10 seconds.
+
+
+# Metrics
 The `dns_exporter` returns three metrics for each valid scrape request to `/query`:
 
 * `dns_query_time_seconds` is a timing histogram with a bunch of labels about the DNS query and response
@@ -80,53 +146,55 @@ $
 ```
 
 The labels returned by the `dns_query_time_seconds` histogram are:
-* `target` (request, the DNS server used for the query)
-* `ip` (request, the IP used for the query)
-* `family` (request, either `ipv4` or `ipv6`)
-* `protocol` (request, `udp`, `tcp`, `dot`, `doh`, or `doq`)
-* `query_name` (request)
-* `query_type` (request)
-* `flags` (response, header flags)
-* `opcode` (response, the opcode is usually `QUERY`)
-* `rcode` (response, the rcode like `NOERROR` or `NXDOMAIN`)
-* `nsid` (response, the `nsid` string if nsid was requested)
-* `answer` (response, the number of answer section RRs)
-* `authority` (response, the number of authority section RRs)
-* `additional` (response, the number of additional section RRs)
+* `target` (from request): The DNS server used for the query
+* `ip` (from request): The IP used for the query
+* `family` (from request): Either `ipv4` or `ipv6`
+* `protocol` (from request) Either `udp`, `tcp`, `dot`, `doh`, or `doq`
+* `query_name` (from request)
+* `query_type` (from request)
+* `flags` (from response): The DNS header flags
+* `opcode` (from response): The opcode is usually `QUERY`
+* `rcode` (from response): The rcode like `NOERROR` or `NXDOMAIN`
+* `nsid` (from response): The `nsid` string if nsid was requested
+* `answer` (from response): The number of answer section RRs
+* `authority` (from response): The number of authority section RRs
+* `additional` (from response): The number of additional section RRs
 
-The following persistent metrics are also kept by the exporter and returned by the `/metrics` endpoint:
+The following persistent metrics are also kept by the exporter and returned by the `/metrics` endpoint (as well as the normal Python process metrics exported by the Prometheus python_client):
 
 ```
-$ curl -s "http://127.0.0.1:15353/metrics" | grep dns_
+$ curl -s "http://127.0.0.1:15353/metrics" | grep -v python
 # HELP dns_exporter_build_version_info The version of dns_exporter
 # TYPE dns_exporter_build_version_info gauge
 dns_exporter_build_version_info{version="0.2.0b2"} 1.0
 # HELP up Is the dns_exporter up and running? 1 for yes and 0 for no.
+# TYPE up gauge
+up 1.0
 # HELP dns_exporter_http_requests_total The total number of HTTP requests received by this exporter since start. This counter is increased every time any HTTP request is received by the dns_exporter.
 # TYPE dns_exporter_http_requests_total counter
-dns_exporter_http_requests_total{path="/query"} 1861.0
-dns_exporter_http_requests_total{path="/metrics"} 7.0
+dns_exporter_http_requests_total{path="/query"} 72790.0
+dns_exporter_http_requests_total{path="/metrics"} 9.0
 # HELP dns_exporter_http_requests_created The total number of HTTP requests received by this exporter since start. This counter is increased every time any HTTP request is received by the dns_exporter.
 # TYPE dns_exporter_http_requests_created gauge
 dns_exporter_http_requests_created{path="/query"} 1.673211814111238e+09
 dns_exporter_http_requests_created{path="/metrics"} 1.6732127021289015e+09
 # HELP dns_exporter_http_responses_total The total number of HTTP responses sent by this exporter since start. This counter is increased every time an HTTP response is sent from the dns_exporter.
 # TYPE dns_exporter_http_responses_total counter
-dns_exporter_http_responses_total{path="/query",response_code="200"} 1861.0
-dns_exporter_http_responses_total{path="/metrics",response_code="200"} 6.0
+dns_exporter_http_responses_total{path="/query",response_code="200"} 72790.0
+dns_exporter_http_responses_total{path="/metrics",response_code="200"} 8.0
 # HELP dns_exporter_http_responses_created The total number of HTTP responses sent by this exporter since start. This counter is increased every time an HTTP response is sent from the dns_exporter.
 # TYPE dns_exporter_http_responses_created gauge
 dns_exporter_http_responses_created{path="/query",response_code="200"} 1.6732118142182536e+09
 dns_exporter_http_responses_created{path="/metrics",response_code="200"} 1.6732127021304686e+09
 # HELP dns_exporter_dns_queries_total The total number of DNS queries sent by this exporter since start. This counter is increased every time the dns_exporter sends out a DNS query.
 # TYPE dns_exporter_dns_queries_total counter
-dns_exporter_dns_queries_total 1861.0
+dns_exporter_dns_queries_total 72790.0
 # HELP dns_exporter_dns_queries_created The total number of DNS queries sent by this exporter since start. This counter is increased every time the dns_exporter sends out a DNS query.
 # TYPE dns_exporter_dns_queries_created gauge
 dns_exporter_dns_queries_created 1.6732118126893325e+09
 # HELP dns_exporter_dns_query_responses_total The total number of DNS query responses received since start. This counter is increased every time the dns_exporter receives a query response (before timeout).
 # TYPE dns_exporter_dns_query_responses_total counter
-dns_exporter_dns_query_responses_total 1861.0
+dns_exporter_dns_query_responses_total 72790.0
 # HELP dns_exporter_dns_query_responses_created The total number of DNS query responses received since start. This counter is increased every time the dns_exporter receives a query response (before timeout).
 # TYPE dns_exporter_dns_query_responses_created gauge
 dns_exporter_dns_query_responses_created 1.6732118126896229e+09
@@ -138,67 +206,25 @@ dns_exporter_dns_query_failures_total 0.0
 dns_exporter_dns_query_failures_created 1.6732118126896834e+09
 ```
 
-## Prometheus Config
-The `dns_exporter` follows the same Multi Target Exporter Pattern as Blackbox so the same principles apply regarding rewriting targets. The following is an example where the `dns_exporter` is running at `dnsexp.example.com:15353` and since we will be using the relabel config a few times we defined a yaml anchor named `dnsexp_relabel` which we can reuse in all the scrape jobs:
-
-`prometheus.yml`:
+Additionally, when a failure is encountered the `dns_query_failure_reason` enum is included in the response to give an idea of what went wrong, in this case an unexpected `NXDOMAIN` instead of `NOERROR` as `rcode`:
 ```
-dnsexp_relabel: &dnsexp_relabel
-  - source_labels:
-      - '__address__'
-    target_label: '__param_target'
-  - source_labels:
-      - '__param_target'
-    target_label: 'instance'
-  - target_label: '__address__'
-    replacement: 'dnsexp.example.com:15353'
-```
-
-We will also be reusing the targets so define an anchor for those too:
-`prometheus.yml`:
-```
-mytargets: &dns_targets
-  - "dns.google"
-  - "1dot1dot1dot1.cloudflare-dns.com"
-  - "dns.quad9.net"
+$ curl "http://127.0.0.1:15353/query?module=dot&target=dns.google&query_name=effff.org" | grep failure
+# HELP dns_query_failure_reason The reason this DNS query failed
+# TYPE dns_query_failure_reason gauge
+dns_query_failure_reason{dns_query_failure_reason="invalid_request_module"} 0.0
+dns_query_failure_reason{dns_query_failure_reason="invalid_request_target"} 0.0
+dns_query_failure_reason{dns_query_failure_reason="invalid_request_family"} 0.0
+dns_query_failure_reason{dns_query_failure_reason="invalid_request_ip"} 0.0
+dns_query_failure_reason{dns_query_failure_reason="invalid_request_protocol"} 0.0
+dns_query_failure_reason{dns_query_failure_reason="timeout"} 0.0
+dns_query_failure_reason{dns_query_failure_reason="invalid_response_rcode"} 1.0
+dns_query_failure_reason{dns_query_failure_reason="invalid_response_flags"} 0.0
+dns_query_failure_reason{dns_query_failure_reason="invalid_response_answer_rrs"} 0.0
+dns_query_failure_reason{dns_query_failure_reason="invalid_response_authority_rrs"} 0.0
+dns_query_failure_reason{dns_query_failure_reason="invalid_response_additional_rrs"} 0.0
+dns_query_failure_reason{dns_query_failure_reason="other"} 0.0
+$
 ```
 
-And finally the scrape config:
-
-`prometheus.yml`:
-```
-scrape_configs:
-  - name: 'dns_exporter_dot4'
-    scheme: 'https'
-    scrape_interval: '10s'
-    metrics_path: "/dnsexp"
-    params:
-      module:
-        - "dot"
-      family:
-        - "ipv4"
-      query_name:
-        - "eff.org"
-    targets: *dns_targets
-    relabel_configs: *dnsexp_relabel
-
-  - name: 'dns_exporter_dot6'
-    scheme: 'https'
-    scrape_interval: '10s'
-    metrics_path: "/dnsexp"
-    params:
-      module:
-        - "dot"
-      family:
-        - "ipv6"
-      query_name:
-        - "eff.org"
-    targets: *dns_targets
-    relabel_configs: *dnsexp_relabel
-```
-
-This config will result in Prometheus scraping so the `dns_exporter` does a DoT query over v4 and v6 for `eff.org` to each of the three targets every 10 seconds.
-
-
-## Versioning and Releases
+# Versioning and Releases of dns_exporter
 Versioning, branching and tagging of `dns_exporter` is done based on https://semver.org/ and https://nvie.com/posts/a-successful-git-branching-model/
