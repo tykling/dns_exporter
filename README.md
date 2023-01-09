@@ -160,7 +160,29 @@ The labels returned by the `dns_query_time_seconds` histogram are:
 * `authority` (from response): The number of authority section RRs
 * `additional` (from response): The number of additional section RRs
 
-The following persistent metrics are also kept by the exporter and returned by the `/metrics` endpoint (as well as the normal Python process metrics exported by the Prometheus python_client):
+
+Additionally, when a failure is encountered the `dns_query_failure_reason` enum is included in the response to give an idea of what went wrong, in this case an unexpected `NXDOMAIN` instead of `NOERROR` as `rcode`:
+```
+$ curl "http://127.0.0.1:15353/query?module=dot&target=dns.google&query_name=effff.org" | grep failure
+# HELP dns_query_failure_reason The reason this DNS query failed
+# TYPE dns_query_failure_reason gauge
+dns_query_failure_reason{dns_query_failure_reason="invalid_request_module"} 0.0
+dns_query_failure_reason{dns_query_failure_reason="invalid_request_target"} 0.0
+dns_query_failure_reason{dns_query_failure_reason="invalid_request_family"} 0.0
+dns_query_failure_reason{dns_query_failure_reason="invalid_request_ip"} 0.0
+dns_query_failure_reason{dns_query_failure_reason="invalid_request_protocol"} 0.0
+dns_query_failure_reason{dns_query_failure_reason="timeout"} 0.0
+dns_query_failure_reason{dns_query_failure_reason="invalid_response_rcode"} 1.0
+dns_query_failure_reason{dns_query_failure_reason="invalid_response_flags"} 0.0
+dns_query_failure_reason{dns_query_failure_reason="invalid_response_answer_rrs"} 0.0
+dns_query_failure_reason{dns_query_failure_reason="invalid_response_authority_rrs"} 0.0
+dns_query_failure_reason{dns_query_failure_reason="invalid_response_additional_rrs"} 0.0
+dns_query_failure_reason{dns_query_failure_reason="other"} 0.0
+$
+```
+
+
+Finally, the following persistent metrics are also kept by the exporter and returned by the `/metrics` endpoint (as well as the normal Python process metrics exported by the Prometheus python_client):
 
 ```
 $ curl -s "http://127.0.0.1:15353/metrics" | grep -v python
@@ -204,26 +226,6 @@ dns_exporter_dns_query_failures_total 0.0
 # HELP dns_exporter_dns_query_failures_created The total number of DNS queries considered failed. This counter is increased every time a DNS query is sent out and a valid response is not received.
 # TYPE dns_exporter_dns_query_failures_created gauge
 dns_exporter_dns_query_failures_created 1.6732118126896834e+09
-```
-
-Additionally, when a failure is encountered the `dns_query_failure_reason` enum is included in the response to give an idea of what went wrong, in this case an unexpected `NXDOMAIN` instead of `NOERROR` as `rcode`:
-```
-$ curl "http://127.0.0.1:15353/query?module=dot&target=dns.google&query_name=effff.org" | grep failure
-# HELP dns_query_failure_reason The reason this DNS query failed
-# TYPE dns_query_failure_reason gauge
-dns_query_failure_reason{dns_query_failure_reason="invalid_request_module"} 0.0
-dns_query_failure_reason{dns_query_failure_reason="invalid_request_target"} 0.0
-dns_query_failure_reason{dns_query_failure_reason="invalid_request_family"} 0.0
-dns_query_failure_reason{dns_query_failure_reason="invalid_request_ip"} 0.0
-dns_query_failure_reason{dns_query_failure_reason="invalid_request_protocol"} 0.0
-dns_query_failure_reason{dns_query_failure_reason="timeout"} 0.0
-dns_query_failure_reason{dns_query_failure_reason="invalid_response_rcode"} 1.0
-dns_query_failure_reason{dns_query_failure_reason="invalid_response_flags"} 0.0
-dns_query_failure_reason{dns_query_failure_reason="invalid_response_answer_rrs"} 0.0
-dns_query_failure_reason{dns_query_failure_reason="invalid_response_authority_rrs"} 0.0
-dns_query_failure_reason{dns_query_failure_reason="invalid_response_additional_rrs"} 0.0
-dns_query_failure_reason{dns_query_failure_reason="other"} 0.0
-$
 ```
 
 # Versioning and Releases of dns_exporter
