@@ -687,7 +687,7 @@ class DNSRequestHandler(MetricsHandler):
                     query=q,
                     timeout=float(str(self.module["timeout"])),
                 )
-                logger.error("Got a DNS query response!")
+                logger.debug("Got a DNS query response!")
             except dns.exception.Timeout:
                 # configured timeout was reached before we got a response
                 QUERY_FAILURE.state("timeout")
@@ -880,7 +880,7 @@ def main(mockargs: Optional[list[str]] = None) -> None:
             )
             sys.exit(1)
         logger.debug(
-            f"The following modules were loaded from config file {getattr(args, 'config-file')}: {config['modules'].keys()}"
+            f"The following modules were loaded from config file {getattr(args, 'config-file')}: {list(config['modules'].keys())}"
         )
     else:
         # we have no config file
