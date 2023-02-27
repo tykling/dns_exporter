@@ -30,7 +30,7 @@ requires-python = ">=3.9"
 dns_exporter = "dns_exporter.dns_exporter:main"
 
 [project.optional-dependencies]
-dev = ["twine == 4.0.2", "pre-commit == 2.21.0", "setuptools-scm == 7.1.0"]
+dev = ["twine == 4.0.2", "pre-commit == 3.1.0", "setuptools-scm == 7.1.0"]
 test = ["pytest == 7.2.1", "tox == 4.2.6"]
 
 [project.urls]
