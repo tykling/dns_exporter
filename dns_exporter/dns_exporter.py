@@ -91,6 +91,7 @@ QUERY_FAILURE = Enum(
     "dns_query_failure_reason",
     "The reason this DNS query failed",
     states=[
+        "no_failure",
         "invalid_request_module",
         "invalid_request_target",
         "invalid_request_family",
@@ -102,7 +103,7 @@ QUERY_FAILURE = Enum(
         "invalid_response_answer_rrs",
         "invalid_response_authority_rrs",
         "invalid_response_additional_rrs",
-        "other",
+        "other_failure",
     ],
     registry=dns_registry,
 )
@@ -425,13 +426,13 @@ class DNSRequestHandler(MetricsHandler):
             logger.debug(
                 f"doing DoQ lookup with server {target} (using IP {ip}) and query {query.question}"
             )
-            r = dns.query.quic(q=query, where=ip, timeout=timeout)  # type: ignore
+            r = dns.query.quic(q=query, where=ip, timeout=timeout)
         return r
 
     def validate_dns_response(self, response: Message) -> bool:
         """Validate the DNS response using the validation config in the module."""
         # do we want to validate the response rcode?
-        rcode = dns.rcode.to_text(response.rcode())  # type: ignore
+        rcode = dns.rcode.to_text(response.rcode())
         assert isinstance(self.module["valid_rcodes"], list)
         if self.module["valid_rcodes"] and rcode not in self.module["valid_rcodes"]:
             logger.debug(f"rcode {rcode} not in {self.module['valid_rcodes']}")
@@ -442,7 +443,7 @@ class DNSRequestHandler(MetricsHandler):
         if self.module["validate_response_flags"]:
             assert isinstance(self.module["validate_response_flags"], dict)  # mypy
             # we need a nice list of flags as text like ["QR", "AD"]
-            flags = dns.flags.to_text(response.flags).split(" ")  # type: ignore
+            flags = dns.flags.to_text(response.flags).split(" ")
 
             if "fail_if_any_present" in self.module["validate_response_flags"]:
                 assert isinstance(
@@ -641,7 +642,7 @@ class DNSRequestHandler(MetricsHandler):
             }
 
             # prepare query
-            qname = dns.name.from_text(self.module["query_name"])
+            qname = dns.name.from_text(self.module["query_name"])  # type: ignore
             q = dns.message.make_query(
                 qname=qname, rdtype=str(self.module["query_type"])
             )
@@ -658,7 +659,9 @@ class DNSRequestHandler(MetricsHandler):
                 # do we want nsid?
                 if self.module["edns_nsid"]:
                     assert isinstance(ednsargs["options"], list)
-                    ednsargs["options"].append(dns.edns.GenericOption(dns.edns.NSID, ""))  # type: ignore
+                    ednsargs["options"].append(
+                        dns.edns.GenericOption(dns.edns.NSID, "")
+                    )
                 # do we need to set bufsize/payload?
                 if self.module["edns_bufsize"]:
                     assert isinstance(self.module["edns_bufsize"], int)
@@ -673,7 +676,7 @@ class DNSRequestHandler(MetricsHandler):
                 logger.debug(f"using edns options {ednsargs}")
             else:
                 # do not use edns
-                q.use_edns(edns=False)  # type: ignore
+                q.use_edns(edns=False)
                 logger.debug("not using edns")
 
             # do it
@@ -720,14 +723,14 @@ class DNSRequestHandler(MetricsHandler):
             assert hasattr(r, "additional")
 
             # convert response flags to sorted text
-            flags = dns.flags.to_text(r.flags).split(" ")  # type: ignore
+            flags = dns.flags.to_text(r.flags).split(" ")
             flags.sort()
 
             # update labels with data from the response
             labels.update(
                 {
-                    "opcode": dns.opcode.to_text(r.opcode()),  # type: ignore
-                    "rcode": dns.rcode.to_text(r.rcode()),  # type: ignore
+                    "opcode": dns.opcode.to_text(r.opcode()),
+                    "rcode": dns.rcode.to_text(r.rcode()),
                     "flags": " ".join(flags),
                     "answer": str(sum([len(rrset) for rrset in r.answer])),
                     "authority": str(len(r.authority)),
@@ -748,11 +751,8 @@ class DNSRequestHandler(MetricsHandler):
 
             # validate response
             success = self.validate_dns_response(response=r)
-            skip_metrics = []
-            if success:
-                # skip the failure reason enum when rendering metrics
-                skip_metrics.append("dns_query_failure_reason")
-            else:
+            skip_metrics: list[str] = []
+            if not success:
                 # increase the global failure counter
                 DNS_FAILURES.inc()
 
