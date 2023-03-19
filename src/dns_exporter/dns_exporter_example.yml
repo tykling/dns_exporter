@@ -1,10 +1,10 @@
 ---
-templates: # this name is not important
+snippets: # this name is not important
   ipv4_2s: &template_v4_2s
     timeout: "2"
     family: "ipv4"
 
-some_more_templates:  # the name of this dict is also not important
+more_reusable_stuff:  # the name of this dict is also not important
   mytemplate: &mytemplate
     timeout: "2"  # query timeout in seconds
     protocol: "udp"  # one of udp, tcp, dot, doh, doq; all these can also be set in scrape request
@@ -59,7 +59,7 @@ some_more_templates:  # the name of this dict is also not important
         - ".*127.0.0.1"
 
 
-modules: # this is the only key currently read from the config
+configs: # this is the only key currently read from the config
   udp: *template_v4_2s
 
   tcp:
@@ -96,7 +96,7 @@ modules: # this is the only key currently read from the config
 
   chaos:
     <<: *template_v4_2s
-    qclass: "CHAOS"
+    query_class: "CHAOS"
 
   cache:
     <<: *template_v4_2s
