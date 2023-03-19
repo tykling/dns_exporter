@@ -984,11 +984,14 @@ def main(mockargs: Optional[list[str]] = None) -> None:
 
     # initialise handler and start HTTPServer
     handler = DNSRequestHandler
-    if not handler.configure(
-        configs={k: ConfigDict(**v) for k, v in configfile["configs"].items()}  # type: ignore
-    ):
-        logger.error("An error occurred while configuring dns_exporter. Bailing out.")
-        sys.exit(1)
+    if configfile["configs"]:
+        if not handler.configure(
+            configs={k: ConfigDict(**v) for k, v in configfile["configs"].items()}  # type: ignore
+        ):
+            logger.error(
+                "An error occurred while configuring dns_exporter. Bailing out."
+            )
+            sys.exit(1)
     HTTPServer(("127.0.0.1", 15353), handler).serve_forever()
 
 
