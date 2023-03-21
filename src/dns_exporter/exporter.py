@@ -37,7 +37,7 @@ from prometheus_client import (
 )
 from prometheus_client.registry import RestrictedRegistry
 
-from dns_exporter.dns_config.config import Config, ConfigDict, RFValidator, RRValidator
+from dns_exporter.config import Config, ConfigDict, RFValidator, RRValidator
 
 # get version number from package metadata if possible
 __version__: str = "0.0.0"
@@ -51,14 +51,8 @@ except PackageNotFoundError:
         # this must be a git checkout with no _version.py file, version unknown
         pass
 
-# initialise logger
+# initialise logger at info level
 logger = logging.getLogger("dns_exporter")
-logger.setLevel(logging.DEBUG)
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
-formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-ch.setFormatter(formatter)
-logger.addHandler(ch)
 
 # create seperate registry for the dns query metrics
 dns_registry = CollectorRegistry()
@@ -165,7 +159,7 @@ INDEX = """<!DOCTYPE html>
 </html>"""
 
 
-class DNSRequestHandler(MetricsHandler):
+class DNSExporter(MetricsHandler):
     """MetricsHandler class for incoming scrape requests."""
 
     # the configs key is populated by configure() before the class is initialised
@@ -250,19 +244,19 @@ class DNSRequestHandler(MetricsHandler):
             config["validate_answer_rrs"], RRValidator
         ):
             config["validate_answer_rrs"] = RRValidator.create(
-                config["validate_answer_rrs"]
+                **config["validate_answer_rrs"]
             )
         if "validate_authority_rrs" in config.keys() and not isinstance(
             config["validate_authority_rrs"], RRValidator
         ):
             config["validate_authority_rrs"] = RRValidator.create(
-                config["validate_authority_rrs"]
+                **config["validate_authority_rrs"]
             )
         if "validate_additional_rrs" in config.keys() and not isinstance(
             config["validate_additional_rrs"], RRValidator
         ):
             config["validate_additional_rrs"] = RRValidator.create(
-                config["validate_additional_rrs"]
+                **config["validate_additional_rrs"]
             )
 
         # create RFValidator
@@ -270,7 +264,7 @@ class DNSRequestHandler(MetricsHandler):
             config["validate_response_flags"], RFValidator
         ):
             config["validate_response_flags"] = RFValidator.create(
-                config["validate_response_flags"]
+                **config["validate_response_flags"]
             )
 
         # parse target
@@ -690,8 +684,10 @@ class DNSRequestHandler(MetricsHandler):
         HTTP_REQUESTS.labels(path=self.url.path).inc()
 
         # /query is for doing a DNS query, it returns metrics about just that one dns query
-        if self.url.path == "/query":
-            logger.debug(f"Got scrape request from client {self.client_address}")
+        if self.url.path == "/query" or self.url.path == "/config":
+            logger.debug(
+                f"Got {self.url.path} request from client {self.client_address}"
+            )
             # this is a scrape request, prepare for doing a new dns query
             # clear the metrics, we don't want any history
             QUERY_TIME.clear()
@@ -766,6 +762,14 @@ class DNSRequestHandler(MetricsHandler):
                 # do not use edns
                 q.use_edns(edns=False)  # type: ignore
                 logger.debug("not using edns")
+
+            # if this is a config check return now
+            if self.url.path == "/config":
+                logger.debug("returning config")
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(self.config.json().encode("utf-8"))
+                return
 
             # do it
             assert isinstance(self.config.ip, (IPv4Address, IPv6Address))  # mypy
@@ -909,7 +913,15 @@ def get_parser() -> argparse.ArgumentParser:
         dest="log-level",
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         help="Logging level. One of DEBUG, INFO, WARNING, ERROR, CRITICAL. Defaults to INFO.",
-        default=argparse.SUPPRESS,
+        default="INFO",
+    )
+    parser.add_argument(
+        "-p",
+        "--port",
+        dest="port",
+        type=int,
+        help="The port the exporter should listen for requests on. Default: 15353",
+        default=15353,
     )
     parser.add_argument(
         "-q",
@@ -942,8 +954,6 @@ def parse_args(
 
 def main(mockargs: Optional[list[str]] = None) -> None:
     """Read config and start exporter."""
-    logger.info(f"dns_exporter v{__version__} starting up")
-
     # get arpparser and parse args
     parser, args = parse_args(mockargs)
 
@@ -951,6 +961,17 @@ def main(mockargs: Optional[list[str]] = None) -> None:
     if hasattr(args, "version"):
         print(f"dns_exporter version {__version__}")
         sys.exit(0)
+
+    # configure the log format and level
+    console_logformat = "%(asctime)s dns_exporter %(levelname)s DNSExporter.%(funcName)s():%(lineno)i:  %(message)s"
+    level = getattr(args, "log-level")
+    logging.basicConfig(
+        level=level,
+        format=console_logformat,
+        datefmt="%Y-%m-%d %H:%M:%S %z",
+    )
+    logger.setLevel(level)
+    logger.info(f"dns_exporter v{__version__} starting up - logging at level {level}")
 
     if hasattr(args, "config-file"):
         with open(getattr(args, "config-file"), "r") as f:
@@ -983,7 +1004,7 @@ def main(mockargs: Optional[list[str]] = None) -> None:
         )
 
     # initialise handler and start HTTPServer
-    handler = DNSRequestHandler
+    handler = DNSExporter
     if configfile["configs"]:
         if not handler.configure(
             configs={k: ConfigDict(**v) for k, v in configfile["configs"].items()}  # type: ignore
@@ -992,7 +1013,8 @@ def main(mockargs: Optional[list[str]] = None) -> None:
                 "An error occurred while configuring dns_exporter. Bailing out."
             )
             sys.exit(1)
-    HTTPServer(("127.0.0.1", 15353), handler).serve_forever()
+    logger.debug(f"Starting listener on 127.0.0.1 port {args.port}...")
+    HTTPServer(("127.0.0.1", args.port), handler).serve_forever()
 
 
 if __name__ == "__main__":

@@ -1,4 +1,5 @@
 """Config related code for dns_exporter."""
+import json
 import logging
 import typing as t
 import urllib.parse
@@ -15,13 +16,7 @@ import dns.rdatatype
 import dns.resolver
 
 # initialise logger
-logger = logging.getLogger("dns_exporter.config")
-logger.setLevel(logging.DEBUG)
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
-formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-ch.setFormatter(formatter)
-logger.addHandler(ch)
+logger = logging.getLogger("dns_exporter")
 
 
 @dataclass
@@ -222,6 +217,7 @@ class Config:
     ) -> "Config":
         """Return an instance of the Config class with values from the provided parameters overriding the defaults."""
         logger.debug(f"creating config {name}...")
+        logger.debug(validate_answer_rrs)
         return cls(
             name=name,
             edns=edns,
@@ -245,6 +241,13 @@ class Config:
             target=target,
             query_name=query_name,
         )
+
+    def json(self) -> str:
+        """Return a json version of the config."""
+        conf: dict[str, t.Any] = asdict(self)
+        conf["ip"] = str(conf["ip"])
+        conf["target"] = conf["target"].geturl()
+        return json.dumps(conf)
 
 
 class ConfigDict(t.TypedDict, total=False):
