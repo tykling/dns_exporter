@@ -25,19 +25,22 @@ import dns.rdatatype
 import dns.resolver
 import yaml
 from dns.message import Message
-from prometheus_client import (
-    CollectorRegistry,
-    Counter,
-    Enum,
-    Gauge,
-    Histogram,
-    Info,
-    MetricsHandler,
-    exposition,
-)
+from prometheus_client import CollectorRegistry, Info, MetricsHandler, exposition
 from prometheus_client.registry import RestrictedRegistry
 
 from dns_exporter.config import Config, ConfigDict, RFValidator, RRValidator
+from dns_exporter.metrics import (
+    DNS_FAILURES,
+    DNS_QUERIES,
+    DNS_RESPONSES,
+    HTTP_REQUESTS,
+    HTTP_RESPONSES,
+    QUERY_FAILURE,
+    QUERY_RESPONSE_TTL,
+    QUERY_SUCCESS,
+    QUERY_TIME,
+    dns_registry,
+)
 
 # get version number from package metadata if possible
 __version__: str = "0.0.0"
@@ -51,101 +54,12 @@ except PackageNotFoundError:
         # this must be a git checkout with no _version.py file, version unknown
         pass
 
-# initialise logger at info level
+# define the info metric with the build version
+INFO = Info("dns_exporter_build_version", "The version of dns_exporter")
+INFO.info({"version": __version__})
+
+# initialise logger initially at info level
 logger = logging.getLogger("dns_exporter")
-
-# create seperate registry for the dns query metrics
-dns_registry = CollectorRegistry()
-
-# define the timing histogram
-QUERY_TIME = Histogram(
-    "dns_query_time_seconds",
-    "DNS query time in seconds.",
-    [
-        "protocol",
-        "target",
-        "family",
-        "ip",
-        "port",
-        "query_name",
-        "query_type",
-        "opcode",
-        "rcode",
-        "flags",
-        "nsid",
-        "answer",
-        "authority",
-        "additional",
-    ],
-    registry=dns_registry,
-)
-# and the success gauge
-QUERY_SUCCESS = Gauge(
-    "dns_query_success",
-    "Was this DNS query successful or not, 1 for success or 0 for failure.",
-    registry=dns_registry,
-)
-# and the failure Enum
-QUERY_FAILURE = Enum(
-    "dns_query_failure_reason",
-    "The reason this DNS query failed",
-    states=[
-        "no_failure",
-        "invalid_request_config",  # one or more specified config(s) not found
-        "invalid_request_target",  # dns issue resolving target hostname
-        "invalid_request_family",  # family is not one of "ipv4" or "ipv6"
-        "invalid_request_ip",  # ip is not valid
-        "invalid_request_port",  # port parameter conflicts with port in target
-        "invalid_request_path",  # path parameter conflicts with path in target
-        "invalid_request_protocol",  # protocol is not one of "udp", "tcp", "udptcp", "dot", "doh", "doq"
-        "invalid_request_query_name",  # query_name is invalid or missing
-        "timeout",  # the configured timeout was reached before the dns server replied
-        "invalid_response_rcode",  # the response RCODE was not as expected
-        "invalid_response_flags",  # the response flags were not as expected
-        "invalid_response_answer_rrs",  # the ANSWER rrs were not as expected
-        "invalid_response_authority_rrs",  # the AUTHORITY rrs were not as expected
-        "invalid_response_additional_rrs",  # the ADDITIONAL rrs were not as expected
-        "other_failure",  # unknown error cases
-    ],
-    registry=dns_registry,
-)
-
-# now define the persistent metrics for the exporter itself
-i = Info("dns_exporter_build_version", "The version of dns_exporter")
-i.info({"version": __version__})
-
-UP = Gauge(
-    "up",
-    "Is the dns_exporter up and running? 1 for yes and 0 for no.",
-)
-UP.set(1)
-
-HTTP_REQUESTS = Counter(
-    "dns_exporter_http_requests_total",
-    "The total number of HTTP requests received by this exporter since start. This counter is increased every time any HTTP request is received by the dns_exporter.",
-    ["path"],
-)
-
-HTTP_RESPONSES = Counter(
-    "dns_exporter_http_responses_total",
-    "The total number of HTTP responses sent by this exporter since start. This counter is increased every time an HTTP response is sent from the dns_exporter.",
-    ["path", "response_code"],
-)
-
-DNS_QUERIES = Counter(
-    "dns_exporter_dns_queries_total",
-    "The total number of DNS queries sent by this exporter since start. This counter is increased every time the dns_exporter sends out a DNS query.",
-)
-
-DNS_RESPONSES = Counter(
-    "dns_exporter_dns_query_responses_total",
-    "The total number of DNS query responses received since start. This counter is increased every time the dns_exporter receives a query response (before timeout).",
-)
-
-DNS_FAILURES = Counter(
-    "dns_exporter_dns_query_failures_total",
-    "The total number of DNS queries considered failed. This counter is increased every time a DNS query is sent out and a valid response is not received.",
-)
 
 INDEX = """<!DOCTYPE html>
 <html lang="en-US">
@@ -153,7 +67,9 @@ INDEX = """<!DOCTYPE html>
 <head><title>DNS Exporter</title></head>
 <body>
 <h1>DNS Exporter</h1>
-<p>Visit <a href="/query?target=dns.google&config=doh&query_name=example.com">/query?target=dns.google&config=doh&query_name=example.com</a> to do a DNS query and see metrics.</p>
+<p>Visit <a href="/query?target=dns.google&protocol=doh&query_name=example.com">/query?target=dns.google&protocol=doh&query_name=example.com</a> to do a DNS query and see metrics.</p>
+<p>To debug configuration issues replace /query with /config to see the effective parsed configuration:</p>
+<p>Visit <a href="/config?target=dns.google&protocol=doh&query_name=example.com">/config?target=dns.google&protocol=doh&query_name=example.com</a> to do a DNS query and see metrics.</p>
 <p>Visit <a href="/metrics">/metrics</a> to see metrics for the dns_exporter itself.</p>
 </body>
 </html>"""
@@ -345,12 +261,21 @@ class DNSExporter(MetricsHandler):
           - a https:// url with an IP:port
           - a https:// url with a hostname and no port
           - a https:// url with a hostname:port
+          In the DoH https:// cases the url can be with or without a path.
 
         Parse it with urllib.parse.urlsplit and return the result.
         """
         if "://" not in target:
             target = f"{protocol}://{target}"
-        return urllib.parse.urlsplit(target)
+        splitresult = urllib.parse.urlsplit(target)
+        if protocol == "doh" and not splitresult.path:
+            # use the default DoH path
+            splitresult = urllib.parse.urlsplit(
+                urllib.parse.urlunsplit(
+                    splitresult._replace(path="/dns-query", scheme="https")
+                )
+            )
+        return splitresult
 
     def validate_target_ip(self) -> bool:
         """Validate the target and resolve IP if needed."""
@@ -453,12 +378,11 @@ class DNSExporter(MetricsHandler):
     def get_dns_response(
         self,
         protocol: str,
-        target: str,
+        target: urllib.parse.SplitResult,
         ip: t.Union[IPv4Address, IPv6Address],
         port: int,
         query: Message,
         timeout: float,
-        dohpath: str,
     ) -> Optional[Message]:
         """Perform a DNS query with the specified server and protocol."""
         assert hasattr(query, "question")  # for mypy
@@ -470,53 +394,70 @@ class DNSExporter(MetricsHandler):
         if protocol == "udp":
             # plain UDP lookup, nothing fancy here
             logger.debug(
-                f"doing UDP lookup with server {target} (using IP {ip}) port {port} and query {query.question}"
+                f"doing UDP lookup with server {target.netloc} (using IP {ip}) port {port} and query {query.question}"
             )
-            r = dns.query.udp(q=query, where=str(ip), port=port, timeout=timeout)
+            r = dns.query.udp(
+                q=query,
+                where=str(ip),
+                port=port,
+                timeout=timeout,
+                one_rr_per_rrset=True,
+            )
 
         elif protocol == "tcp":
             # plain TCP lookup, nothing fancy here
             logger.debug(
-                f"doing TCP lookup with server {target} (using IP {ip}) port {port} and query {query.question}"
+                f"doing TCP lookup with server {target.netloc} (using IP {ip}) port {port} and query {query.question}"
             )
-            r = dns.query.tcp(q=query, where=str(ip), port=port, timeout=timeout)
+            r = dns.query.tcp(
+                q=query,
+                where=str(ip),
+                port=port,
+                timeout=timeout,
+                one_rr_per_rrset=True,
+            )
 
         elif protocol == "udptcp":
             # plain UDP lookup with fallback to TCP lookup
             logger.debug(
-                f"doing UDP>TCP lookup with server {target} (using IP {ip}) port {port} and query {query.question}"
+                f"doing UDP>TCP lookup with server {target.netloc} (using IP {ip}) port {port} and query {query.question}"
             )
             # TODO maybe create a label for transport protocol = tcp or udp?
             r, tcp = dns.query.udp_with_fallback(  # type: ignore
-                q=query, where=str(ip), port=port, timeout=timeout
+                q=query,
+                where=str(ip),
+                port=port,
+                timeout=timeout,
+                one_rr_per_rrset=True,
             )
 
         elif protocol == "dot":
             # DoT query, use the ip for where= and set tls hostname with server_hostname=
             logger.debug(
-                f"doing DoT lookup with server {target} (using IP {ip}) port {port} and query {query.question}"
+                f"doing DoT lookup with server {target.netloc} (using IP {ip}) port {port} and query {query.question}"
             )
             r = dns.query.tls(
                 q=query,
                 where=str(ip),
                 port=port,
-                server_hostname=target,
+                server_hostname=target.hostname,
                 timeout=timeout,
+                one_rr_per_rrset=True,
             )
 
         elif protocol == "doh":
             # DoH query, use the url for where= and use bootstrap_address= for the ip
-            url = f"https://{target}{dohpath}"
+            url = f"https://{target.hostname}{target.path}"
             logger.debug(
                 f"doing DoH lookup with url {url} (using IP {ip}) port {port} and query {query.question}"
             )
-            # TODO https://github.com/rthalley/dnspython/issues/875
-            r = dns.query.https(
+            r = dns.query.https(  # type: ignore
                 q=query,
                 where=url,
                 bootstrap_address=str(ip),
                 port=port,
                 timeout=timeout,
+                one_rr_per_rrset=True,
             )
 
         elif protocol == "doq":
@@ -524,7 +465,7 @@ class DNSExporter(MetricsHandler):
             logger.debug(
                 f"doing DoQ lookup with server {target} (using IP {ip}) port {port} and query {query.question}"
             )
-            r = dns.query.quic(q=query, where=target, port=port, timeout=timeout)  # type: ignore
+            r = dns.query.quic(q=query, where=target, port=port, timeout=timeout, one_rr_per_rrset=True)  # type: ignore
         return r
 
     def validate_dns_response(self, response: Message) -> bool:
@@ -578,13 +519,7 @@ class DNSExporter(MetricsHandler):
         # do we want response rr validation?
         for section in ["answer", "authority", "additional"]:
             key = f"validate_{section}_rrs"
-            if section == "answer":
-                # the answer section has rrsets, flatten the list
-                rrsets = getattr(response, "answer")
-                # behold, a valid usecase for double list comprehension :D
-                rrs = [rr for rrset in rrsets for rr in rrset]
-            else:
-                rrs = getattr(response, section)
+            rrs = getattr(response, section)
             if getattr(self.config, key):
                 validators: RRValidator = getattr(self.config, key)
                 if validators.fail_if_matches_regexp:
@@ -720,7 +655,7 @@ class DNSExporter(MetricsHandler):
 
             # config is ready for action, begin the labels dict
             labels: dict[str, str] = {
-                "target": str(self.config.target),
+                "target": str(self.config.target.geturl()),
                 "ip": str(self.config.ip),
                 "port": str(port),
                 "protocol": str(self.config.protocol),
@@ -778,12 +713,11 @@ class DNSExporter(MetricsHandler):
             try:
                 r = self.get_dns_response(
                     protocol=str(self.config.protocol),
-                    target=str(self.config.target.hostname),
+                    target=self.config.target,
                     ip=self.config.ip,
                     port=port,
                     query=q,
                     timeout=float(str(self.config.timeout)),
-                    dohpath=self.config.target.path,
                 )
                 logger.debug("Got a DNS query response!")
             except dns.exception.Timeout:
@@ -843,6 +777,19 @@ class DNSExporter(MetricsHandler):
 
             # labels complete, observe timing metric
             QUERY_TIME.labels(**labels).observe(qtime)
+
+            # register TTL of response RRs
+            for section in ["answer", "authority", "additional"]:
+                rrsets = getattr(r, section)
+                for rrset in rrsets:
+                    rr = rrset[0]
+                    labels.update(
+                        {
+                            "section": section,
+                            "value": rr.to_text()[:255],
+                        }
+                    )
+                    QUERY_RESPONSE_TTL.labels(**labels).observe(rrset.ttl)
 
             # validate response
             success = self.validate_dns_response(response=r)
