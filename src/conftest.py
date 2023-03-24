@@ -29,7 +29,7 @@ def dns_exporter_example_config():
     print("Running server with example config on 127.0.0.1:25353 ...")
     thread = Thread(
         target=main,
-        args=(["-c", "dns_exporter/dns_exporter_example.yml", "-p", "25353"],),
+        args=(["-c", "dns_exporter/dns_exporter_example.yml", "-p", "25353", "-d"],),
     )
     thread.setDaemon(True)
     thread.start()

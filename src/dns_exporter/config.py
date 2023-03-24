@@ -119,26 +119,26 @@ class Config:
     def __post_init__(self) -> None:
         """Validate as much as possible."""
         logger.debug(f"validating config: {asdict(self)}")
-        # validate edns
-        assert isinstance(self.edns, bool), "edns must be a bool"
+        for key in ["edns", "edns_do", "edns_nsid", "recursion_desired"]:
+            # validate bools
+            if not isinstance(getattr(self, key), bool):
+                raise ValueError(f"{key} must be a bool", "invalid_request_config")
 
-        # validate edns_do
-        assert isinstance(self.edns_do, bool), "edns_do must be a bool"
-
-        # validate edns_nsid
-        assert isinstance(self.edns_nsid, bool), "edns_nsid must be a bool"
-
-        # validate edns_bufsize
-        assert isinstance(self.edns_bufsize, int), "edns_bufsize must be an integer"
-        assert self.edns_bufsize >= 0, "edns_bufsize must be >= 0"
+        # validate integers
         # TODO: maybe check that edns_bufsize is not too big?
-
-        # validate edns_pad
-        assert isinstance(self.edns_pad, int), "edns_pad must be an integer"
-        assert self.edns_pad >= 0, "edns_pad must be >=0"
+        for key in ["edns_bufsize", "edns_pad"]:
+            if not isinstance(getattr(self, key), int):
+                raise ValueError(
+                    "edns_bufsize must be an integer", "invalid_request_config"
+                )
+            if not getattr(self, key) >= 0:
+                raise ValueError("edns_bufsize must be >= 0", "invalid_request_config")
 
         # validate family
-        assert self.family in ["ipv4", "ipv6"], "family must be one of: ipv4, ipv6"
+        if self.family not in ["ipv4", "ipv6"]:
+            raise ValueError(
+                "family must be one of: ipv4, ipv6", "invalid_request_family"
+            )
 
         # validate protocol
         valid_protocols = [
@@ -149,46 +149,55 @@ class Config:
             "doh",
             "doq",
         ]
-        assert (
-            self.protocol in valid_protocols
-        ), f"protocol must be one of: {valid_protocols}"
+        if self.protocol not in valid_protocols:
+            raise ValueError(
+                f"protocol must be one of: {valid_protocols}",
+                "invalid_request_protocol",
+            )
 
         # validate query_class
-        assert self.query_class in [
-            "IN",
-            "CHAOS",
-        ], "query_class must be one of: IN, CHAOS"
+        if self.query_class not in ["IN", "CHAOS"]:
+            raise ValueError(
+                "query_class must be one of: IN, CHAOS", "invalid_request_query_class"
+            )
 
         # validate query_type
         valid_qtypes = [dns.rdatatype.to_text(t) for t in dns.rdatatype.RdataType]  # type: ignore
-        assert (
-            self.query_type in valid_qtypes
-        ), f"query_type {self.query_type} not found in list of valid query types: {valid_qtypes}"
-
-        # validate recursion_desired
-        assert isinstance(
-            self.recursion_desired, bool
-        ), "recursion_required must be a bool"
+        if self.query_type not in valid_qtypes:
+            raise ValueError(
+                f"query_type {self.query_type} not found in list of valid query types: {valid_qtypes}",
+                "invalid_request_query_type",
+            )
 
         # validate timeout
-        assert isinstance(self.timeout, float), "timeout must be a float"
+        if not isinstance(self.timeout, float):
+            raise ValueError("timeout must be a float", "invalid_request_config")
 
         # validate RRValidator fields
-        assert isinstance(
-            self.validate_answer_rrs, RRValidator
-        ), f"validate_answer_rrs is {self.validate_answer_rrs}"
-        assert isinstance(self.validate_authority_rrs, RRValidator)
-        assert isinstance(self.validate_additional_rrs, RRValidator)
+        for key in [
+            "validate_answer_rrs",
+            "validate_authority_rrs",
+            "validate_additional_rrs",
+        ]:
+            if not isinstance(getattr(self, key), RRValidator):
+                raise ValueError(
+                    f"{key} is not a RRValidator object", "invalid_request_config"
+                )
 
         # validate RFValidator
-        assert isinstance(self.validate_response_flags, RFValidator)
+        if not isinstance(self.validate_response_flags, RFValidator):
+            raise ValueError(
+                "validate_response_flags is not a RFValidator object",
+                "invalid_request_config",
+            )
 
         # validate valid_rcodes
         all_rcodes = [dns.rcode.to_text(x) for x in dns.rcode.Rcode]  # type: ignore
         invalid_rcodes = set(self.valid_rcodes).difference(all_rcodes)
         if invalid_rcodes:
             raise ValueError(
-                f"Invalid valid_rcodes setting in config '{self.name}': {list(invalid_rcodes)}. Supported rcodes: {all_rcodes}"
+                f"Invalid valid_rcodes setting in config '{self.name}': {list(invalid_rcodes)}. Supported rcodes: {all_rcodes}",
+                "invalid_request_config",
             )
 
     @classmethod
@@ -217,7 +226,6 @@ class Config:
     ) -> "Config":
         """Return an instance of the Config class with values from the provided parameters overriding the defaults."""
         logger.debug(f"creating config {name}...")
-        logger.debug(validate_answer_rrs)
         return cls(
             name=name,
             edns=edns,

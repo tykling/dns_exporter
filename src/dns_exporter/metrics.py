@@ -15,6 +15,7 @@ QUERY_TIME = Histogram(
         "family",
         "ip",
         "port",
+        "transport",
         "query_name",
         "query_type",
         "opcode",
@@ -47,6 +48,8 @@ QUERY_FAILURE = Enum(
         "invalid_request_path",  # path parameter conflicts with path in target
         "invalid_request_protocol",  # protocol is not one of "udp", "tcp", "udptcp", "dot", "doh", "doq"
         "invalid_request_query_name",  # query_name is invalid or missing
+        "invalid_request_query_type",  # query_type is invalid or missing
+        "invalid_request_query_class",  # query_class is invalid or missing
         "timeout",  # the configured timeout was reached before the dns server replied
         "invalid_response_rcode",  # the response RCODE was not as expected
         "invalid_response_flags",  # the response flags were not as expected
@@ -67,6 +70,7 @@ QUERY_RESPONSE_TTL = Histogram(
         "family",
         "ip",
         "port",
+        "transport",
         "query_name",
         "query_type",
         "opcode",

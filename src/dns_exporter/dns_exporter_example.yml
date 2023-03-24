@@ -23,7 +23,7 @@ more_reusable_stuff:  # the name of this dict is also not important
     <<: *mytemplate
     family: "ipv4"  # when scrape target is a hostname use ipv4/A instead of AAAA
 
-  validation_kitchensink_example:
+  validation_kitchensink_example: &kitchensink
     <<: *mytemplate
     validate_response_flags:  # do validation of the response flags
       fail_if_any_present:  # consider request failed if any of these flags are present in the response
@@ -133,6 +133,9 @@ configs: # this is the only key currently read from the config
   pad:
     <<: *template_v4_2s
     edns_pad: 100
+
+  kitchensink:
+    <<: *kitchensink
 
   google_udp:  # make sure google public dns returns 13 NS records for . over UDP
     protocol: "udp"
