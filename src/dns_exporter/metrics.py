@@ -39,7 +39,7 @@ QUERY_FAILURE = Enum(
     "dns_query_failure_reason",
     "The reason this DNS query failed",
     states=[
-        "no_failure",
+        "no_failure",  # initial state
         "invalid_request_config",  # one or more specified config(s) not found
         "invalid_request_target",  # dns issue resolving target hostname
         "invalid_request_family",  # family is not one of "ipv4" or "ipv6"
@@ -60,7 +60,7 @@ QUERY_FAILURE = Enum(
     ],
     registry=dns_registry,
 )
-
+# and the individual response records ttl histogram
 QUERY_RESPONSE_TTL = Histogram(
     "dns_response_record_ttl_seconds",
     "DNS query response record TTL in seconds.",
@@ -80,8 +80,10 @@ QUERY_RESPONSE_TTL = Histogram(
         "answer",
         "authority",
         "additional",
-        "section",  # answer, authority or additional
-        "value",
+        "rr_section",  # answer, authority or additional
+        "rr_name",
+        "rr_type",
+        "rr_value",
     ],
     registry=dns_registry,
     buckets=(

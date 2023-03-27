@@ -129,7 +129,7 @@ class Config:
         for key in ["edns_bufsize", "edns_pad"]:
             if not isinstance(getattr(self, key), int):
                 raise ValueError(
-                    "edns_bufsize must be an integer", "invalid_request_config"
+                    "edns_pad must be an integer", "invalid_request_config"
                 )
             if not getattr(self, key) >= 0:
                 raise ValueError("edns_bufsize must be >= 0", "invalid_request_config")
@@ -226,13 +226,31 @@ class Config:
     ) -> "Config":
         """Return an instance of the Config class with values from the provided parameters overriding the defaults."""
         logger.debug(f"creating config {name}...")
+        if isinstance(edns, str):
+            if edns.lower() == "false":
+                edns = False
+            else:
+                edns = True
+
+        if isinstance(edns_do, str):
+            if edns_do.lower() == "false":
+                edns_do = False
+            else:
+                edns_do = True
+
+        if isinstance(recursion_desired, str):
+            if recursion_desired.lower() == "false":
+                recursion_desired = False
+            else:
+                recursion_desired = True
+
         return cls(
             name=name,
             edns=edns,
             edns_do=edns_do,
             edns_nsid=edns_nsid,
-            edns_bufsize=edns_bufsize,
-            edns_pad=edns_pad,
+            edns_bufsize=int(edns_bufsize),
+            edns_pad=int(edns_pad),
             family=family,
             protocol=protocol,
             query_class=query_class.upper(),

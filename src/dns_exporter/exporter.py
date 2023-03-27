@@ -523,6 +523,7 @@ class DNSExporter(MetricsHandler):
                 else:
                     # all the flags are present
                     QUERY_FAILURE.state("invalid_response_flags")
+                    logger.warning(f"flag {flags}")
                     logger.warning(
                         f"query failure, returning {QUERY_FAILURE._states[QUERY_FAILURE._value]}"
                     )
@@ -558,6 +559,9 @@ class DNSExporter(MetricsHandler):
             if getattr(self.config, key):
                 validators: RRValidator = getattr(self.config, key)
                 if validators.fail_if_matches_regexp:
+                    logger.debug(
+                        f"fail_if_matches_regexp validating rrs from {section} section: {rrs}..."
+                    )
                     for regex in validators.fail_if_matches_regexp:
                         p = re.compile(regex)
                         for rr in rrs:
@@ -571,10 +575,15 @@ class DNSExporter(MetricsHandler):
                                 return False
 
                 if validators.fail_if_all_match_regexp:
+                    logger.debug(
+                        f"fail_if_all_match_regexp validating rrs from {section} section: {rrs}..."
+                    )
                     for regex in validators.fail_if_all_match_regexp:
                         p = re.compile(regex)
+                        logger.debug(rrs)
                         for rr in rrs:
-                            m = p.match(rr)
+                            logger.debug(f"validating rr {rr} with regex {regex}")
+                            m = p.match(str(rr))
                             if not m:
                                 # no match for this rr, break out of the loop
                                 break
@@ -587,10 +596,13 @@ class DNSExporter(MetricsHandler):
                                 return False
 
                 if validators.fail_if_not_matches_regexp:
+                    logger.debug(
+                        f"fail_if_not_matches_regexp validating rrs from {section} section: {rrs}..."
+                    )
                     for regex in validators.fail_if_not_matches_regexp:
                         p = re.compile(regex)
                         for rr in rrs:
-                            m = p.match(rr)
+                            m = p.match(str(rr))
                             if not m:
                                 # no match so we fail
                                 QUERY_FAILURE.state(f"invalid_response_{section}_rrs")
@@ -600,46 +612,34 @@ class DNSExporter(MetricsHandler):
                                 return False
 
                 if validators.fail_if_none_matches_regexp:
+                    logger.debug(
+                        f"fail_if_none_matches_regexp validating rrs from {section} section: {rrs}..."
+                    )
                     for regex in validators.fail_if_none_matches_regexp:
                         p = re.compile(regex)
                         for rr in rrs:
-                            m = p.match(rr)
+                            print(f"matching rr {rr} with regex {regex} ...")
+                            m = p.match(str(rr))
                             if m:
                                 # we have a match for this rr, break out of the loop
                                 break
-                            else:
-                                # none of the rrs match this regex
-                                logger.warning(
-                                    f"query failure, returning {QUERY_FAILURE._states[QUERY_FAILURE._value]}"
-                                )
-                                QUERY_FAILURE.state(f"invalid_response_{section}_rrs")
-                                return False
+                        else:
+                            # none of the rrs match this regex
+                            logger.warning(
+                                f"query failure, returning {QUERY_FAILURE._states[QUERY_FAILURE._value]}"
+                            )
+                            QUERY_FAILURE.state(f"invalid_response_{section}_rrs")
+                            return False
 
         # all validation ok
         return True
-
-    def send_error_response(self, messages: list[str]) -> None:
-        """Send an HTTP 400 error message to the client."""
-        self.send_response(400)
-        self.end_headers()
-        for line in messages:
-            self.wfile.write(line.encode("utf-8"))
-        HTTP_RESPONSES.labels(path=self.url.path, response_code=400).inc()
-        return None
 
     def send_metric_response(
         self,
         registry: Union[CollectorRegistry, RestrictedRegistry],
         query: dict[str, t.Union[str, list[str]]],
-        skip_metrics: Optional[list[str]] = [],
     ) -> None:
         """Bake and send output from the provided registry and querystring."""
-        # do we want to skip any metrics?
-        if skip_metrics:
-            # we want to skip some metrics
-            metrics = [x for x in list(registry._names_to_collectors.keys()) if x not in skip_metrics]  # type: ignore
-            registry = registry.restricted_registry(names=metrics)  # type: ignore
-
         # Bake output
         status, headers, output = exposition._bake_output(  # type: ignore
             registry,
@@ -674,6 +674,7 @@ class DNSExporter(MetricsHandler):
             # clear the metrics, we don't want any history
             QUERY_TIME.clear()
             QUERY_FAILURE.clear()
+            QUERY_RESPONSE_TTL.clear()
 
             # build and validate configuration for this scrape from defaults, config file and request querystring
             if not self.get_config(qs=self.qs):
@@ -730,7 +731,11 @@ class DNSExporter(MetricsHandler):
                     ednsargs["payload"] = int(self.config.edns_bufsize)
                 # do we want padding?
                 if self.config.edns_pad:
-                    ednsargs["pad"] = int(self.config.edns_pad)
+                    ednsargs["options"].append(
+                        dns.edns.GenericOption(  # type: ignore
+                            dns.edns.PADDING, bytes(int(self.config.edns_pad))
+                        )
+                    )
                 # enable edns with the chosen options
                 q.use_edns(edns=0, **ednsargs)  # type: ignore
                 logger.debug(f"using edns options {ednsargs}")
@@ -813,6 +818,7 @@ class DNSExporter(MetricsHandler):
                     "answer": str(sum([len(rrset) for rrset in r.answer])),
                     "authority": str(len(r.authority)),
                     "additional": str(len(r.additional)),
+                    "nsid": "no_nsid",
                 }
             )
 
@@ -825,6 +831,7 @@ class DNSExporter(MetricsHandler):
                     break
 
             # labels complete, observe timing metric
+            print(labels)
             QUERY_TIME.labels(**labels).observe(qtime)
 
             # register TTL of response RRs
@@ -834,15 +841,16 @@ class DNSExporter(MetricsHandler):
                     rr = rrset[0]
                     labels.update(
                         {
-                            "section": section,
-                            "value": rr.to_text()[:255],
+                            "rr_section": section,
+                            "rr_name": rrset.name,
+                            "rr_type": dns.rdatatype.to_text(rr.rdtype),  # type: ignore
+                            "rr_value": rr.to_text()[:255],
                         }
                     )
                     QUERY_RESPONSE_TTL.labels(**labels).observe(rrset.ttl)
 
             # validate response
             success = self.validate_dns_response(response=r)
-            skip_metrics: list[str] = []
             if not success:
                 # increase the global failure counter
                 DNS_FAILURES.inc()
@@ -850,9 +858,7 @@ class DNSExporter(MetricsHandler):
             # register success or not
             QUERY_SUCCESS.set(success)
             # send the response
-            self.send_metric_response(
-                registry=dns_registry, query=self.qs, skip_metrics=skip_metrics
-            )
+            self.send_metric_response(registry=dns_registry, query=self.qs)
             logger.debug(f"Returning DNS query metrics - query success: {success}")
             return
 
