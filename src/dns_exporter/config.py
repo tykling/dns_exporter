@@ -1,4 +1,7 @@
-"""Config related code for dns_exporter."""
+"""``dns_exporter.config`` contains all the configuration related code for dns_exporter.
+
+The primary class is the Config object and the two RRValidator and RFValidator objects.
+"""
 import json
 import logging
 import typing as t
@@ -21,16 +24,44 @@ logger = logging.getLogger("dns_exporter")
 
 @dataclass
 class RRValidator:
-    """This dataclass defines the structure used in validate_(answer|authority|additional)_rrs in the configs."""
+    """``dns_exporter.config.RRValidator`` defines the data structure used in ``Config`` objects to validate response RRs.
+
+    It is used in the ``validate_(answer|authority|additional)_rrs`` settings in the config.
+
+    Like the parent ``dns_exporter.config.Config`` class it consists of a bunch of attributes and the
+    ``dns_exporter.config.RRValidator.create()`` method which returns an instance of this class.
+
+    Each Config object can have up to three (3) instances of this class, one for validating RRs in each section
+    of the response:
+
+        - ``answer``
+        - ``authority``
+        - ``additional``
+    """
 
     fail_if_matches_regexp: list[str]
+    """``fail_if_matches_regexp`` is a list of regular expressions, fail the query if one of them matches an RR."""
+
     fail_if_all_match_regexp: list[str]
+    """``fail_if_all_match_regexp`` is a list of regular expressions, fail the query if all of them matches an RR."""
+
     fail_if_not_matches_regexp: list[str]
+    """``fail_if_not_matches_regexp`` is a list of regular expressions, fail the query if one of them does not match an RR."""
+
     fail_if_none_matches_regexp: list[str]
+    """``fail_if_none_matches_regexp`` is a list of regular expressions, fail the query if all of them does not match an RR."""
+
     fail_if_count_eq: t.Optional[int]
+    """``fail_if_count_eq`` is an integer, fail the query if the number of RRs matches this number."""
+
     fail_if_count_ne: t.Optional[int]
+    """``fail_if_count_ne`` is an integer, fail the query if the number of RRs is not equal to this number."""
+
     fail_if_count_lt: t.Optional[int]
+    """``fail_if_count_lt`` is an integer, fail the query if the number of RRs is smaller than this number."""
+
     fail_if_count_gt: t.Optional[int]
+    """``fail_if_count_gt`` is an integer, fail the query if the number of RRs is larger than this number."""
 
     @classmethod
     def create(
@@ -44,7 +75,10 @@ class RRValidator:
         fail_if_count_lt: t.Optional[int] = None,
         fail_if_count_gt: t.Optional[int] = None,
     ) -> "RRValidator":
-        """Return an instance of the RRValidator class with values from the provided conf dict."""
+        """Return an instance of the RRValidator class with values from the provided parameters.
+
+        The values are used as-is.
+        """
         return cls(
             fail_if_matches_regexp=fail_if_matches_regexp,
             fail_if_all_match_regexp=fail_if_all_match_regexp,
@@ -59,12 +93,25 @@ class RRValidator:
 
 @dataclass
 class RFValidator:
-    """This dataclass defines the structure used in validate_response_flags in the configs."""
+    """``dns_exporter.config.RFValidator`` defines the data structure used in ``Config`` objects to validate response flags.
+
+    It is used in the ``validate_response_flags`` setting in the config.
+
+    Like the parent ``dns_exporter.config.Config`` class it consists of a bunch of attributes and the
+    ``dns_exporter.config.RFValidator.create()`` method which returns an instance of this class.
+    """
 
     fail_if_any_present: list[str]
+    """``fail_if_any_present`` is a list of flags as strings, fail the query if any of them are present in the response."""
+
     fail_if_all_present: list[str]
+    """``fail_if_all_present`` is a list of flags as strings, fail the query if all of them are present in the response."""
+
     fail_if_any_absent: list[str]
+    """``fail_if_any_absent`` is a list of flags as strings, fail the query if any of them are absent from the response."""
+
     fail_if_all_absent: list[str]
+    """``fail_if_all_present`` is a list of flags as strings, fail the query if all of them are absent from the response."""
 
     @classmethod
     def create(
@@ -74,7 +121,10 @@ class RFValidator:
         fail_if_any_absent: list[str] = [],
         fail_if_all_absent: list[str] = [],
     ) -> "RFValidator":
-        """Return an instance of the RFValidator class with values from the provided conf dict."""
+        """Return an instance of the RFValidator class with values from the provided parameters.
+
+        The values are used as-is.
+        """
         return cls(
             fail_if_any_present=fail_if_any_present,
             fail_if_all_present=fail_if_all_present,
@@ -85,40 +135,82 @@ class RFValidator:
 
 @dataclass
 class Config:
-    """This dataclass defines the config structure used in dns_exporter."""
+    """``dns_exporter.config.Config`` defines the primary config structure used in dns_exporter.
+
+    The defaults for each config key are defined in the ``dns_exporter.config.Config.create()`` method.
+
+    The ``dns_exporter.exporter.DNSExporter.configs`` dict consists of string keys and instances of this class as values.
+    """
 
     name: str
+    """str: The name of this config. It is mostly included in the class for convenience."""
 
     # required
     edns: bool
+    """bool: Set this bool to ``True`` to enable ``EDNS0`` for the DNS query, ``False`` to not use ``EDNS0``. Default is ``True``"""
+
     edns_do: bool
+    """bool: Set this bool to ``True`` to set the ``EDNS0`` ``DO`` flag for the DNS query. Default is ``False``"""
+
     edns_nsid: bool
+    """bool: Set this bool to ``True`` to set the ``EDNS0`` ``nsid`` option for the DNS query. Default is ``True``"""
+
     edns_bufsize: int
+    """int: This int sets the ``EDNS0`` bufsize for the DNS query. Default is ``1232``"""
+
     edns_pad: int
+    """int: This int sets the ``EDNS0`` padding size for the DNS query. Default is ``0``"""
+
     family: str
+    """str: This string key must be set to either ``ipv6`` or ``ipv4``. It determines the address family used for the DNS query. Default is ``ipv6``"""
+
     protocol: str
+    """str: ``lol`` This key must be set to one of ``udp``, ``tcp``, ``udptcp``, ``dot``, ``doh``, or ``doq``. It determines the protocol used for the DNS query. Default is ``udp``"""
+
     query_class: str
+    """str: The query class used for this DNS query, typically ``IN`` but can also be ``CHAOS``. Default is ``IN``"""
+
     query_type: str
+    """str: The query type used for this DNS query, like ``A`` or ``MX``. Default is ``A``"""
+
     recursion_desired: bool
+    """bool: Set this bool to ``True`` to set the ``RD`` flag in the DNS query. Default is ``True``"""
+
     timeout: float
+    """float: This float determines how long the exporter will wait for a response before declaring the DNS query failed. Unit is seconds. Default is 5.0."""
+
     validate_answer_rrs: RRValidator
+    """RRValidator: This object contains the validation config for the ``answer`` section of the response. Default is an empty ``RRValidator()``"""
+
     validate_authority_rrs: RRValidator
+    """RRValidator: This object contains the validation config for the ``authority`` section of the response. Default is an empty ``RRValidator()``"""
+
     validate_additional_rrs: RRValidator
+    """RRValidator: This object contains the validation config for the ``additional`` section of the response. Default is an empty ``RRValidator()``"""
+
     validate_response_flags: RFValidator
+    """RFValidator: This object contains the validation config for the response flags. Default is an empty ``RFValidator()``"""
+
     valid_rcodes: list[str]
+    """list[str]: A list of acceptable rcodes when validating the DNS response. Default is ``["NOERROR"]``."""
 
     # optional settings (but required in final config)
+
     ip: t.Optional[t.Union[IPv4Address, IPv6Address]] = field(
         default_factory=lambda: None
     )
+    """IPv4Address | IPv6Address | None: The IP to use instead of using IP or hostname from target. Default is ``None``"""
+
     target: t.Union[urllib.parse.SplitResult, None] = field(
         default_factory=lambda: None
     )
+    """urllib.parse.SplitResult | None: The DNS server to use in parsed form. Default is ``None``"""
+
     query_name: t.Optional[str] = field(default_factory=lambda: None)
+    """str | None: The name to ask for in the DNS query. Default is ``None``"""
 
     def __post_init__(self) -> None:
         """Validate as much as possible."""
-        logger.debug(f"validating config: {asdict(self)}")
         for key in ["edns", "edns_do", "edns_nsid", "recursion_desired"]:
             # validate bools
             if not isinstance(getattr(self, key), bool):
@@ -269,7 +361,7 @@ class Config:
         )
 
     def json(self) -> str:
-        """Return a json version of the config."""
+        """Return a json version of the config. Mostly used in unit tests."""
         conf: dict[str, t.Any] = asdict(self)
         conf["ip"] = str(conf["ip"])
         conf["target"] = conf["target"].geturl()
@@ -277,7 +369,13 @@ class Config:
 
 
 class ConfigDict(t.TypedDict, total=False):
-    """A TypedDict to help hold config dicts before they become Config objects."""
+    """A TypedDict to help hold config dicts before they become Config objects.
+
+    ``dns_exporter.config.ConfigDict`` behaves like a regular dict but works better with mypy
+    because the individual keys has been annotated.
+
+    ``dns_exporter.config.ConfigDict`` has all the same keys and types as the real ``dns_exporter.config.Config`` object.
+    """
 
     edns: bool
     edns_do: bool

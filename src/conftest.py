@@ -62,3 +62,28 @@ def dns_exporter_broken_yaml_configfile(tmp_path_factory):
         f.write("foo:\nbar")
     # return path to the config
     return confpath
+
+
+@pytest.fixture
+def dns_exporter_empty_yaml_configfile(tmp_path_factory):
+    """Write a dns_exporter.yml file with no configs in it."""
+    confpath = tmp_path_factory.mktemp("conf") / "dns_exporter.yml"
+    # write file to disk
+    with open(confpath, "w") as f:
+        f.write("---")
+    # return path to the config
+    return confpath
+
+
+@pytest.fixture
+def dns_exporter_invalid_yaml_configfile(tmp_path_factory):
+    """Write a dns_exporter.yml file with configs with errors in it."""
+    confpath = tmp_path_factory.mktemp("conf") / "dns_exporter.yml"
+    # write file to disk
+    with open(confpath, "w") as f:
+        f.write("---\n")
+        f.write("configs:\n")
+        f.write("  broken:\n")
+        f.write("    notakey: 42\n")
+    # return path to the config
+    return confpath

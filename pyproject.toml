@@ -42,3 +42,7 @@ write_to = "src/dns_exporter/_version.py"
 [tool.setuptools]
 package-dir = {"" = "src"}
 packages = ["dns_exporter"]
+
+[tool.pydocstyle]
+convention = "google"
+match = "src/dns_exporter/"
