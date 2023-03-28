@@ -8,6 +8,4 @@ build:
 
 sphinx:
   configuration: "src/docs/source/conf.py"
-  formats:
-    - "pdf"
 ...
