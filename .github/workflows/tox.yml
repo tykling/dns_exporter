@@ -22,7 +22,7 @@ jobs:
           path: "src"
 
       - name: "Install remaining python dependencies"
-        run: "python -m pip install ./src/"
+        run: "python -m pip install ./src/[test]"
 
       - name: "Run Tox"
         run: "tox -e py"
