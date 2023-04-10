@@ -7,8 +7,10 @@ importing this module multiple times does not cause problems.
 All metrics exposed by ``dns_exporter`` are prefixed with ``dnsexp_`` (apart from ``up``
 and the built-in Python metrics).
 """
-from prometheus_client import CollectorRegistry, Counter, Enum, Gauge, Histogram
+from prometheus_client import CollectorRegistry, Counter, Enum, Gauge, Histogram, Info
 from prometheus_client.utils import INF
+
+from dns_exporter.version import __version__
 
 dnsexp_registry = CollectorRegistry()
 """dnsexp_registry is a seperate CollectorRegistry used for the DNS specific metrics.
@@ -20,7 +22,7 @@ The following metrics are created in this registry:
     - ``dns_exporter.metrics.dnsexp_dns_failure_reason``
     - ``dns_exporter.metrics.dnsexp_dns_record_ttl_seconds``
 
-The metrics in this registry are all cleared between queries/scrapes.
+The metrics in this registry are all cleared/reset between queries/scrapes.
 """
 
 
@@ -29,7 +31,7 @@ dnsexp_dns_time_seconds = Histogram(
     "DNS query time in seconds.",
     [
         "protocol",
-        "target",
+        "server",
         "family",
         "ip",
         "port",
@@ -51,7 +53,7 @@ dnsexp_dns_time_seconds = Histogram(
 Each DNS query duration is added to this histogram with the following labels to identify it:
 
     - ``protocol``
-    - ``target``
+    - ``server``
     - ``family``
     - ``ip``
     - ``port``
@@ -97,12 +99,13 @@ dnsexp_dns_failure_reason = Enum(
     "The reason this DNS query failed",
     states=[
         "no_failure",  # initial state
-        "invalid_request_config",  # one or more specified config(s) not found
-        "invalid_request_target",  # dns issue resolving target hostname
+        "invalid_request_module",  # the specified module was not found
+        "invalid_request_config",  # one or more config keys not found
+        "invalid_request_server",  # dns issue resolving server hostname
         "invalid_request_family",  # family is not one of "ipv4" or "ipv6"
         "invalid_request_ip",  # ip is not valid
-        "invalid_request_port",  # port parameter conflicts with port in target
-        "invalid_request_path",  # path parameter conflicts with path in target
+        "invalid_request_port",  # port parameter conflicts with port in server
+        "invalid_request_path",  # path parameter conflicts with path in server
         "invalid_request_protocol",  # protocol is not one of "udp", "tcp", "udptcp", "dot", "doh", "doq"
         "invalid_request_query_name",  # query_name is invalid or missing
         "invalid_request_query_type",  # query_type is invalid or missing
@@ -122,12 +125,13 @@ dnsexp_dns_failure_reason = Enum(
 This enum has the following states:
 
     - ``no_failure`` (initial state, meaning success)
-    - ``invalid_request_config`` (one or more specified config(s) not found)
-    - ``invalid_request_target`` (dns issue resolving target hostname)
+    - ``invalid_request_module`` (the specified module not found)
+    - ``invalid_request_config`` (one or more config keys not found)
+    - ``invalid_request_server`` (dns issue resolving server hostname)
     - ``invalid_request_family`` (family is not one of "ipv4" or "ipv6")
     - ``invalid_request_ip`` (ip is not valid)
-    - ``invalid_request_port`` (port parameter conflicts with port in target)
-    - ``invalid_request_path`` (path parameter conflicts with path in target)
+    - ``invalid_request_port`` (port parameter conflicts with port in server)
+    - ``invalid_request_path`` (path parameter conflicts with path in server)
     - ``invalid_request_protocol`` (protocol is not one of "udp", "tcp", "udptcp", "dot", "doh", "doq")
     - ``invalid_request_query_name`` (query_name is invalid or missing)
     - ``invalid_request_query_type`` (query_type is invalid or missing)
@@ -149,7 +153,7 @@ dnsexp_dns_record_ttl_seconds = Histogram(
     "DNS query response record TTL in seconds.",
     [
         "protocol",
-        "target",
+        "server",
         "family",
         "ip",
         "port",
@@ -214,7 +218,7 @@ The buckets of this Histogram start with 1 second and double until reaching max 
 This Histogram has the following labels, they are the same as ``dns_exporter.metrics.dnsexp_dns_time_seconds`` plus a few more:
 
     - ``protocol``
-    - ``target``
+    - ``server``
     - ``family``
     - ``ip``
     - ``port``
@@ -238,18 +242,13 @@ This metric is cleared between scrapes.
 
 # now define the persistent metrics for the exporter itself
 
-up = Gauge(
-    "up",
-    "Is the dns_exporter up and running? 1 for yes and 0 for no.",
-)
-"""``up`` is the normal Gauge used to determine if the exporter is running or not.
+# define the info metric with the build version
+dnsexp_build_version = Info("dnsexp_build_version", "The version of dns_exporter")
+"""``dnsexp_build_version`` is a persistent Info metric which contains the version of ``dns_exporter``.
 
-It is set to 1 inside ``dns_exporter.metrics`` and not touched again.
-
-This metric has no labels.
+The version is taken from the installed Python package if possible, and from _version.py written by ``setuptools_scm`` if the package is not installed, like when running from a Git checkout.
 """
-up.set(1)
-
+dnsexp_build_version.info({"version": __version__})
 
 dnsexp_http_requests_total = Counter(
     "dnsexp_http_requests_total",
@@ -260,7 +259,6 @@ dnsexp_http_requests_total = Counter(
 
 This metric has a single label, ``path`` which is set to the request path, usually ``/query`` (for making DNS queries) or ``/metrics`` (for getting the internal exporter metrics.
 """
-
 
 dnsexp_http_responses_total = Counter(
     "dnsexp_http_responses_total",
