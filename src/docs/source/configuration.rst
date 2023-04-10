@@ -272,4 +272,4 @@ This setting has no default value.
 ~~~~~~~~~~~~~~~~
 A comma seperated list of valid ``RCODE`` values. This setting defines the ``RCODE`` values to consider valid in the DNS response. The query is considered failed if the ``RCODE`` is not among the list in this setting.
 
-The default valie is ``NOERROR``.
+The default value is ``NOERROR``.
