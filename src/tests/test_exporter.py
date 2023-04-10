@@ -5,7 +5,9 @@ import logging
 import pytest
 import requests
 
-from dns_exporter.exporter import DNSExporter, __version__, main
+from dns_exporter.entrypoint import main
+from dns_exporter.exporter import DNSExporter
+from dns_exporter.version import __version__
 
 
 def test_main_no_config(dns_exporter_main_no_config_no_debug, caplog):
@@ -14,7 +16,7 @@ def test_main_no_config(dns_exporter_main_no_config_no_debug, caplog):
     r = requests.get(
         "http://127.0.0.1:35353/query",
         params={
-            "target": "dns.google",
+            "server": "dns.google",
             "query_name": "example.com",
             "family": "ipv4",
         },
@@ -32,7 +34,7 @@ def test_noconfig_server(dns_exporter_no_main_no_config):
         "http://127.0.0.1:15353/query",
         params={
             "query_name": "example.com",
-            "target": "dns.google",
+            "server": "dns.google",
             "family": "ipv4",
         },
     )
@@ -45,7 +47,7 @@ def test_config_server(dns_exporter_example_config):
         "http://127.0.0.1:25353/query",
         params={
             "query_name": "example.com",
-            "target": "dns.google",
+            "server": "dns.google",
             "family": "ipv4",
         },
     )
@@ -57,23 +59,23 @@ def test_config_endpoint(dns_exporter_example_config):
     r = requests.get(
         "http://127.0.0.1:25353/config",
         params={
-            "target": "dns.google",
+            "server": "dns.google",
             "query_name": "example.com",
         },
     )
     config = r.json()
-    assert config["target"] == "udp://dns.google"
+    assert config["server"] == "udp://dns.google"
     assert config["query_name"] == "example.com"
 
     r = requests.get(
         "http://127.0.0.1:25353/config",
         params={
-            "config": "cf_doh",
+            "module": "cf_doh",
         },
     )
     config = r.json()
     assert config["protocol"] == "doh"
-    assert config["target"] == "https://1dot1dot1dot1.cloudflare-dns.com/dns-query"
+    assert config["server"] == "https://1dot1dot1dot1.cloudflare-dns.com/dns-query"
     assert config["query_name"] == "bornhack.dk"
     assert config["query_type"] == "NS"
     assert config["validate_response_flags"]["fail_if_any_absent"] == ["AD"]
@@ -83,7 +85,7 @@ def test_invalid_qs_ip(dns_exporter_example_config):
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "target": "dns.google",
+            "server": "dns.google",
             "query_name": "example.com",
             "ip": "notanip",
         },
@@ -98,7 +100,7 @@ def test_invalid_qs_ip(dns_exporter_example_config):
 def test_invalid_configfile_ip(caplog):
     caplog.clear()
     exporter = DNSExporter
-    exporter.configure(configs={"test": {"ip": "notanip"}})
+    exporter.configure(modules={"test": {"ip": "notanip"}})
     assert "Unable to parse IP address notanip" in caplog.text
 
 
@@ -106,7 +108,7 @@ def test_missing_query_name(dns_exporter_example_config):
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "target": "dns.google",
+            "server": "dns.google",
         },
     )
     assert r.status_code == 200, "non-200 returncode"
@@ -116,7 +118,7 @@ def test_missing_query_name(dns_exporter_example_config):
     )
 
 
-def test_missing_target(dns_exporter_example_config):
+def test_missing_server(dns_exporter_example_config):
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
@@ -125,21 +127,21 @@ def test_missing_target(dns_exporter_example_config):
     )
     assert r.status_code == 200, "non-200 returncode"
     assert (
-        'dnsexp_dns_failure_reason{dnsexp_dns_failure_reason="invalid_request_target"} 1.0'
+        'dnsexp_dns_failure_reason{dnsexp_dns_failure_reason="invalid_request_server"} 1.0'
         in r.text
     )
 
 
-def test_undefined_config(dns_exporter_example_config, caplog):
+def test_undefined_module(dns_exporter_example_config, caplog):
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "config": "notaconfig",
+            "module": "notamodule",
         },
     )
     assert r.status_code == 200, "non-200 returncode"
     assert (
-        'dnsexp_dns_failure_reason{dnsexp_dns_failure_reason="invalid_request_config"} 1.0'
+        'dnsexp_dns_failure_reason{dnsexp_dns_failure_reason="invalid_request_module"} 1.0'
         in r.text
     )
 
@@ -148,7 +150,7 @@ def test_unknown_config_key(dns_exporter_example_config, caplog):
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "target": "dns.google",
+            "server": "dns.google",
             "foo": "bar",
         },
     )
@@ -163,7 +165,7 @@ def test_ip_family_conflict(dns_exporter_example_config, caplog):
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "target": "dns.google",
+            "server": "dns.google",
             "query_name": "example.com",
             "family": "ipv6",
             "ip": "192.0.2.53",
@@ -180,7 +182,7 @@ def test_ip_conflict(dns_exporter_example_config, caplog):
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "target": "192.0.2.1",
+            "server": "192.0.2.1",
             "query_name": "example.com",
             "ip": "192.0.2.53",
             "family": "ipv4",
@@ -199,7 +201,7 @@ def test_ip_and_hostname(dns_exporter_example_config, caplog):
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "target": "dns.google",
+            "server": "dns.google",
             "query_name": "example.com",
             "ip": "8.8.4.4",
             "family": "ipv4",
@@ -207,24 +209,24 @@ def test_ip_and_hostname(dns_exporter_example_config, caplog):
     )
     assert r.status_code == 200, "non-200 returncode"
     assert (
-        "Using target IP 8.8.4.4 (from config) for the DNS server connection"
+        "Using server IP 8.8.4.4 (from config) for the DNS server connection"
         in caplog.text
     )
 
 
-def test_unresolvable_target(dns_exporter_example_config, caplog):
+def test_unresolvable_server(dns_exporter_example_config, caplog):
     caplog.clear()
     caplog.set_level(logging.DEBUG)
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "target": "notatarget.example",
+            "server": "notaserver.example",
             "query_name": "example.com",
         },
     )
     assert r.status_code == 200, "non-200 returncode"
     assert (
-        'dnsexp_dns_failure_reason{dnsexp_dns_failure_reason="invalid_request_target"} 1.0'
+        'dnsexp_dns_failure_reason{dnsexp_dns_failure_reason="invalid_request_server"} 1.0'
         in r.text
     )
 
@@ -235,7 +237,7 @@ def test_ipv6_family(dns_exporter_example_config, caplog):
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "target": "dns.google",
+            "server": "dns.google",
             "query_name": "example.com",
             "ip": "2001:4860:4860::8888",
             "timeout": 0.1,
@@ -244,7 +246,7 @@ def test_ipv6_family(dns_exporter_example_config, caplog):
     assert r.status_code == 200, "non-200 returncode"
     print(caplog.text)
     assert (
-        "Using target IP 2001:4860:4860::8888 (from config) for the DNS server connection"
+        "Using server IP 2001:4860:4860::8888 (from config) for the DNS server connection"
         in caplog.text
     )
 
@@ -255,7 +257,7 @@ def test_ipv7_family(dns_exporter_example_config, caplog):
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "target": "dns.google",
+            "server": "dns.google",
             "query_name": "example.com",
             "family": "ipv7",
         },
@@ -306,7 +308,7 @@ def test_tcp(dns_exporter_example_config, caplog):
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "target": "dns.google",
+            "server": "dns.google",
             "query_name": "example.com",
             "protocol": "tcp",
             "family": "ipv4",
@@ -323,7 +325,7 @@ def test_udptcp(dns_exporter_example_config, caplog):
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "target": "dns.google",
+            "server": "dns.google",
             "query_name": "example.com",
             "protocol": "udptcp",
             "family": "ipv4",
@@ -340,7 +342,7 @@ def test_dot(dns_exporter_example_config, caplog):
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "target": "dns.google",
+            "server": "dns.google",
             "query_name": "example.com",
             "protocol": "dot",
             "family": "ipv4",
@@ -357,7 +359,7 @@ def test_doh(dns_exporter_example_config, caplog):
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "target": "dns.google",
+            "server": "dns.google",
             "query_name": "example.com",
             "protocol": "doh",
             "family": "ipv4",
@@ -375,7 +377,7 @@ def test_doq(dns_exporter_example_config, caplog):
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "target": "quic://dns-unfiltered.adguard.com",
+            "server": "quic://dns-unfiltered.adguard.com",
             "query_name": "example.com",
             "protocol": "doq",
             "family": "ipv4",
@@ -390,7 +392,7 @@ def test_validate_rcode(dns_exporter_example_config, caplog):
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "target": "dns.google",
+            "server": "dns.google",
             "query_name": "404.example.com",
             "family": "ipv4",
         },
@@ -407,10 +409,10 @@ def test_validate_flags_fail_if_any_absent(dns_exporter_example_config, caplog):
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "target": "dns.google",
+            "server": "dns.google",
             "query_name": "google.com",
             "family": "ipv4",
-            "config": "has_ad",
+            "module": "has_ad",
         },
     )
     assert r.status_code == 200, "non-200 returncode"
@@ -424,10 +426,10 @@ def test_validate_flags_fail_if_any_present(dns_exporter_example_config, caplog)
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "target": "dns.google",
+            "server": "dns.google",
             "query_name": "ripe.net",
             "family": "ipv4",
-            "config": "has_no_ad",
+            "module": "has_no_ad",
         },
     )
     assert r.status_code == 200, "non-200 returncode"
@@ -441,10 +443,10 @@ def test_validate_flags_fail_if_all_present(dns_exporter_example_config, caplog)
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "target": "dns.google",
+            "server": "dns.google",
             "query_name": "google.com",
             "family": "ipv4",
-            "config": "fail_auth",
+            "module": "fail_auth",
         },
     )
     assert r.status_code == 200, "non-200 returncode"
@@ -458,10 +460,10 @@ def test_validate_flags_fail_if_all_absent(dns_exporter_example_config, caplog):
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "target": "dns.google",
+            "server": "dns.google",
             "query_name": "google.com",
             "family": "ipv4",
-            "config": "fail_recursive",
+            "module": "fail_recursive",
         },
     )
     assert r.status_code == 200, "non-200 returncode"
@@ -475,10 +477,10 @@ def test_validate_flags_fail_if_all_present_2(dns_exporter_example_config, caplo
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "target": "dns.google",
+            "server": "dns.google",
             "query_name": "google.com",
             "family": "ipv4",
-            "config": "fail_auth",
+            "module": "fail_auth",
         },
     )
     assert r.status_code == 200, "non-200 returncode"
@@ -492,10 +494,10 @@ def test_validate_flags_fail_if_all_absent_2(dns_exporter_example_config, caplog
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "target": "dns.google",
+            "server": "dns.google",
             "query_name": "google.com",
             "family": "ipv4",
-            "config": "fail_recursive",
+            "module": "fail_recursive",
         },
     )
     assert r.status_code == 200, "non-200 returncode"
@@ -509,16 +511,16 @@ def test_validate_flags_fail_if_all_present_3(dns_exporter_example_config, caplo
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "target": "k.root-servers.net",
+            "server": "k.root-servers.net",
             "query_name": ".",
             "query_type": "NS",
             "family": "ipv4",
-            "config": "fail_recursive",
+            "module": "fail_recursive",
         },
     )
     assert r.status_code == 200, "non-200 returncode"
     assert (
-        'dnsexp_dns_failure_reason{dnsexp_dns_failure_reason="invalid_response_flags"} 1.0'
+        'dnsexp_dns_failure_reason{dnsexp_dns_failure_reason="no_failure"} 1.0'
         in r.text
     )
 
@@ -527,10 +529,10 @@ def test_validate_flags_fail_if_all_absent_3(dns_exporter_example_config, caplog
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "target": "k.root-servers.net",
+            "server": "k.root-servers.net",
             "query_name": ".",
             "family": "ipv4",
-            "config": "fail_auth",
+            "module": "fail_auth",
         },
     )
     assert r.status_code == 200, "non-200 returncode"
@@ -540,11 +542,11 @@ def test_validate_rr_fail_if_matches_regexp(dns_exporter_example_config, caplog)
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "target": "k.root-servers.net",
+            "server": "k.root-servers.net",
             "query_name": ".",
             "family": "ipv4",
             "query_type": "NS",
-            "config": "fail_auth_k_root",
+            "module": "fail_auth_k_root",
         },
     )
     assert r.status_code == 200, "non-200 returncode"
@@ -558,11 +560,11 @@ def test_validate_rrs_fail_if_all_match_regexp(dns_exporter_example_config, capl
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "target": "k.root-servers.net",
+            "server": "k.root-servers.net",
             "query_name": ".",
             "family": "ipv4",
             "query_type": "NS",
-            "config": "fail_additional_root",
+            "module": "fail_additional_root",
         },
     )
     assert r.status_code == 200, "non-200 returncode"
@@ -576,11 +578,11 @@ def test_validate_rrs_fail_if_all_match_regexp_2(dns_exporter_example_config, ca
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "target": "k.root-servers.net",
+            "server": "k.root-servers.net",
             "query_name": "example.com",
             "family": "ipv4",
             "query_type": "NS",
-            "config": "fail_additional_root",
+            "module": "fail_additional_root",
         },
     )
     assert r.status_code == 200, "non-200 returncode"
@@ -590,11 +592,11 @@ def test_validate_rrs_fail_if_not_matches_regexp(dns_exporter_example_config, ca
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "target": "dns.google",
+            "server": "dns.google",
             "query_name": "example.com",
             "family": "ipv4",
             "query_type": "NS",
-            "config": "fail_answer_root",
+            "module": "fail_answer_root",
         },
     )
     assert r.status_code == 200, "non-200 returncode"
@@ -608,11 +610,11 @@ def test_validate_rrs_fail_if_none_matches_regexp(dns_exporter_example_config, c
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "target": "dns.google",
+            "server": "dns.google",
             "query_name": "example.com",
             "family": "ipv4",
             "query_type": "NS",
-            "config": "fail_answer_root_none",
+            "module": "fail_answer_root_none",
         },
     )
     assert r.status_code == 200, "non-200 returncode"
@@ -628,11 +630,11 @@ def test_validate_rrs_fail_if_none_matches_regexp_2(
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "target": "dns.google",
+            "server": "dns.google",
             "query_name": ".",
             "family": "ipv4",
             "query_type": "NS",
-            "config": "fail_answer_root_none",
+            "module": "fail_answer_root_none",
         },
     )
     assert r.status_code == 200, "non-200 returncode"
@@ -642,7 +644,7 @@ def test_edns_pad(dns_exporter_example_config, caplog):
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "target": "dns.google",
+            "server": "dns.google",
             "query_name": "example.com",
             "family": "ipv4",
             "edns_pad": 20,
@@ -655,7 +657,7 @@ def test_no_edns(dns_exporter_example_config, caplog):
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "target": "dns.google",
+            "server": "dns.google",
             "query_name": "example.com",
             "family": "ipv4",
             "edns": False,

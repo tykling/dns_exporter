@@ -18,8 +18,14 @@ import dns.rcode
 import dns.rdatatype
 import dns.resolver
 
-# initialise logger
-logger = logging.getLogger("dns_exporter")
+# get logger
+logger = logging.getLogger(f"dns_exporter.{__name__}")
+
+
+class ConfigError(Exception):
+    """Exception class used when invalid config values are encountered."""
+
+    pass
 
 
 @dataclass
@@ -199,9 +205,9 @@ class Config:
     ip: t.Optional[t.Union[IPv4Address, IPv6Address]] = field(
         default_factory=lambda: None
     )
-    """IPv4Address | IPv6Address | None: The IP to use instead of using IP or hostname from target. Default is ``None``"""
+    """IPv4Address | IPv6Address | None: The IP to use instead of using IP or hostname from server. Default is ``None``"""
 
-    target: t.Union[urllib.parse.SplitResult, None] = field(
+    server: t.Union[urllib.parse.SplitResult, None] = field(
         default_factory=lambda: None
     )
     """urllib.parse.SplitResult | None: The DNS server to use in parsed form. Default is ``None``"""
@@ -214,21 +220,17 @@ class Config:
         for key in ["edns", "edns_do", "edns_nsid", "recursion_desired"]:
             # validate bools
             if not isinstance(getattr(self, key), bool):
-                raise ValueError(f"{key} must be a bool", "invalid_request_config")
+                raise ConfigError(f"{key} must be a bool", "invalid_request_config")
 
         # validate integers
         # TODO: maybe check that edns_bufsize is not too big?
         for key in ["edns_bufsize", "edns_pad"]:
-            if not isinstance(getattr(self, key), int):
-                raise ValueError(
-                    "edns_pad must be an integer", "invalid_request_config"
-                )
             if not getattr(self, key) >= 0:
-                raise ValueError("edns_bufsize must be >= 0", "invalid_request_config")
+                raise ConfigError(f"{key} must be >= 0", "invalid_request_config")
 
         # validate family
         if self.family not in ["ipv4", "ipv6"]:
-            raise ValueError(
+            raise ConfigError(
                 "family must be one of: ipv4, ipv6", "invalid_request_family"
             )
 
@@ -242,52 +244,30 @@ class Config:
             "doq",
         ]
         if self.protocol not in valid_protocols:
-            raise ValueError(
+            raise ConfigError(
                 f"protocol must be one of: {valid_protocols}",
                 "invalid_request_protocol",
             )
 
         # validate query_class
         if self.query_class not in ["IN", "CHAOS"]:
-            raise ValueError(
+            raise ConfigError(
                 "query_class must be one of: IN, CHAOS", "invalid_request_query_class"
             )
 
         # validate query_type
         valid_qtypes = [dns.rdatatype.to_text(t) for t in dns.rdatatype.RdataType]  # type: ignore
         if self.query_type not in valid_qtypes:
-            raise ValueError(
+            raise ConfigError(
                 f"query_type {self.query_type} not found in list of valid query types: {valid_qtypes}",
                 "invalid_request_query_type",
-            )
-
-        # validate timeout
-        if not isinstance(self.timeout, float):
-            raise ValueError("timeout must be a float", "invalid_request_config")
-
-        # validate RRValidator fields
-        for key in [
-            "validate_answer_rrs",
-            "validate_authority_rrs",
-            "validate_additional_rrs",
-        ]:
-            if not isinstance(getattr(self, key), RRValidator):
-                raise ValueError(
-                    f"{key} is not a RRValidator object", "invalid_request_config"
-                )
-
-        # validate RFValidator
-        if not isinstance(self.validate_response_flags, RFValidator):
-            raise ValueError(
-                "validate_response_flags is not a RFValidator object",
-                "invalid_request_config",
             )
 
         # validate valid_rcodes
         all_rcodes = [dns.rcode.to_text(x) for x in dns.rcode.Rcode]  # type: ignore
         invalid_rcodes = set(self.valid_rcodes).difference(all_rcodes)
         if invalid_rcodes:
-            raise ValueError(
+            raise ConfigError(
                 f"Invalid valid_rcodes setting in config '{self.name}': {list(invalid_rcodes)}. Supported rcodes: {all_rcodes}",
                 "invalid_request_config",
             )
@@ -313,7 +293,7 @@ class Config:
         validate_response_flags: RFValidator = RFValidator.create(),
         valid_rcodes: list[str] = ["NOERROR"],
         ip: t.Optional[t.Union[IPv4Address, IPv6Address]] = None,
-        target: t.Optional[urllib.parse.SplitResult] = None,
+        server: t.Optional[urllib.parse.SplitResult] = None,
         query_name: t.Optional[str] = None,
     ) -> "Config":
         """Return an instance of the Config class with values from the provided parameters overriding the defaults."""
@@ -336,35 +316,41 @@ class Config:
             else:
                 recursion_desired = True
 
-        return cls(
-            name=name,
-            edns=edns,
-            edns_do=edns_do,
-            edns_nsid=edns_nsid,
-            edns_bufsize=int(edns_bufsize),
-            edns_pad=int(edns_pad),
-            family=family,
-            protocol=protocol,
-            query_class=query_class.upper(),
-            query_type=query_type.upper(),
-            recursion_desired=recursion_desired,
-            timeout=float(timeout),
-            validate_answer_rrs=validate_answer_rrs,
-            validate_authority_rrs=validate_authority_rrs,
-            validate_additional_rrs=validate_additional_rrs,
-            validate_response_flags=validate_response_flags,
-            valid_rcodes=valid_rcodes,
-            # fields with no defaults below here
-            ip=ip,
-            target=target,
-            query_name=query_name,
-        )
+        try:
+            return cls(
+                name=name,
+                edns=edns,
+                edns_do=edns_do,
+                edns_nsid=edns_nsid,
+                edns_bufsize=int(edns_bufsize),
+                edns_pad=int(edns_pad),
+                family=family,
+                protocol=protocol,
+                query_class=query_class.upper(),
+                query_type=query_type.upper(),
+                recursion_desired=recursion_desired,
+                timeout=float(timeout),
+                validate_answer_rrs=validate_answer_rrs,
+                validate_authority_rrs=validate_authority_rrs,
+                validate_additional_rrs=validate_additional_rrs,
+                validate_response_flags=validate_response_flags,
+                valid_rcodes=valid_rcodes,
+                # fields with no defaults below here
+                ip=ip,
+                server=server,
+                query_name=query_name,
+            )
+        except ValueError:
+            raise ConfigError(
+                "Invalid value encountered while creating Config object",
+                "invalid_request_config",
+            )
 
     def json(self) -> str:
         """Return a json version of the config. Mostly used in unit tests."""
         conf: dict[str, t.Any] = asdict(self)
         conf["ip"] = str(conf["ip"])
-        conf["target"] = conf["target"].geturl()
+        conf["server"] = conf["server"].geturl()
         return json.dumps(conf)
 
 
@@ -394,5 +380,5 @@ class ConfigDict(t.TypedDict, total=False):
     validate_response_flags: RFValidator
     valid_rcodes: list[str]
     ip: t.Union[IPv4Address, IPv6Address, None]
-    target: t.Union[urllib.parse.SplitResult, None]
+    server: t.Union[urllib.parse.SplitResult, None]
     query_name: t.Optional[str]

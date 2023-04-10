@@ -1,27 +1,25 @@
-"""dns_exporter is a blackbox-style Prometheus exporter for DNS.
+"""``dns_exporter.exporter`` contains the DNSExporter class.
+
 
 The config.py module contains configuration related stuff, metrics.py
 contains the metric definitions, and this exporter.py module contains
 the rest of the code.
 
-- Repository: https://github.com/tykling/dns_exporter
-- Pypi: https://pypi.org/project/dns-exporter/
-- Docs: https://dns-exporter.readthedocs.io/en/latest/
+    - Repository: https://github.com/tykling/dns_exporter
+    - Pypi: https://pypi.org/project/dns-exporter/
+    - Docs: https://dns-exporter.readthedocs.io/en/latest/
 
+Made with love by Thomas Steen Rasmussen/Tykling, 2023.
 """
-import argparse
 import ipaddress
 import logging
 import random
 import re
 import socket
-import sys
 import time
 import typing as t
 import urllib.parse
 from dataclasses import asdict
-from http.server import HTTPServer
-from importlib.metadata import PackageNotFoundError, version
 from ipaddress import IPv4Address, IPv6Address
 from typing import Optional, Union
 
@@ -33,12 +31,17 @@ import dns.query
 import dns.rcode
 import dns.rdatatype
 import dns.resolver
-import yaml
 from dns.message import Message
-from prometheus_client import CollectorRegistry, Info, MetricsHandler, exposition
+from prometheus_client import CollectorRegistry, MetricsHandler, exposition
 from prometheus_client.registry import RestrictedRegistry
 
-from dns_exporter.config import Config, ConfigDict, RFValidator, RRValidator
+from dns_exporter.config import (
+    Config,
+    ConfigDict,
+    ConfigError,
+    RFValidator,
+    RRValidator,
+)
 from dns_exporter.metrics import dnsexp_dns_failure_reason  # per-scrape
 from dns_exporter.metrics import dnsexp_dns_failures_total  # persistent
 from dns_exporter.metrics import dnsexp_dns_queries_total  # persistent
@@ -49,35 +52,19 @@ from dns_exporter.metrics import dnsexp_dns_time_seconds  # per-scrape
 from dns_exporter.metrics import dnsexp_http_requests_total  # persistent
 from dns_exporter.metrics import dnsexp_http_responses_total  # persistent
 from dns_exporter.metrics import dnsexp_registry
+from dns_exporter.version import __version__
 
-# get version number from package metadata if possible
-__version__: str = "0.0.0"
-try:
-    __version__ = version("dns_exporter")
-except PackageNotFoundError:
-    # package is not installed, get version from file
-    try:
-        from _version import version as __version__  # type: ignore
-    except ImportError:
-        # this must be a git checkout with no _version.py file, version unknown
-        pass
-
-# define the info metric with the build version
-dnsexp_build_version = Info("dnsexp_build_version", "The version of dns_exporter")
-dnsexp_build_version.info({"version": __version__})
-
-# initialise logger initially at info level
-logger = logging.getLogger("dns_exporter")
+# get logger
+logger = logging.getLogger(f"dns_exporter.{__name__}")
 
 INDEX = """<!DOCTYPE html>
-<html lang="en-US">
 <html lang="en">
 <head><title>DNS Exporter</title></head>
 <body>
 <h1>DNS Exporter</h1>
-<p>Visit <a href="/query?target=dns.google&protocol=doh&query_name=example.com">/query?target=dns.google&protocol=doh&query_name=example.com</a> to do a DNS query and see metrics.</p>
+<p>Visit <a href="/query?server=dns.google&protocol=doh&query_name=example.com">/query?server=dns.google&protocol=doh&query_name=example.com</a> to do a DNS query and see metrics.</p>
 <p>To debug configuration issues replace /query with /config to see the effective parsed configuration:</p>
-<p>Visit <a href="/config?target=dns.google&protocol=doh&query_name=example.com">/config?target=dns.google&protocol=doh&query_name=example.com</a> to do a DNS query and see metrics.</p>
+<p>Visit <a href="/config?server=dns.google&protocol=doh&query_name=example.com">/config?server=dns.google&protocol=doh&query_name=example.com</a> to see the final scrape config without doing a DNS query.</p>
 <p>Visit <a href="/metrics">/metrics</a> to see metrics for the dns_exporter itself.</p>
 </body>
 </html>"""
@@ -89,48 +76,56 @@ class DNSExporter(MetricsHandler):
     MetricsHandler subclass for incoming scrape requests. Initiated on each
     request as a handler by http.server.HTTPServer().
 
-    The configure() classmethod can optionally be called to load configs before use.
+    The configure() classmethod can optionally be called to load modules before use.
 
     Attributes:
-        configs: A dict of dns_exporter.config.Config instances to be used in scrape requests.
+        modules: A dict of dns_exporter.config.Config instances to be used in scrape requests.
     """
 
-    # the configs key is populated by configure() before the class is initialised
-    configs: dict[str, Config] = {}
+    # the modules key is populated by configure() before the class is initialised
+    modules: dict[str, Config] = {}
+
+    # set the version on the class
+    __version__: str = __version__
 
     @classmethod
     def configure(
         cls,
-        configs: dict[str, ConfigDict] = {},
+        modules: dict[str, ConfigDict] = {},
     ) -> bool:
         """Validate and create Config objects.
 
         Takes a dict of ConfigDict objects and runs cls.prepare_config() on each
-        before creating a Config object and adding it to cls.configs
+        before creating a Config object and adding it to cls.modules
 
-        If an error is encountered the process stops but configs loaded until the
-        failure can still be used in cls.configs.
+        If an error is encountered the process stops, but modules loaded until the
+        failure can still be used in cls.modules.
 
         Args:
-            configs: A dict of names and corresponding ConfigDict objects.
+            modules: A dict of names and corresponding ConfigDict objects.
 
         Returns:
             bool: True if all ConfigDict objects was validated and loaded OK, False
                 if an error was encountered.
         """
         prepared: t.Optional[ConfigDict]
-        for name, config in configs.items():
+        for name, config in modules.items():
             prepared = cls.prepare_config(ConfigDict(**config))  # type: ignore
             if not prepared:
                 # there is an issue with this config
                 return False
             try:
-                cls.configs[name] = Config.create(name=name, **prepared)
+                cls.modules[name] = Config.create(name=name, **prepared)
             except TypeError:
                 logger.exception(f"Unable to parse config {prepared}")
                 return False
+            except ConfigError:
+                logger.exception(
+                    f"Invalid value found while building config {prepared}"
+                )
+                return False
 
-        logger.info(f"{len(cls.configs)} configs loaded OK.")
+        logger.info(f"{len(cls.modules)} modules loaded OK.")
         return True
 
     def parse_querystring(self) -> None:
@@ -140,47 +135,50 @@ class DNSExporter(MetricsHandler):
         qs = urllib.parse.parse_qs(self.url.query)
         # querystring values are all lists when returned from parse_qs(),
         # so take the first item only since we do not support multiple values,
-        # except for the config parameter.
         # behold, a valid usecase for dict comprehension!
-        self.qs: dict[str, Union[str, list[str]]] = {
-            k: v[0] for k, v in qs.items() if k != "config"
-        }
-        # handle config seperate to allow multiple values
-        if "config" in qs.keys():
-            self.qs["config"] = qs["config"]
+        self.qs: dict[str, Union[str, list[str]]] = {k: v[0] for k, v in qs.items()}
 
     @classmethod
     def prepare_config(cls, config: ConfigDict) -> t.Optional[ConfigDict]:
         """Make sure the configdict has the right types and objects."""
-        # create RRValidator objects
-        if "validate_answer_rrs" in config.keys() and not isinstance(
-            config["validate_answer_rrs"], RRValidator
-        ):
-            config["validate_answer_rrs"] = RRValidator.create(
-                **config["validate_answer_rrs"]
-            )
+        try:
+            # create RRValidator objects
+            if "validate_answer_rrs" in config.keys() and not isinstance(
+                config["validate_answer_rrs"], RRValidator
+            ):
+                config["validate_answer_rrs"] = RRValidator.create(
+                    **config["validate_answer_rrs"]
+                )
 
-        if "validate_authority_rrs" in config.keys() and not isinstance(
-            config["validate_authority_rrs"], RRValidator
-        ):
-            config["validate_authority_rrs"] = RRValidator.create(
-                **config["validate_authority_rrs"]
-            )
+            if "validate_authority_rrs" in config.keys() and not isinstance(
+                config["validate_authority_rrs"], RRValidator
+            ):
+                config["validate_authority_rrs"] = RRValidator.create(
+                    **config["validate_authority_rrs"]
+                )
 
-        if "validate_additional_rrs" in config.keys() and not isinstance(
-            config["validate_additional_rrs"], RRValidator
-        ):
-            config["validate_additional_rrs"] = RRValidator.create(
-                **config["validate_additional_rrs"]
-            )
+            if "validate_additional_rrs" in config.keys() and not isinstance(
+                config["validate_additional_rrs"], RRValidator
+            ):
+                config["validate_additional_rrs"] = RRValidator.create(
+                    **config["validate_additional_rrs"]
+                )
 
-        # create RFValidator
-        if "validate_response_flags" in config.keys() and not isinstance(
-            config["validate_response_flags"], RFValidator
-        ):
-            config["validate_response_flags"] = RFValidator.create(
-                **config["validate_response_flags"]
+            # create RFValidator
+            if "validate_response_flags" in config.keys() and not isinstance(
+                config["validate_response_flags"], RFValidator
+            ):
+                config["validate_response_flags"] = RFValidator.create(
+                    **config["validate_response_flags"]
+                )
+        except TypeError:
+            logger.exception("Unable to create object")
+            dnsexp_dns_success.set(0)
+            dnsexp_dns_failure_reason.state("invalid_request_config")
+            logger.warning(
+                f"query failure, returning {dnsexp_dns_failure_reason._states[dnsexp_dns_failure_reason._value]}"
             )
+            return None
 
         if (
             "ip" in config.keys()
@@ -199,24 +197,43 @@ class DNSExporter(MetricsHandler):
                 )
                 return None
 
-        # parse target
+        for key in ["edns_bufsize", "edns_pad"]:
+            if (
+                key in config.keys()
+                and config[key]  # type: ignore
+                and not isinstance(config[key], int)  # type: ignore
+            ):
+                try:
+                    config[key] = int(config[key])  # type: ignore
+                except ValueError:
+                    logger.exception(
+                        f"Unable to parse integer for key {key}: {config[key]}"  # type: ignore
+                    )
+                    dnsexp_dns_success.set(0)
+                    dnsexp_dns_failure_reason.state("invalid_request_config")
+                    logger.warning(
+                        f"query failure, returning {dnsexp_dns_failure_reason._states[dnsexp_dns_failure_reason._value]}"
+                    )
+                    return None
+
+        # parse server
         if (
-            "target" in config.keys()
-            and config["target"]
-            and not isinstance(config["target"], urllib.parse.SplitResult)
+            "server" in config.keys()
+            and config["server"]
+            and not isinstance(config["server"], urllib.parse.SplitResult)
             and "protocol" in config.keys()
         ):
-            # parse target into a SplitResult
-            config["target"] = cls.parse_target(
-                target=config["target"], protocol=config["protocol"]
+            # parse server into a SplitResult
+            config["server"] = cls.parse_server(
+                server=config["server"], protocol=config["protocol"]
             )
 
         return config
 
     def validate_config(self) -> bool:
         """Validate various aspects of the config."""
-        # make sure the target is valid, resolve ip if needed
-        if not self.validate_target_ip():
+        # make sure the server is valid, resolve ip if needed
+        if not self.validate_server_ip():
             # something is wrong, reason has been set, just return
             return False
 
@@ -236,18 +253,17 @@ class DNSExporter(MetricsHandler):
         # first get the defaults
         config = ConfigDict(**asdict(Config.create(name="defaults")))  # type: ignore
 
-        # any configs specified in the querystring are applied in the order specified
-        if "config" in qs:
-            for template in qs["config"]:
-                if template not in self.configs:
-                    dnsexp_dns_success.set(0)
-                    dnsexp_dns_failure_reason.state("invalid_request_config")
-                    logger.warning(
-                        f"query failure, returning {dnsexp_dns_failure_reason._states[dnsexp_dns_failure_reason._value]}"
-                    )
-                    return False
-                config.update(asdict(self.configs[template]))
-            del qs["config"]
+        # if a module is specified in the querystring apply it first
+        if "module" in qs:
+            if qs["module"] not in self.modules:
+                dnsexp_dns_success.set(0)
+                dnsexp_dns_failure_reason.state("invalid_request_module")
+                logger.warning(
+                    f"query failure, returning {dnsexp_dns_failure_reason._states[dnsexp_dns_failure_reason._value]}"
+                )
+                return False
+            config.update(asdict(self.modules[qs["module"]]))  # type: ignore
+            del qs["module"]
 
         # and the querystring from the scrape request has highest precedence
         config.update(qs)
@@ -274,7 +290,7 @@ class DNSExporter(MetricsHandler):
                 f"query failure, returning {dnsexp_dns_failure_reason._states[dnsexp_dns_failure_reason._value]}"
             )
             return False
-        except ValueError as E:
+        except ConfigError as E:
             logger.warning("Config contains invalid values")
             dnsexp_dns_success.set(0)
             dnsexp_dns_failure_reason.state(E.args[1])
@@ -292,10 +308,10 @@ class DNSExporter(MetricsHandler):
         return True
 
     @staticmethod
-    def parse_target(target: str, protocol: str) -> urllib.parse.SplitResult:
-        """Parse the target (add scheme to make urllib.parse play ball).
+    def parse_server(server: str, protocol: str) -> urllib.parse.SplitResult:
+        """Parse the server (add scheme to make urllib.parse play ball).
 
-        The target at this point can be:
+        The server at this point can be:
           - a v4 IP
           - a v6 IP
           - a v4 ip:port
@@ -310,9 +326,9 @@ class DNSExporter(MetricsHandler):
 
         Parse it with urllib.parse.urlsplit and return the result.
         """
-        if "://" not in target:
-            target = f"{protocol}://{target}"
-        splitresult = urllib.parse.urlsplit(target)
+        if "://" not in server:
+            server = f"{protocol}://{server}"
+        splitresult = urllib.parse.urlsplit(server)
         if protocol == "doh" and not splitresult.path:
             # use the default DoH path
             splitresult = urllib.parse.urlsplit(
@@ -322,18 +338,18 @@ class DNSExporter(MetricsHandler):
             )
         return splitresult
 
-    def validate_target_ip(self) -> bool:
-        """Validate the target and resolve IP if needed."""
-        # do we have a target?
-        if not self.config.target:
+    def validate_server_ip(self) -> bool:
+        """Validate the server and resolve IP if needed."""
+        # do we have a server?
+        if not self.config.server:
             dnsexp_dns_success.set(0)
-            dnsexp_dns_failure_reason.state("invalid_request_target")
+            dnsexp_dns_failure_reason.state("invalid_request_server")
             logger.warning(
                 f"query failure, returning {dnsexp_dns_failure_reason._states[dnsexp_dns_failure_reason._value]}"
             )
             return False
 
-        assert isinstance(self.config.target, urllib.parse.SplitResult)  # mypy
+        assert isinstance(self.config.server, urllib.parse.SplitResult)  # mypy
         # do we already have an IP in the config?
         if self.config.ip:
             logger.debug(f"checking ip {self.config.ip} of type {type(self.config.ip)}")
@@ -349,11 +365,11 @@ class DNSExporter(MetricsHandler):
                 )
                 return False
 
-            # self.config.target.hostname can be either a hostname or an ip,
+            # self.config.server.hostname can be either a hostname or an ip,
             # if it is an ip make sure there is no conflict with ip arg
             try:
-                targetip = ipaddress.ip_address(str(self.config.target.hostname))
-                if targetip != self.config.ip:
+                serverip = ipaddress.ip_address(str(self.config.server.hostname))
+                if serverip != self.config.ip:
                     dnsexp_dns_success.set(0)
                     dnsexp_dns_failure_reason.state("invalid_request_ip")
                     logger.warning(
@@ -361,34 +377,34 @@ class DNSExporter(MetricsHandler):
                     )
                     return False
             except ValueError:
-                # target host is a hostname not an ip,
+                # server host is a hostname not an ip,
                 # the hostname will NOT be resolved, since we already have an ip to use
                 pass
             method = "from config"
         else:
             try:
-                # target host might be an ip, attempt to parse it as such
-                self.config.ip = ipaddress.ip_address(str(self.config.target.hostname))
+                # server host might be an ip, attempt to parse it as such
+                self.config.ip = ipaddress.ip_address(str(self.config.server.hostname))
             except ValueError:
-                # we have no ip in the config, we need to get ip by resolving target in dns
+                # we have no ip in the config, we need to get ip by resolving server in dns
                 resolved = self.resolve_ip_getaddrinfo(
-                    hostname=str(self.config.target.hostname),
+                    hostname=str(self.config.server.hostname),
                     family=str(self.config.family),
                 )
                 if not resolved:
                     dnsexp_dns_success.set(0)
-                    dnsexp_dns_failure_reason.state("invalid_request_target")
-                    logger.warning("Unable to resolve target DNS server hostname")
+                    dnsexp_dns_failure_reason.state("invalid_request_server")
+                    logger.warning("Unable to resolve server DNS server hostname")
                     logger.warning(
                         f"query failure, returning {dnsexp_dns_failure_reason._states[dnsexp_dns_failure_reason._value]}"
                     )
                     return False
                 self.config.ip = ipaddress.ip_address(resolved)
-            method = f"resolved from {self.config.target.hostname}"
+            method = f"resolved from {self.config.server.hostname}"
 
         # we now know which IP we are using for this dns query
         logger.debug(
-            f"Using target IP {self.config.ip} ({method}) for the DNS server connection"
+            f"Using server IP {self.config.ip} ({method}) for the DNS server connection"
         )
         return True
 
@@ -420,16 +436,16 @@ class DNSExporter(MetricsHandler):
         except socket.gaierror:
             logger.error(f"Unable to resolve server hostname {hostname}")
             dnsexp_dns_success.set(0)
-            dnsexp_dns_failure_reason.state("invalid_request_target")
+            dnsexp_dns_failure_reason.state("invalid_request_server")
             logger.warning(
                 f"query failure, returning {dnsexp_dns_failure_reason._states[dnsexp_dns_failure_reason._value]}"
             )
         return None
 
-    def get_dnsexp_response(
+    def get_dns_response(
         self,
         protocol: str,
-        target: urllib.parse.SplitResult,
+        server: urllib.parse.SplitResult,
         ip: t.Union[IPv4Address, IPv6Address],
         port: int,
         query: Message,
@@ -447,7 +463,7 @@ class DNSExporter(MetricsHandler):
         if protocol == "udp":
             # plain UDP lookup, nothing fancy here
             logger.debug(
-                f"doing UDP lookup with server {target.netloc} (using IP {ip}) port {port} and query {query.question}"
+                f"doing UDP lookup with server {server.netloc} (using IP {ip}) port {port} and query {query.question}"
             )
             r = dns.query.udp(
                 q=query,
@@ -461,7 +477,7 @@ class DNSExporter(MetricsHandler):
         elif protocol == "tcp":
             # plain TCP lookup, nothing fancy here
             logger.debug(
-                f"doing TCP lookup with server {target.netloc} (using IP {ip}) port {port} and query {query.question}"
+                f"doing TCP lookup with server {server.netloc} (using IP {ip}) port {port} and query {query.question}"
             )
             r = dns.query.tcp(
                 q=query,
@@ -474,7 +490,7 @@ class DNSExporter(MetricsHandler):
         elif protocol == "udptcp":
             # plain UDP lookup with fallback to TCP lookup
             logger.debug(
-                f"doing UDP>TCP lookup with server {target.netloc} (using IP {ip}) port {port} and query {query.question}"
+                f"doing UDP>TCP lookup with server {server.netloc} (using IP {ip}) port {port} and query {query.question}"
             )
             # TODO maybe create a label for transport protocol = tcp or udp?
             r, tcp = dns.query.udp_with_fallback(  # type: ignore
@@ -489,20 +505,20 @@ class DNSExporter(MetricsHandler):
         elif protocol == "dot":
             # DoT query, use the ip for where= and set tls hostname with server_hostname=
             logger.debug(
-                f"doing DoT lookup with server {target.netloc} (using IP {ip}) port {port} and query {query.question}"
+                f"doing DoT lookup with server {server.netloc} (using IP {ip}) port {port} and query {query.question}"
             )
             r = dns.query.tls(
                 q=query,
                 where=str(ip),
                 port=port,
-                server_hostname=target.hostname,
+                server_hostname=server.hostname,
                 timeout=timeout,
                 one_rr_per_rrset=True,
             )
 
         elif protocol == "doh":
             # DoH query, use the url for where= and use bootstrap_address= for the ip
-            url = f"https://{target.hostname}{target.path}"
+            url = f"https://{server.hostname}{server.path}"
             logger.debug(
                 f"doing DoH lookup with url {url} (using IP {ip}) port {port} and query {query.question}"
             )
@@ -518,9 +534,9 @@ class DNSExporter(MetricsHandler):
         elif protocol == "doq":
             # DoQ query, TODO figure out how to override IP for DoQ
             logger.debug(
-                f"doing DoQ lookup with server {target} (using IP {ip}) port {port} and query {query.question}"
+                f"doing DoQ lookup with server {server} (using IP {ip}) port {port} and query {query.question}"
             )
-            r = dns.query.quic(q=query, where=target, port=port, timeout=timeout, one_rr_per_rrset=True)  # type: ignore
+            r = dns.query.quic(q=query, where=server, port=port, timeout=timeout, one_rr_per_rrset=True)  # type: ignore
             transport = "UDP"
         return r, transport
 
@@ -719,6 +735,7 @@ class DNSExporter(MetricsHandler):
             dnsexp_dns_time_seconds.clear()
             dnsexp_dns_failure_reason.clear()
             dnsexp_dns_record_ttl_seconds.clear()
+            dnsexp_dns_failure_reason.state("no_failure")
 
             # build and validate configuration for this scrape from defaults, config file and request querystring
             if not self.get_config(qs=self.qs):
@@ -727,8 +744,8 @@ class DNSExporter(MetricsHandler):
                 return
 
             # which port do we want?
-            assert isinstance(self.config.target, urllib.parse.SplitResult)  # mypy
-            if not self.config.target.port:
+            assert isinstance(self.config.server, urllib.parse.SplitResult)  # mypy
+            if not self.config.server.port:
                 if self.config.protocol in ["udp", "tcp", "udptcp"]:
                     # plain DNS
                     port = 53
@@ -741,7 +758,7 @@ class DNSExporter(MetricsHandler):
 
             # config is ready for action, begin the labels dict
             labels: dict[str, str] = {
-                "target": str(self.config.target.geturl()),
+                "server": str(self.config.server.geturl()),
                 "ip": str(self.config.ip),
                 "port": str(port),
                 "protocol": str(self.config.protocol),
@@ -809,9 +826,9 @@ class DNSExporter(MetricsHandler):
             r = None
             start = time.time()
             try:
-                r, transport = self.get_dnsexp_response(
+                r, transport = self.get_dns_response(
                     protocol=str(self.config.protocol),
-                    target=self.config.target,
+                    server=self.config.server,
                     ip=self.config.ip,
                     port=port,
                     query=q,
@@ -828,7 +845,7 @@ class DNSExporter(MetricsHandler):
                 )
             except Exception:
                 logger.exception(
-                    f"Got an exception while looking up qname {self.config.query_name} using target {self.config.target}"
+                    f"Got an exception while looking up qname {self.config.query_name} using server {self.config.server}"
                 )
                 # unknown failure
                 logger.warning(
@@ -938,140 +955,3 @@ class DNSExporter(MetricsHandler):
             ).inc()
             logger.debug(f"Unknown endpoint '{self.url.path}' returning 404")
             return None
-
-
-def get_parser() -> argparse.ArgumentParser:
-    """Create and return the argparse object."""
-    parser = argparse.ArgumentParser(
-        description=f"dns_exporter version {__version__}. See ReadTheDocs for more info."
-    )
-
-    # optional arguments
-    parser.add_argument(
-        "-c",
-        "--config-file",
-        dest="config-file",
-        help="The path to the yaml config file to use. Only the root 'configs' key is read from the config file.",
-        default=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "-d",
-        "--debug",
-        action="store_const",
-        dest="log-level",
-        const="DEBUG",
-        help="Debug mode. Equal to setting --log-level=DEBUG.",
-        default=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "-l",
-        "--log-level",
-        dest="log-level",
-        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
-        help="Logging level. One of DEBUG, INFO, WARNING, ERROR, CRITICAL. Defaults to INFO.",
-        default="INFO",
-    )
-    parser.add_argument(
-        "-p",
-        "--port",
-        dest="port",
-        type=int,
-        help="The port the exporter should listen for requests on. Default: 15353",
-        default=15353,
-    )
-    parser.add_argument(
-        "-q",
-        "--quiet",
-        action="store_const",
-        dest="log-level",
-        const="WARNING",
-        help="Quiet mode. No output at all if there is nothing to do, and no errors are encountered. Equal to setting --log-level=WARNING.",
-        default=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "-v",
-        "--version",
-        dest="version",
-        action="store_true",
-        help="Show version and exit.",
-        default=argparse.SUPPRESS,
-    )
-    return parser
-
-
-def parse_args(
-    mockargs: Optional[list[str]] = None,
-) -> tuple[argparse.ArgumentParser, argparse.Namespace]:
-    """Create an argparse monster and parse mockargs or sys.argv[1:]."""
-    parser = get_parser()
-    args = parser.parse_args(mockargs if mockargs else sys.argv[1:])
-    return parser, args
-
-
-def main(mockargs: Optional[list[str]] = None) -> None:
-    """Read config and start exporter."""
-    # get arpparser and parse args
-    parser, args = parse_args(mockargs)
-
-    # handle version check
-    if hasattr(args, "version"):
-        print(f"dns_exporter version {__version__}")
-        sys.exit(0)
-
-    # configure the log format and level
-    console_logformat = "%(asctime)s dns_exporter %(levelname)s DNSExporter.%(funcName)s():%(lineno)i:  %(message)s"
-    level = getattr(args, "log-level")
-    logging.basicConfig(
-        level=level,
-        format=console_logformat,
-        datefmt="%Y-%m-%d %H:%M:%S %z",
-    )
-    logger.setLevel(level)
-    logger.info(f"dns_exporter v{__version__} starting up - logging at level {level}")
-
-    if hasattr(args, "config-file"):
-        with open(getattr(args, "config-file"), "r") as f:
-            try:
-                configfile = yaml.load(f, Loader=yaml.SafeLoader)
-            except Exception:
-                logger.exception(
-                    f"Unable to parse YAML config file {getattr(args, 'config-file')} - bailing out."
-                )
-                sys.exit(1)
-        if (
-            not configfile
-            or "configs" not in configfile
-            or not isinstance(configfile["configs"], dict)
-            or not configfile["configs"]
-        ):
-            # configfile is empty, missing "configs" key, or configs is empty or not a dict
-            logger.error(
-                f"Invalid config file {getattr(args, 'config-file')} - yaml was valid but no configs found"
-            )
-            sys.exit(1)
-        logger.debug(
-            f"Read {len(configfile['configs'])} configs from config file {getattr(args, 'config-file')}: {list(configfile['configs'].keys())}"
-        )
-    else:
-        # we have no config file
-        configfile = {"configs": {}}
-        logger.debug(
-            "No -c / --config-file found so a config file will not be used. No configs loaded."
-        )
-
-    # initialise handler and start HTTPServer
-    handler = DNSExporter
-    if configfile["configs"]:
-        if not handler.configure(
-            configs={k: ConfigDict(**v) for k, v in configfile["configs"].items()}  # type: ignore
-        ):
-            logger.error(
-                "An error occurred while configuring dns_exporter. Bailing out."
-            )
-            sys.exit(1)
-    logger.debug(f"Starting listener on 127.0.0.1 port {args.port}...")
-    HTTPServer(("127.0.0.1", args.port), handler).serve_forever()
-
-
-if __name__ == "__main__":
-    main()

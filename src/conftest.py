@@ -7,7 +7,8 @@ from threading import Thread
 
 import pytest
 
-from dns_exporter.exporter import DNSExporter, main
+from dns_exporter.entrypoint import main
+from dns_exporter.exporter import DNSExporter
 
 
 @pytest.fixture(scope="session")
@@ -82,7 +83,7 @@ def dns_exporter_invalid_yaml_configfile(tmp_path_factory):
     # write file to disk
     with open(confpath, "w") as f:
         f.write("---\n")
-        f.write("configs:\n")
+        f.write("modules:\n")
         f.write("  broken:\n")
         f.write("    notakey: 42\n")
     # return path to the config
