@@ -1,5 +1,5 @@
 ---
-snippets: # this name is not important
+snippets:  # this name is not important
   ipv4_2s: &template_v4_2s
     timeout: "2"
     family: "ipv4"
@@ -59,7 +59,8 @@ more_reusable_stuff:  # the name of this dict is also not important
         - ".*127.0.0.1"
 
 
-modules: # this is the only key currently read from the config
+modules:  # this is the only key currently read from the config
+
   udp: *template_v4_2s
 
   tcp:
@@ -220,3 +221,4 @@ modules: # this is the only key currently read from the config
     validate_answer_rrs:
       fail_if_none_matches_regexp:
         - ".*[a-m].root-servers.net.*"
+...
