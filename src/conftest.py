@@ -67,7 +67,7 @@ def dns_exporter_param_config(request):
     )
     time.sleep(1)
     yield
-    print(f"Running dns_exporter with config {request.param} on 127.0.0.1:15353 ...")
+    print(f"Stopping dns_exporter with config {request.param} on 127.0.0.1:15353 ...")
     proc.terminate()
 
 
