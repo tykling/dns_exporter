@@ -17,7 +17,7 @@ def dns_exporter_no_main_no_config():
     print("Running server with no config on 127.0.0.1:15353 ...")
     serve_forever = HTTPServer(("127.0.0.1", 15353), DNSExporter).serve_forever
     thread = Thread(target=serve_forever)
-    thread.setDaemon(True)
+    thread.daemon = True
     thread.start()
     time.sleep(1)
     yield
@@ -32,7 +32,7 @@ def dns_exporter_example_config():
         target=main,
         args=(["-c", "dns_exporter/dns_exporter_example.yml", "-p", "25353", "-d"],),
     )
-    thread.setDaemon(True)
+    thread.daemon = True
     thread.start()
     time.sleep(1)
     yield
@@ -47,7 +47,7 @@ def dns_exporter_main_no_config_no_debug():
         target=main,
         args=(["-p", "35353"],),
     )
-    thread.setDaemon(True)
+    thread.daemon = True
     thread.start()
     time.sleep(1)
     yield
