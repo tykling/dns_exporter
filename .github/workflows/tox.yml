@@ -16,8 +16,11 @@ jobs:
         with:
           python-version: "${{ matrix.python }}"
 
+      - name: "Install dependencies"
+        run: "sudo apt install -y prometheus"
+
       - name: "Check out main repo"
-        uses: "actions/checkout@v2"
+        uses: "actions/checkout@v3"
         with:
           path: "src"
 

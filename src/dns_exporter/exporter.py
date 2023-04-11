@@ -492,8 +492,7 @@ class DNSExporter(MetricsHandler):
             logger.debug(
                 f"doing UDP>TCP lookup with server {server.netloc} (using IP {ip}) port {port} and query {query.question}"
             )
-            # TODO maybe create a label for transport protocol = tcp or udp?
-            r, tcp = dns.query.udp_with_fallback(  # type: ignore
+            r, tcp = dns.query.udp_with_fallback(
                 q=query,
                 where=str(ip),
                 port=port,
@@ -522,7 +521,7 @@ class DNSExporter(MetricsHandler):
             logger.debug(
                 f"doing DoH lookup with url {url} (using IP {ip}) port {port} and query {query.question}"
             )
-            r = dns.query.https(  # type: ignore
+            r = dns.query.https(
                 q=query,
                 where=url,
                 bootstrap_address=str(ip),
@@ -543,7 +542,7 @@ class DNSExporter(MetricsHandler):
     def validate_dnsexp_response(self, response: Message) -> bool:
         """Validate the DNS response using the validation config in the config."""
         # do we want to validate the response rcode?
-        rcode = dns.rcode.to_text(response.rcode())  # type: ignore
+        rcode = dns.rcode.to_text(response.rcode())
         if self.config.valid_rcodes and rcode not in self.config.valid_rcodes:
             logger.debug(f"rcode {rcode} not in {self.config.valid_rcodes}")
             dnsexp_dns_failure_reason.state("invalid_response_rcode")
@@ -555,7 +554,7 @@ class DNSExporter(MetricsHandler):
         # do we want to validate flags?
         if self.config.validate_response_flags:
             # we need a nice list of flags as text like ["QR", "AD"]
-            flags = dns.flags.to_text(response.flags).split(" ")  # type: ignore
+            flags = dns.flags.to_text(response.flags).split(" ")
 
             if self.config.validate_response_flags.fail_if_any_present:
                 for flag in self.config.validate_response_flags.fail_if_any_present:
@@ -768,7 +767,7 @@ class DNSExporter(MetricsHandler):
             }
 
             # prepare query
-            qname = dns.name.from_text(self.config.query_name)
+            qname = dns.name.from_text(str(self.config.query_name))
             q = dns.message.make_query(
                 qname=qname,
                 rdtype=str(self.config.query_type),
@@ -788,7 +787,7 @@ class DNSExporter(MetricsHandler):
                 # do we want nsid?
                 if self.config.edns_nsid:
                     ednsargs["options"].append(
-                        dns.edns.GenericOption(dns.edns.NSID, "")  # type: ignore
+                        dns.edns.GenericOption(dns.edns.NSID, "")
                     )
                 # do we need to set bufsize/payload?
                 if self.config.edns_bufsize:
@@ -797,7 +796,7 @@ class DNSExporter(MetricsHandler):
                 # do we want padding?
                 if self.config.edns_pad:
                     ednsargs["options"].append(
-                        dns.edns.GenericOption(  # type: ignore
+                        dns.edns.GenericOption(
                             dns.edns.PADDING, bytes(int(self.config.edns_pad))
                         )
                     )
@@ -806,7 +805,7 @@ class DNSExporter(MetricsHandler):
                 logger.debug(f"using edns options {ednsargs}")
             else:
                 # do not use edns
-                q.use_edns(edns=False)  # type: ignore
+                q.use_edns(edns=False)
                 logger.debug("not using edns")
 
             # set RD flag?
@@ -874,15 +873,15 @@ class DNSExporter(MetricsHandler):
             assert hasattr(r, "additional")
 
             # convert response flags to sorted text
-            flags = dns.flags.to_text(r.flags).split(" ")  # type: ignore
+            flags = dns.flags.to_text(r.flags).split(" ")
             flags.sort()
 
             # update labels with data from the response
             labels.update(
                 {
                     "transport": transport,
-                    "opcode": dns.opcode.to_text(r.opcode()),  # type: ignore
-                    "rcode": dns.rcode.to_text(r.rcode()),  # type: ignore
+                    "opcode": dns.opcode.to_text(r.opcode()),
+                    "rcode": dns.rcode.to_text(r.rcode()),
                     "flags": " ".join(flags),
                     "answer": str(sum([len(rrset) for rrset in r.answer])),
                     "authority": str(len(r.authority)),
@@ -911,7 +910,7 @@ class DNSExporter(MetricsHandler):
                         {
                             "rr_section": section,
                             "rr_name": rrset.name,
-                            "rr_type": dns.rdatatype.to_text(rr.rdtype),  # type: ignore
+                            "rr_type": dns.rdatatype.to_text(rr.rdtype),
                             "rr_value": rr.to_text()[:255],
                         }
                     )

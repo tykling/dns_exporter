@@ -1,0 +1,19 @@
+---
+scrape_configs:
+  - job_name: "dnsexp_quad9_mx"
+    metrics_path: "/query"
+    params:
+      module:
+        - "quad9_mx"
+    relabel_configs:
+      - source_labels: ["__address__"]
+        target_label: "__param_query_name"
+      - source_labels: ["__address__"]
+        target_label: "instance"
+      - target_label: "__address__"
+        replacement: "127.0.0.1:15353"
+    static_configs:
+      - targets:
+          - "gmail.com"
+          - "outlook.com"
+...

@@ -20,14 +20,9 @@ Monitor the MX record for a list of domains.
 
 ``dns_exporter.yml``
 ~~~~~~~~~~~~~~~~~~~~
-The module needs to define the ``query_type`` and the ``server`` to use::
+The module needs to define the ``query_type`` and the ``server`` to use:
 
-   ---
-   modules:
-     quad9_mx:
-       query_type: "MX"
-       server: "dns.quad9.net"
-   ...
+.. literalinclude:: ../../tests/prometheus/list_of_names/dns_exporter.yml
 
 ``prometheus.yml``
 ~~~~~~~~~~~~~~~~~~
@@ -38,30 +33,9 @@ The scrape job needs to:
 * In ``relabel_configs`` set the ``query_name`` scrape param to the target
 * In ``relabel_configs`` set the standard ``__address__`` and ``instance`` labels
 
-With the ``dns_exporter`` running at ``dnsexp.example.com:15353``::
-
-   scrape_configs:
-     - name: "dnsexp_quad9_mx"
-       scheme: "https"
-       scrape_interval: "10s"
-       metrics_path: "/query"
-       params:
-         module:
-           - "quad9_mx"
-       relabel_configs:
-         - source_labels: ["__address__"]
-           target_label: "__param_query_name"
-         - source_labels: ["__address__"]
-           target_label: "instance"
-         - target_label: "__address__"
-           replacement: "dnsexp.example.com:15353"
-       static_configs:
-         - targets:
-           - "gmail.com"
-           - "outlook.com"
+.. literalinclude:: ../../tests/prometheus/list_of_names/prometheus.yml
 
 .. Note:: Targets can be from any SD, this example uses ``static_configs``.
-
 
 
 Monitoring a list of servers
@@ -72,14 +46,9 @@ Monitor a list of DNS servers. The Prometheus targets are the DNS servers and ``
 
 ``dns_exporter.yml``
 ~~~~~~~~~~~~~~~~~~~~
-The module needs to define the ``query_name`` to use::
+The module needs to define the ``query_name`` to use:
 
-   ---
-   modules:
-     gmail_mx:
-       query_type: "MX"
-       query_name: "gmail.com"
-   ...
+.. literalinclude:: ../../tests/prometheus/list_of_servers/dns_exporter.yml
 
 ``prometheus.yml``
 ~~~~~~~~~~~~~~~~~~
@@ -90,26 +59,8 @@ The scrape job needs to:
 * In ``relabel_configs`` set the ``server`` scrape param to the target
 * In ``relabel_configs`` set the standard ``__address__`` and ``instance`` labels
 
-With the ``dns_exporter`` running at ``dnsexp.example.com:15353``::
+With the ``dns_exporter`` running at ``dnsexp.example.com:15353``:
 
-   scrape_configs:
-     - name: "dnsexp_doh_gmail_mx"
-       scheme: "https"
-       scrape_interval: "10s"
-       metrics_path: "/query"
-       params:
-         module:
-           - "doh_gmail_mx"
-       relabel_configs:
-         - source_labels: ["__address__"]
-           target_label: "__param_server"
-         - source_labels: ["__address__"]
-           target_label: "instance"
-         - target_label: "__address__"
-           replacement: "dnsexp.example.com:15353"
-       static_configs:
-         - targets:
-           - "dns.google"
-           - "dns.quad9.net"
+.. literalinclude:: ../../tests/prometheus/list_of_servers/prometheus.yml
 
 Would make Prometheus scrape the ``MX`` records for ``gmail.com`` every 10 seconds using Googles and Quad9s public DoH servers.

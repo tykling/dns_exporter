@@ -256,7 +256,7 @@ class Config:
             )
 
         # validate query_type
-        valid_qtypes = [dns.rdatatype.to_text(t) for t in dns.rdatatype.RdataType]  # type: ignore
+        valid_qtypes = [dns.rdatatype.to_text(t) for t in dns.rdatatype.RdataType]
         if self.query_type not in valid_qtypes:
             raise ConfigError(
                 f"query_type {self.query_type} not found in list of valid query types: {valid_qtypes}",
@@ -264,7 +264,7 @@ class Config:
             )
 
         # validate valid_rcodes
-        all_rcodes = [dns.rcode.to_text(x) for x in dns.rcode.Rcode]  # type: ignore
+        all_rcodes = [dns.rcode.to_text(x) for x in dns.rcode.Rcode]
         invalid_rcodes = set(self.valid_rcodes).difference(all_rcodes)
         if invalid_rcodes:
             raise ConfigError(

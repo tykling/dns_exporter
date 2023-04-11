@@ -1,0 +1,7 @@
+---
+modules:
+  quad9_mx:
+    query_type: "MX"
+    server: "dns.quad9.net"
+    family: "ipv4"
+...

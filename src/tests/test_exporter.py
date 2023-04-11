@@ -31,7 +31,7 @@ def test_main_no_config(dns_exporter_main_no_config_no_debug, caplog):
 def test_noconfig_server(dns_exporter_no_main_no_config):
     """Test basic lookup functionality."""
     r = requests.get(
-        "http://127.0.0.1:15353/query",
+        "http://127.0.0.1:45353/query",
         params={
             "query_name": "example.com",
             "server": "dns.google",
