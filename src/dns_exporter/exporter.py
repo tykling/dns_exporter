@@ -846,11 +846,10 @@ class DNSExporter(MetricsHandler):
                 logger.exception(
                     f"Got an exception while looking up qname {self.config.query_name} using server {self.config.server}"
                 )
-                # unknown failure
+                dnsexp_dns_failure_reason.state("other_failure")
                 logger.warning(
                     f"query failure, returning {dnsexp_dns_failure_reason._states[dnsexp_dns_failure_reason._value]}"
                 )
-                dnsexp_dns_failure_reason.state("other_failure")
             # clock it
             qtime = time.time() - start
 
