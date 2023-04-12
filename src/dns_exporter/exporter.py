@@ -897,8 +897,8 @@ class DNSExporter(MetricsHandler):
                     labels.update({"nsid": opt.data.decode("ASCII")})
                     break
 
-            # labels complete, observe timing metric
-            dnsexp_dns_query_time_seconds.labels(**labels).observe(qtime)
+            # labels complete, set timing metric
+            dnsexp_dns_query_time_seconds.labels(**labels).set(qtime)
 
             # register TTL of response RRs
             for section in ["answer", "authority", "additional"]:

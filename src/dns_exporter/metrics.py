@@ -7,7 +7,7 @@ importing this module multiple times does not cause problems.
 All metrics exposed by ``dns_exporter`` are prefixed with ``dnsexp_`` (apart from ``up``
 and the built-in Python metrics).
 """
-from prometheus_client import CollectorRegistry, Counter, Enum, Gauge, Histogram, Info
+from prometheus_client import CollectorRegistry, Counter, Enum, Gauge, Info
 
 from dns_exporter.version import __version__
 
@@ -25,7 +25,7 @@ The metrics in this registry are all cleared/reset between queries/scrapes.
 """
 
 
-dnsexp_dns_query_time_seconds = Histogram(
+dnsexp_dns_query_time_seconds = Gauge(
     "dnsexp_dns_query_time_seconds",
     "DNS query time in seconds.",
     [
@@ -47,9 +47,9 @@ dnsexp_dns_query_time_seconds = Histogram(
     ],
     registry=dnsexp_registry,
 )
-"""``dnsexp_dns_query_time_seconds`` is the histogram used as the primary timing metric for DNS queries.
+"""``dnsexp_dns_query_time_seconds`` is the gauge used as the primary timing metric for DNS queries.
 
-Each DNS query duration is added to this histogram with the following labels to identify it:
+Each DNS query duration is added to this gauge with the following labels to identify it:
 
     - ``protocol``
     - ``server``
