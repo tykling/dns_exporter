@@ -197,13 +197,6 @@ dnsexp_dns_response_rr_ttl_seconds = Histogram(
         1048576.0,
         2097152.0,
         4194304.0,
-        8388608.0,
-        16777216.0,
-        33554432.0,
-        67108864.0,
-        134217728.0,
-        268435456.0,
-        536870912.0,
         INF,
     ),
 )
@@ -213,7 +206,7 @@ This metric will often be set multiple times during a scrape, whenever a DNS que
 RRs in the answer/authority/additional sections. For example, if a DNS query results in a response with
 2 ``ANSWER``, 0 ``AUTHORITY`` and 4 ``ADDITIONAL`` then this metric will be set 6 times (with different labels).
 
-The buckets of this Histogram start with 1 second and double until reaching max possible TTL.
+The buckets of this Histogram start with 1 second and double until the biggest bucket which is 4194304 seconds, just under 7 weeks.
 
 This Histogram has the following labels, they are the same as ``dns_exporter.metrics.dnsexp_dns_query_time_seconds`` plus a few more:
 
