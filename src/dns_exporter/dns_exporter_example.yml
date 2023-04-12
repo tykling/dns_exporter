@@ -1,10 +1,10 @@
 ---
-templates: # this name is not important
+snippets:  # this name is not important
   ipv4_2s: &template_v4_2s
     timeout: "2"
     family: "ipv4"
 
-some_more_templates:  # the name of this dict is also not important
+more_reusable_stuff:  # the name of this dict is also not important
   mytemplate: &mytemplate
     timeout: "2"  # query timeout in seconds
     protocol: "udp"  # one of udp, tcp, dot, doh, doq; all these can also be set in scrape request
@@ -21,9 +21,9 @@ some_more_templates:  # the name of this dict is also not important
 
   v4_example:
     <<: *mytemplate
-    family: "ipv4"  # when scrape target is a hostname use ipv4/A instead of AAAA
+    family: "ipv4"  # when scrape server is a hostname use ipv4/A instead of AAAA
 
-  validation_kitchensink_example:
+  validation_kitchensink_example: &kitchensink
     <<: *mytemplate
     validate_response_flags:  # do validation of the response flags
       fail_if_any_present:  # consider request failed if any of these flags are present in the response
@@ -59,7 +59,8 @@ some_more_templates:  # the name of this dict is also not important
         - ".*127.0.0.1"
 
 
-modules: # this is the only key currently read from the config
+modules:  # this is the only key currently read from the config
+
   udp: *template_v4_2s
 
   tcp:
@@ -96,7 +97,7 @@ modules: # this is the only key currently read from the config
 
   chaos:
     <<: *template_v4_2s
-    qclass: "CHAOS"
+    query_class: "CHAOS"
 
   cache:
     <<: *template_v4_2s
@@ -110,9 +111,9 @@ modules: # this is the only key currently read from the config
     <<: *template_v4_2s
     ip: "192.0.2.53"
 
-  target:
+  server:
     <<: *template_v4_2s
-    target: "doh.example.com"
+    server: "doh.example.com"
 
   noedns:
     <<: *template_v4_2s
@@ -134,9 +135,12 @@ modules: # this is the only key currently read from the config
     <<: *template_v4_2s
     edns_pad: 100
 
+  kitchensink:
+    <<: *kitchensink
+
   google_udp:  # make sure google public dns returns 13 NS records for . over UDP
     protocol: "udp"
-    target: "dns.google"
+    server: "dns.google"
     query_name: "."
     query_type: "NS"
     validate_answer_rrs:
@@ -144,7 +148,7 @@ modules: # this is the only key currently read from the config
 
   google_tcp:  # make sure google public dns returns 2 A records for dns.google over TCP
     protocol: "tcp"
-    target: "dns.google"
+    server: "dns.google"
     query_name: "dns.google"
     query_type: "A"
     validate_answer_rrs:
@@ -155,7 +159,7 @@ modules: # this is the only key currently read from the config
 
   google_dot:  # make sure google public dns returns the two expected AAAA records for dns.google over DoT
     protocol: "dot"
-    target: "dns.google"
+    server: "dns.google"
     query_name: "dns.google"
     query_type: "AAAA"
     validate_answer_rrs:
@@ -166,9 +170,55 @@ modules: # this is the only key currently read from the config
 
   cf_doh:  # make sure cloudflare public dns a DNSSEC validated response for bornhack.dk over DoH
     protocol: "doh"
-    target: "1dot1dot1dot1.cloudflare-dns.com"
+    server: "1dot1dot1dot1.cloudflare-dns.com"
     query_name: "bornhack.dk"
     query_type: "NS"
     validate_response_flags:
       fail_if_any_absent:
         - "AD"
+
+  has_ad:
+    edns_do: true
+    validate_response_flags:
+      fail_if_any_absent:
+        - "AD"
+
+  has_no_ad:
+    edns_do: true
+    validate_response_flags:
+      fail_if_any_present:
+        - "AD"
+
+  fail_recursive:
+    validate_response_flags:
+      fail_if_all_present:
+        - "QR"
+        - "RA"
+        - "RD"
+
+  fail_auth:
+    validate_response_flags:
+      fail_if_all_absent:
+        - "AA"
+        - "AD"
+
+  fail_auth_k_root:
+    validate_answer_rrs:
+      fail_if_matches_regexp:
+        - ".*k.root-servers.net"
+
+  fail_additional_root:
+    validate_additional_rrs:
+      fail_if_all_match_regexp:
+        - "[a-m].root-servers.net.*"
+
+  fail_answer_root:
+    validate_answer_rrs:
+      fail_if_not_matches_regexp:
+        - "[a-m].root-servers.net.*"
+
+  fail_answer_root_none:
+    validate_answer_rrs:
+      fail_if_none_matches_regexp:
+        - ".*[a-m].root-servers.net.*"
+...

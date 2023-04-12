@@ -1,0 +1,39 @@
+---
+name: "Run Tox"
+
+on:  # yamllint disable-line rule:truthy
+  push:
+
+jobs:
+  build:
+    runs-on: "ubuntu-latest"
+    strategy:
+      matrix:
+        python: ["3.10", "3.11"]
+    steps:
+      - name: "Setup Python"
+        uses: "actions/setup-python@v3"
+        with:
+          python-version: "${{ matrix.python }}"
+
+      - name: "Install dependencies"
+        run: "sudo apt install -y prometheus"
+
+      - name: "Check out main repo"
+        uses: "actions/checkout@v3"
+        with:
+          path: "src"
+
+      - name: "Install remaining python dependencies"
+        run: "python -m pip install ./src/[test]"
+
+      - name: "Run Tox"
+        run: "tox -e py"
+        working-directory: "./src"
+
+      - name: "Upload coverage to Codecov"
+        uses: "codecov/codecov-action@v3"
+        with:
+          fail_ci_if_error: true
+          files: "./src/src/coverage.xml"
+...

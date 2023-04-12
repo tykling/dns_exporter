@@ -13,8 +13,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "dnspython >= 2.2.1",
-    "httpx >= 0.23.3",
+    "dnspython[doh,dnssec,idna,doq] >= 2.2.1",
     "PyYAML >= 6.0",
     "prometheus-client >= 0.15.0",
 ]
@@ -27,15 +26,24 @@ readme = "README.md"
 requires-python = ">=3.9"
 
 [project.scripts]
-dns_exporter = "dns_exporter.dns_exporter:main"
+dns_exporter = "dns_exporter.entrypoint:main"
 
 [project.optional-dependencies]
-dev = ["twine == 4.0.2", "pre-commit == 2.21.0", "setuptools-scm == 7.1.0"]
-test = ["pytest == 7.2.0", "tox == 4.2.6"]
+dev = ["twine == 4.0.2", "pre-commit == 3.2.2", "setuptools-scm == 7.1.0"]
+test = ["pytest == 7.3.0", "pytest-cov==4.0.0", "tox == 4.4.11", "requests==2.28.2"]
+docs = ["Sphinx==6.1.3", "furo==2023.3.27"]
 
 [project.urls]
 homepage = "https://github.com/tykling/dns_exporter"
 documentation = "https://dnsexporter.readthedocs.org/"
 
 [tool.setuptools_scm]
-write_to = "dns_exporter/_version.py"
+write_to = "src/dns_exporter/_version.py"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = ["dns_exporter"]
+
+[tool.pydocstyle]
+convention = "google"
+match = "src/dns_exporter/"

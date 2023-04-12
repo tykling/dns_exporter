@@ -1,0 +1,7 @@
+---
+modules:
+  gmail_mx_v4:
+    query_type: "MX"
+    query_name: "gmail.com"
+    family: "ipv4"
+...
