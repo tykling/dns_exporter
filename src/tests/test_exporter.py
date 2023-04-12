@@ -23,7 +23,7 @@ def test_main_no_config(dns_exporter_main_no_config_no_debug, caplog):
     )
     assert r.status_code == 200, "non-200 returncode"
     assert (
-        'dnsexp_dns_failure_reason{dnsexp_dns_failure_reason="no_failure"} 1.0'
+        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="no_failure"} 1.0'
         in r.text
     )
 
@@ -92,7 +92,7 @@ def test_invalid_qs_ip(dns_exporter_example_config):
     )
     assert r.status_code == 200, "non-200 returncode"
     assert (
-        'dnsexp_dns_failure_reason{dnsexp_dns_failure_reason="invalid_request_ip"} 1.0'
+        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_request_ip"} 1.0'
         in r.text
     )
 
@@ -113,7 +113,7 @@ def test_missing_query_name(dns_exporter_example_config):
     )
     assert r.status_code == 200, "non-200 returncode"
     assert (
-        'dnsexp_dns_failure_reason{dnsexp_dns_failure_reason="invalid_request_query_name"} 1.0'
+        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_request_query_name"} 1.0'
         in r.text
     )
 
@@ -127,7 +127,7 @@ def test_missing_server(dns_exporter_example_config):
     )
     assert r.status_code == 200, "non-200 returncode"
     assert (
-        'dnsexp_dns_failure_reason{dnsexp_dns_failure_reason="invalid_request_server"} 1.0'
+        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_request_server"} 1.0'
         in r.text
     )
 
@@ -141,7 +141,7 @@ def test_undefined_module(dns_exporter_example_config, caplog):
     )
     assert r.status_code == 200, "non-200 returncode"
     assert (
-        'dnsexp_dns_failure_reason{dnsexp_dns_failure_reason="invalid_request_module"} 1.0'
+        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_request_module"} 1.0'
         in r.text
     )
 
@@ -156,7 +156,7 @@ def test_unknown_config_key(dns_exporter_example_config, caplog):
     )
     assert r.status_code == 200, "non-200 returncode"
     assert (
-        'dnsexp_dns_failure_reason{dnsexp_dns_failure_reason="invalid_request_config"} 1.0'
+        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_request_config"} 1.0'
         in r.text
     )
 
@@ -173,7 +173,7 @@ def test_ip_family_conflict(dns_exporter_example_config, caplog):
     )
     assert r.status_code == 200, "non-200 returncode"
     assert (
-        'dnsexp_dns_failure_reason{dnsexp_dns_failure_reason="invalid_request_ip"} 1.0'
+        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_request_ip"} 1.0'
         in r.text
     )
 
@@ -190,7 +190,7 @@ def test_ip_conflict(dns_exporter_example_config, caplog):
     )
     assert r.status_code == 200, "non-200 returncode"
     assert (
-        'dnsexp_dns_failure_reason{dnsexp_dns_failure_reason="invalid_request_ip"} 1.0'
+        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_request_ip"} 1.0'
         in r.text
     )
 
@@ -226,7 +226,7 @@ def test_unresolvable_server(dns_exporter_example_config, caplog):
     )
     assert r.status_code == 200, "non-200 returncode"
     assert (
-        'dnsexp_dns_failure_reason{dnsexp_dns_failure_reason="invalid_request_server"} 1.0'
+        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_request_server"} 1.0'
         in r.text
     )
 
@@ -264,7 +264,7 @@ def test_ipv7_family(dns_exporter_example_config, caplog):
     )
     assert r.status_code == 200, "non-200 returncode"
     assert (
-        'dnsexp_dns_failure_reason{dnsexp_dns_failure_reason="invalid_request_family"} 1.0'
+        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_request_family"} 1.0'
         in r.text
     )
 
@@ -399,7 +399,7 @@ def test_validate_rcode(dns_exporter_example_config, caplog):
     )
     assert r.status_code == 200, "non-200 returncode"
     assert (
-        'dnsexp_dns_failure_reason{dnsexp_dns_failure_reason="invalid_response_rcode"} 1.0'
+        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_response_rcode"} 1.0'
         in r.text
     )
     assert 'rcode="NXDOMAIN"' in r.text
@@ -417,7 +417,7 @@ def test_validate_flags_fail_if_any_absent(dns_exporter_example_config, caplog):
     )
     assert r.status_code == 200, "non-200 returncode"
     assert (
-        'dnsexp_dns_failure_reason{dnsexp_dns_failure_reason="invalid_response_flags"} 1.0'
+        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_response_flags"} 1.0'
         in r.text
     )
 
@@ -434,7 +434,7 @@ def test_validate_flags_fail_if_any_present(dns_exporter_example_config, caplog)
     )
     assert r.status_code == 200, "non-200 returncode"
     assert (
-        'dnsexp_dns_failure_reason{dnsexp_dns_failure_reason="invalid_response_flags"} 1.0'
+        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_response_flags"} 1.0'
         in r.text
     )
 
@@ -451,7 +451,7 @@ def test_validate_flags_fail_if_all_present(dns_exporter_example_config, caplog)
     )
     assert r.status_code == 200, "non-200 returncode"
     assert (
-        'dnsexp_dns_failure_reason{dnsexp_dns_failure_reason="invalid_response_flags"} 1.0'
+        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_response_flags"} 1.0'
         in r.text
     )
 
@@ -468,7 +468,7 @@ def test_validate_flags_fail_if_all_absent(dns_exporter_example_config, caplog):
     )
     assert r.status_code == 200, "non-200 returncode"
     assert (
-        'dnsexp_dns_failure_reason{dnsexp_dns_failure_reason="invalid_response_flags"} 1.0'
+        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_response_flags"} 1.0'
         in r.text
     )
 
@@ -485,7 +485,7 @@ def test_validate_flags_fail_if_all_present_2(dns_exporter_example_config, caplo
     )
     assert r.status_code == 200, "non-200 returncode"
     assert (
-        'dnsexp_dns_failure_reason{dnsexp_dns_failure_reason="invalid_response_flags"} 1.0'
+        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_response_flags"} 1.0'
         in r.text
     )
 
@@ -502,7 +502,7 @@ def test_validate_flags_fail_if_all_absent_2(dns_exporter_example_config, caplog
     )
     assert r.status_code == 200, "non-200 returncode"
     assert (
-        'dnsexp_dns_failure_reason{dnsexp_dns_failure_reason="invalid_response_flags"} 1.0'
+        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_response_flags"} 1.0'
         in r.text
     )
 
@@ -520,7 +520,7 @@ def test_validate_flags_fail_if_all_present_3(dns_exporter_example_config, caplo
     )
     assert r.status_code == 200, "non-200 returncode"
     assert (
-        'dnsexp_dns_failure_reason{dnsexp_dns_failure_reason="no_failure"} 1.0'
+        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="no_failure"} 1.0'
         in r.text
     )
 
@@ -551,7 +551,7 @@ def test_validate_rr_fail_if_matches_regexp(dns_exporter_example_config, caplog)
     )
     assert r.status_code == 200, "non-200 returncode"
     assert (
-        'dnsexp_dns_failure_reason{dnsexp_dns_failure_reason="invalid_response_answer_rrs"} 1.0'
+        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_response_answer_rrs"} 1.0'
         in r.text
     )
 
@@ -569,7 +569,7 @@ def test_validate_rrs_fail_if_all_match_regexp(dns_exporter_example_config, capl
     )
     assert r.status_code == 200, "non-200 returncode"
     assert (
-        'dnsexp_dns_failure_reason{dnsexp_dns_failure_reason="invalid_response_additional_rrs"} 1.0'
+        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_response_additional_rrs"} 1.0'
         in r.text
     )
 
@@ -601,7 +601,7 @@ def test_validate_rrs_fail_if_not_matches_regexp(dns_exporter_example_config, ca
     )
     assert r.status_code == 200, "non-200 returncode"
     assert (
-        'dnsexp_dns_failure_reason{dnsexp_dns_failure_reason="invalid_response_answer_rrs"} 1.0'
+        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_response_answer_rrs"} 1.0'
         in r.text
     )
 
@@ -619,7 +619,7 @@ def test_validate_rrs_fail_if_none_matches_regexp(dns_exporter_example_config, c
     )
     assert r.status_code == 200, "non-200 returncode"
     assert (
-        'dnsexp_dns_failure_reason{dnsexp_dns_failure_reason="invalid_response_answer_rrs"} 1.0'
+        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_response_answer_rrs"} 1.0'
         in r.text
     )
 
