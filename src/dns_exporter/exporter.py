@@ -913,9 +913,7 @@ class DNSExporter(MetricsHandler):
                             "rr_value": rr.to_text()[:255],
                         }
                     )
-                    dnsexp_dns_response_rr_ttl_seconds.labels(**labels).observe(
-                        rrset.ttl
-                    )
+                    dnsexp_dns_response_rr_ttl_seconds.labels(**labels).set(rrset.ttl)
 
             # validate response
             success = self.validate_dnsexp_response(response=r)
