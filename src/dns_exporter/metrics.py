@@ -18,9 +18,9 @@ dnsexp_registry = CollectorRegistry()
 The following metrics are created in this registry:
 
     - ``dns_exporter.metrics.dnsexp_dns_query_time_seconds``
-    - ``dns_exporter.metrics.dnsexp_dns_success``
+    - ``dns_exporter.metrics.dnsexp_dns_query_success``
     - ``dns_exporter.metrics.dnsexp_dns_query_failure_reason``
-    - ``dns_exporter.metrics.dnsexp_dns_record_ttl_seconds``
+    - ``dns_exporter.metrics.dnsexp_dns_response_rr_ttl_seconds``
 
 The metrics in this registry are all cleared/reset between queries/scrapes.
 """
@@ -120,7 +120,7 @@ dnsexp_dns_query_failure_reason = Enum(
     ],
     registry=dnsexp_registry,
 )
-"""``dnsexp_dns_query_failure_reason`` is an Enum which is set to the failure reason whenever ``dnsexp_dns_success=0``.
+"""``dnsexp_dns_query_failure_reason`` is an Enum which is set to the failure reason whenever ``dnsexp_dns_query_success=0``.
 
 This enum has the following states:
 
