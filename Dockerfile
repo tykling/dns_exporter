@@ -1,5 +1,5 @@
 #syntax=docker/dockerfile:1.5.2
-FROM cgr.dev/chainguard/python:3.11.2-r0-dev AS builder
+FROM cgr.dev/chainguard/python:3.11.3-r0-dev AS builder
 # switch to root to install deps
 USER root
 RUN apk add -U --no-cache --purge --clean-protected -l -u \
@@ -9,8 +9,14 @@ RUN apk add -U --no-cache --purge --clean-protected -l -u \
 USER nonroot
 WORKDIR /home/nonroot
 COPY --chown=nonroot:nonroot . .
-RUN pip install .
+RUN touch dns_exporter.yml; \
+    pip install .
 
-FROM cgr.dev/chainguard/python:3.11.2-r0 AS runtime
+FROM scratch AS tmp
 COPY --from=builder /home/nonroot/.local /home/nonroot/.local
-ENTRYPOINT [ "/home/nonroot/.local/bin/dns_exporter" ]
+COPY --from=builder /home/nonroot/dns_exporter.yml /home/nonroot/dns_exporter.yml
+
+FROM cgr.dev/chainguard/python:3.11.3-r0 AS runtime
+COPY --from=tmp / /
+EXPOSE 15353
+CMD [ "/home/nonroot/.local/bin/dns_exporter", "-c", "/home/nonroot/dns_exporter.yml" ]
