@@ -1,24 +1,26 @@
-.. dns_exporter documentation master file, created by
-   sphinx-quickstart on Mon Mar 27 15:06:30 2023.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+dns_exporter Documentation
+==========================
 
-Welcome to dns_exporter's documentation!
-========================================
+Welcome to the documentation for ``dns_exporter``.
 
+The source code and issue tracker can be found on `Github <https://github.com/tykling/dns_exporter/>`_. This documentation was built with Sphinx from the `docs sources <https://github.com/tykling/dns_exporter/tree/develop/src/docs/source>`_.
+
+
+Contents
+========
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
 
-   exporter
-   config
-   metrics
+   introduction
+   quickstart
+   configuration
+   examples
+   reference/index
 
 
-Indices and tables
-==================
+.. toctree::
+   :hidden:
+   :caption: Project Links
 
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-
+   Source Code <https://github.com/tykling/dns_exporter/>
+   Issue Tracker <https://github.com/tykling/dns_exporter/issues/>
