@@ -1,0 +1,44 @@
+---
+name: Publish Docker image
+
+on:  # yamllint disable-line rule:truthy
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  push_to_registry:
+    name: Push Docker image to Docker Hub
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
+      
+      - name: Log in to Docker Hub
+        uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@507c2f2dc502c992ad446e3d7a5dfbe311567a96
+        with:
+          images: |
+            ${{ github.repository }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha
+      
+      - name: Build and push Docker image
+        uses: docker/bake-action@6c87dcca988e4e074e3ab1f976a70f63ec9673fb
+        with:
+          push: true
+          files: |
+            ./docker-bake.hcl
+            ${{ steps.meta.outputs.bake-file }}
+          targets: build
+...
