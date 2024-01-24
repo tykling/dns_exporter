@@ -9,8 +9,6 @@ RUN adduser --system nonroot
 USER nonroot
 WORKDIR /home/nonroot
 COPY --chown=nonroot:nonroot . .
-# change 127.0.0.1 to 0.0.0.0
-RUN sed -i 's/127.0.0.1/0.0.0.0/g' ./src/dns_exporter/entrypoint.py
 # create empty config
 RUN touch dns_exporter.yml
 # install dns_exporter
@@ -25,4 +23,4 @@ RUN adduser --system nonroot
 COPY --from=tmp --chown=nonroot:nonroot /home/nonroot /home/nonroot
 EXPOSE 15353
 USER nonroot
-CMD [ "/home/nonroot/.local/bin/dns_exporter", "-c", "/home/nonroot/dns_exporter.yml" ]
+CMD [ "/home/nonroot/.local/bin/dns_exporter", "-L", "0.0.0.0", "-c", "/home/nonroot/dns_exporter.yml" ]
