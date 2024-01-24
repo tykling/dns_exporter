@@ -1,10 +1,10 @@
-#syntax=docker/dockerfile:1.5.2
-FROM cgr.dev/chainguard/python:3.11.3-r0-dev AS builder
-# switch to root to install deps
-USER root
+#syntax=docker/dockerfile:1.6.0
+FROM python:3.12.1-alpine3.19 AS builder
 RUN apk add -U --no-cache --purge --clean-protected -l -u \
-    git \
+    alpine-sdk \
+    libbsd-dev \
     openssl-dev
+RUN adduser --system nonroot
 # switch back to nonroot for package build
 USER nonroot
 WORKDIR /home/nonroot
@@ -16,7 +16,9 @@ FROM scratch AS tmp
 COPY --from=builder /home/nonroot/.local /home/nonroot/.local
 COPY --from=builder /home/nonroot/dns_exporter.yml /home/nonroot/dns_exporter.yml
 
-FROM cgr.dev/chainguard/python:3.11.3-r0 AS runtime
-COPY --from=tmp / /
+FROM python:3.12.1-alpine3.19 AS runtime
+RUN adduser --system nonroot
+COPY --from=tmp --chown=nonroot:nonroot /home/nonroot /home/nonroot
 EXPOSE 15353
+USER nonroot
 CMD [ "/home/nonroot/.local/bin/dns_exporter", "-c", "/home/nonroot/dns_exporter.yml" ]
