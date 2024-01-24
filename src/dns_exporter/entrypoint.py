@@ -41,6 +41,13 @@ def get_parser() -> argparse.ArgumentParser:
         default=argparse.SUPPRESS,
     )
     parser.add_argument(
+        "-L",
+        "--listen-ip",
+        type=str,
+        help="Listen IP. Defaults to 127.0.0.1. Set to :: to listen on all v6 IPs.",
+        default="127.0.0.1",
+    )
+    parser.add_argument(
         "-l",
         "--log-level",
         dest="log-level",
@@ -152,9 +159,9 @@ def main(mockargs: Optional[list[str]] = None) -> None:
             )
             sys.exit(1)
     logger.debug(
-        f"Ready to serve requests. Starting listener on 127.0.0.1 port {args.port}..."
+        f"Ready to serve requests. Starting listener on {args.listen_ip} port {args.port}..."
     )
-    HTTPServer(("127.0.0.1", args.port), handler).serve_forever()
+    HTTPServer((args.listen_ip, args.port), handler).serve_forever()
 
 
 if __name__ == "__main__":
