@@ -12,17 +12,17 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Check out the repo
-        uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
       
       - name: Log in to Docker Hub
-        uses: docker/login-action@f4ef78c080cd8ba55a85445d5b36e214a81df20a
+        uses: docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@507c2f2dc502c992ad446e3d7a5dfbe311567a96
+        uses: docker/metadata-action@dbef88086f6cef02e264edb7dbf63250c17cef6c
         with:
           images: |
             ${{ github.repository }}
@@ -34,7 +34,7 @@ jobs:
             type=sha
       
       - name: Build and push Docker image
-        uses: docker/bake-action@6c87dcca988e4e074e3ab1f976a70f63ec9673fb
+        uses: docker/bake-action@849707117b03d39aba7924c50a10376a69e88d7d
         with:
           push: true
           files: |
