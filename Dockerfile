@@ -9,8 +9,12 @@ RUN adduser --system nonroot
 USER nonroot
 WORKDIR /home/nonroot
 COPY --chown=nonroot:nonroot . .
-RUN touch dns_exporter.yml; \
-    pip install .
+# change 127.0.0.1 to 0.0.0.0
+RUN sed -i 's/127.0.0.1/0.0.0.0/g' ./src/dns_exporter/entrypoint.py
+# create empty config
+RUN touch dns_exporter.yml
+# install dns_exporter
+RUN pip install .
 
 FROM scratch AS tmp
 COPY --from=builder /home/nonroot/.local /home/nonroot/.local
