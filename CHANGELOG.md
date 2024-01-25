@@ -6,9 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## unreleased
+## [v0.3.0] - 2024-01-25
 
 ### Changed
+- Split code into seperate modules
 - Rename `dnsexp_dns_time_seconds` to `dnsexp_dns_query_time_seconds` and change from Histogram to Gauge
 - Rename `dnsexp_dns_success` to `dnsexp_dns_query_success`
 - Rename `dnsexp_dns_failure_reason` to `dnsexp_dns_query_failure_reason`
@@ -16,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Added
 - Command-line option to set listen IP, use `-L` or `--listen-ip`. Default is `127.0.0.1`.
+- Unit tests
 
 
 ## [v0.2.0] - 2023-04-12
