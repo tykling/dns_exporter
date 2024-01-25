@@ -42,13 +42,13 @@ from dns_exporter.config import (
     RFValidator,
     RRValidator,
 )
-from dns_exporter.metrics import dnsexp_dns_failure_reason  # per-scrape
 from dns_exporter.metrics import dnsexp_dns_failures_total  # persistent
 from dns_exporter.metrics import dnsexp_dns_queries_total  # persistent
-from dns_exporter.metrics import dnsexp_dns_record_ttl_seconds  # per-scrape
+from dns_exporter.metrics import dnsexp_dns_query_failure_reason  # per-scrape
+from dns_exporter.metrics import dnsexp_dns_query_success  # per-scrape
+from dns_exporter.metrics import dnsexp_dns_query_time_seconds  # per-scrape
+from dns_exporter.metrics import dnsexp_dns_response_rr_ttl_seconds  # per-scrape
 from dns_exporter.metrics import dnsexp_dns_responses_total  # persistent
-from dns_exporter.metrics import dnsexp_dns_success  # per-scrape
-from dns_exporter.metrics import dnsexp_dns_time_seconds  # per-scrape
 from dns_exporter.metrics import dnsexp_http_requests_total  # persistent
 from dns_exporter.metrics import dnsexp_http_responses_total  # persistent
 from dns_exporter.metrics import dnsexp_registry
@@ -173,10 +173,10 @@ class DNSExporter(MetricsHandler):
                 )
         except TypeError:
             logger.exception("Unable to create object")
-            dnsexp_dns_success.set(0)
-            dnsexp_dns_failure_reason.state("invalid_request_config")
+            dnsexp_dns_query_success.set(0)
+            dnsexp_dns_query_failure_reason.state("invalid_request_config")
             logger.warning(
-                f"query failure, returning {dnsexp_dns_failure_reason._states[dnsexp_dns_failure_reason._value]}"
+                f"query failure, returning {dnsexp_dns_query_failure_reason._states[dnsexp_dns_query_failure_reason._value]}"
             )
             return None
 
@@ -190,10 +190,10 @@ class DNSExporter(MetricsHandler):
                 config["ip"] = ipaddress.ip_address(config["ip"])
             except ValueError:
                 logger.exception(f"Unable to parse IP address {config['ip']}")
-                dnsexp_dns_success.set(0)
-                dnsexp_dns_failure_reason.state("invalid_request_ip")
+                dnsexp_dns_query_success.set(0)
+                dnsexp_dns_query_failure_reason.state("invalid_request_ip")
                 logger.warning(
-                    f"query failure, returning {dnsexp_dns_failure_reason._states[dnsexp_dns_failure_reason._value]}"
+                    f"query failure, returning {dnsexp_dns_query_failure_reason._states[dnsexp_dns_query_failure_reason._value]}"
                 )
                 return None
 
@@ -209,10 +209,10 @@ class DNSExporter(MetricsHandler):
                     logger.exception(
                         f"Unable to parse integer for key {key}: {config[key]}"  # type: ignore
                     )
-                    dnsexp_dns_success.set(0)
-                    dnsexp_dns_failure_reason.state("invalid_request_config")
+                    dnsexp_dns_query_success.set(0)
+                    dnsexp_dns_query_failure_reason.state("invalid_request_config")
                     logger.warning(
-                        f"query failure, returning {dnsexp_dns_failure_reason._states[dnsexp_dns_failure_reason._value]}"
+                        f"query failure, returning {dnsexp_dns_query_failure_reason._states[dnsexp_dns_query_failure_reason._value]}"
                     )
                     return None
 
@@ -239,10 +239,10 @@ class DNSExporter(MetricsHandler):
 
         # make sure we have a query_name in the config
         if not self.config.query_name:
-            dnsexp_dns_success.set(0)
-            dnsexp_dns_failure_reason.state("invalid_request_query_name")
+            dnsexp_dns_query_success.set(0)
+            dnsexp_dns_query_failure_reason.state("invalid_request_query_name")
             logger.warning(
-                f"query failure, returning {dnsexp_dns_failure_reason._states[dnsexp_dns_failure_reason._value]}"
+                f"query failure, returning {dnsexp_dns_query_failure_reason._states[dnsexp_dns_query_failure_reason._value]}"
             )
             return False
 
@@ -256,10 +256,10 @@ class DNSExporter(MetricsHandler):
         # if a module is specified in the querystring apply it first
         if "module" in qs:
             if qs["module"] not in self.modules:
-                dnsexp_dns_success.set(0)
-                dnsexp_dns_failure_reason.state("invalid_request_module")
+                dnsexp_dns_query_success.set(0)
+                dnsexp_dns_query_failure_reason.state("invalid_request_module")
                 logger.warning(
-                    f"query failure, returning {dnsexp_dns_failure_reason._states[dnsexp_dns_failure_reason._value]}"
+                    f"query failure, returning {dnsexp_dns_query_failure_reason._states[dnsexp_dns_query_failure_reason._value]}"
                 )
                 return False
             config.update(asdict(self.modules[qs["module"]]))  # type: ignore
@@ -283,19 +283,19 @@ class DNSExporter(MetricsHandler):
             logger.warning(
                 f"Scrape request querystring contains one or more unknown fields: {qs}"
             )
-            dnsexp_dns_success.set(0)
-            dnsexp_dns_failure_reason.state("invalid_request_config")
+            dnsexp_dns_query_success.set(0)
+            dnsexp_dns_query_failure_reason.state("invalid_request_config")
             logger.warning("queryset contains unknown fields")
             logger.warning(
-                f"query failure, returning {dnsexp_dns_failure_reason._states[dnsexp_dns_failure_reason._value]}"
+                f"query failure, returning {dnsexp_dns_query_failure_reason._states[dnsexp_dns_query_failure_reason._value]}"
             )
             return False
         except ConfigError as E:
             logger.warning("Config contains invalid values")
-            dnsexp_dns_success.set(0)
-            dnsexp_dns_failure_reason.state(E.args[1])
+            dnsexp_dns_query_success.set(0)
+            dnsexp_dns_query_failure_reason.state(E.args[1])
             logger.warning(
-                f"query failure, returning {dnsexp_dns_failure_reason._states[dnsexp_dns_failure_reason._value]}"
+                f"query failure, returning {dnsexp_dns_query_failure_reason._states[dnsexp_dns_query_failure_reason._value]}"
             )
             return False
 
@@ -342,10 +342,10 @@ class DNSExporter(MetricsHandler):
         """Validate the server and resolve IP if needed."""
         # do we have a server?
         if not self.config.server:
-            dnsexp_dns_success.set(0)
-            dnsexp_dns_failure_reason.state("invalid_request_server")
+            dnsexp_dns_query_success.set(0)
+            dnsexp_dns_query_failure_reason.state("invalid_request_server")
             logger.warning(
-                f"query failure, returning {dnsexp_dns_failure_reason._states[dnsexp_dns_failure_reason._value]}"
+                f"query failure, returning {dnsexp_dns_query_failure_reason._states[dnsexp_dns_query_failure_reason._value]}"
             )
             return False
 
@@ -357,11 +357,11 @@ class DNSExporter(MetricsHandler):
             # make sure the ip matches the configured address family
             if not self.check_ip_family(ip=self.config.ip, family=self.config.family):
                 # ip and family mismatch
-                dnsexp_dns_success.set(0)
-                dnsexp_dns_failure_reason.state("invalid_request_ip")
+                dnsexp_dns_query_success.set(0)
+                dnsexp_dns_query_failure_reason.state("invalid_request_ip")
                 logger.warning("IP family mismatch!")
                 logger.warning(
-                    f"query failure, returning {dnsexp_dns_failure_reason._states[dnsexp_dns_failure_reason._value]}"
+                    f"query failure, returning {dnsexp_dns_query_failure_reason._states[dnsexp_dns_query_failure_reason._value]}"
                 )
                 return False
 
@@ -370,10 +370,10 @@ class DNSExporter(MetricsHandler):
             try:
                 serverip = ipaddress.ip_address(str(self.config.server.hostname))
                 if serverip != self.config.ip:
-                    dnsexp_dns_success.set(0)
-                    dnsexp_dns_failure_reason.state("invalid_request_ip")
+                    dnsexp_dns_query_success.set(0)
+                    dnsexp_dns_query_failure_reason.state("invalid_request_ip")
                     logger.warning(
-                        f"query failure, returning {dnsexp_dns_failure_reason._states[dnsexp_dns_failure_reason._value]}"
+                        f"query failure, returning {dnsexp_dns_query_failure_reason._states[dnsexp_dns_query_failure_reason._value]}"
                     )
                     return False
             except ValueError:
@@ -392,11 +392,11 @@ class DNSExporter(MetricsHandler):
                     family=str(self.config.family),
                 )
                 if not resolved:
-                    dnsexp_dns_success.set(0)
-                    dnsexp_dns_failure_reason.state("invalid_request_server")
+                    dnsexp_dns_query_success.set(0)
+                    dnsexp_dns_query_failure_reason.state("invalid_request_server")
                     logger.warning("Unable to resolve server DNS server hostname")
                     logger.warning(
-                        f"query failure, returning {dnsexp_dns_failure_reason._states[dnsexp_dns_failure_reason._value]}"
+                        f"query failure, returning {dnsexp_dns_query_failure_reason._states[dnsexp_dns_query_failure_reason._value]}"
                     )
                     return False
                 self.config.ip = ipaddress.ip_address(resolved)
@@ -435,10 +435,10 @@ class DNSExporter(MetricsHandler):
                 return str(random.choice(result)[4][0])
         except socket.gaierror:
             logger.error(f"Unable to resolve server hostname {hostname}")
-            dnsexp_dns_success.set(0)
-            dnsexp_dns_failure_reason.state("invalid_request_server")
+            dnsexp_dns_query_success.set(0)
+            dnsexp_dns_query_failure_reason.state("invalid_request_server")
             logger.warning(
-                f"query failure, returning {dnsexp_dns_failure_reason._states[dnsexp_dns_failure_reason._value]}"
+                f"query failure, returning {dnsexp_dns_query_failure_reason._states[dnsexp_dns_query_failure_reason._value]}"
             )
         return None
 
@@ -545,9 +545,9 @@ class DNSExporter(MetricsHandler):
         rcode = dns.rcode.to_text(response.rcode())
         if self.config.valid_rcodes and rcode not in self.config.valid_rcodes:
             logger.debug(f"rcode {rcode} not in {self.config.valid_rcodes}")
-            dnsexp_dns_failure_reason.state("invalid_response_rcode")
+            dnsexp_dns_query_failure_reason.state("invalid_response_rcode")
             logger.warning(
-                f"query failure, returning {dnsexp_dns_failure_reason._states[dnsexp_dns_failure_reason._value]}"
+                f"query failure, returning {dnsexp_dns_query_failure_reason._states[dnsexp_dns_query_failure_reason._value]}"
             )
             return False
 
@@ -560,9 +560,9 @@ class DNSExporter(MetricsHandler):
                 for flag in self.config.validate_response_flags.fail_if_any_present:
                     # if either of these flags is found in the response we fail
                     if flag in flags:
-                        dnsexp_dns_failure_reason.state("invalid_response_flags")
+                        dnsexp_dns_query_failure_reason.state("invalid_response_flags")
                         logger.warning(
-                            f"query failure, returning {dnsexp_dns_failure_reason._states[dnsexp_dns_failure_reason._value]}"
+                            f"query failure, returning {dnsexp_dns_query_failure_reason._states[dnsexp_dns_query_failure_reason._value]}"
                         )
                         return False
 
@@ -573,10 +573,10 @@ class DNSExporter(MetricsHandler):
                         break
                 else:
                     # all the flags are present
-                    dnsexp_dns_failure_reason.state("invalid_response_flags")
+                    dnsexp_dns_query_failure_reason.state("invalid_response_flags")
                     logger.warning(f"flag {flags}")
                     logger.warning(
-                        f"query failure, returning {dnsexp_dns_failure_reason._states[dnsexp_dns_failure_reason._value]}"
+                        f"query failure, returning {dnsexp_dns_query_failure_reason._states[dnsexp_dns_query_failure_reason._value]}"
                     )
                     return False
 
@@ -584,9 +584,9 @@ class DNSExporter(MetricsHandler):
                 for flag in self.config.validate_response_flags.fail_if_any_absent:
                     # if any of these flags is missing from the response we fail
                     if flag not in flags:
-                        dnsexp_dns_failure_reason.state("invalid_response_flags")
+                        dnsexp_dns_query_failure_reason.state("invalid_response_flags")
                         logger.warning(
-                            f"query failure, returning {dnsexp_dns_failure_reason._states[dnsexp_dns_failure_reason._value]}"
+                            f"query failure, returning {dnsexp_dns_query_failure_reason._states[dnsexp_dns_query_failure_reason._value]}"
                         )
                         return False
 
@@ -597,9 +597,9 @@ class DNSExporter(MetricsHandler):
                         break
                 else:
                     # all the flags are missing
-                    dnsexp_dns_failure_reason.state("invalid_response_flags")
+                    dnsexp_dns_query_failure_reason.state("invalid_response_flags")
                     logger.warning(
-                        f"query failure, returning {dnsexp_dns_failure_reason._states[dnsexp_dns_failure_reason._value]}"
+                        f"query failure, returning {dnsexp_dns_query_failure_reason._states[dnsexp_dns_query_failure_reason._value]}"
                     )
                     return False
 
@@ -619,11 +619,11 @@ class DNSExporter(MetricsHandler):
                             m = p.match(str(rr))
                             if m:
                                 # we have a match
-                                dnsexp_dns_failure_reason.state(
+                                dnsexp_dns_query_failure_reason.state(
                                     f"invalid_response_{section}_rrs"
                                 )
                                 logger.warning(
-                                    f"query failure, returning {dnsexp_dns_failure_reason._states[dnsexp_dns_failure_reason._value]}"
+                                    f"query failure, returning {dnsexp_dns_query_failure_reason._states[dnsexp_dns_query_failure_reason._value]}"
                                 )
                                 return False
 
@@ -642,11 +642,11 @@ class DNSExporter(MetricsHandler):
                                 break
                             else:
                                 # all rrs match this regex
-                                dnsexp_dns_failure_reason.state(
+                                dnsexp_dns_query_failure_reason.state(
                                     f"invalid_response_{section}_rrs"
                                 )
                                 logger.warning(
-                                    f"query failure, returning {dnsexp_dns_failure_reason._states[dnsexp_dns_failure_reason._value]}"
+                                    f"query failure, returning {dnsexp_dns_query_failure_reason._states[dnsexp_dns_query_failure_reason._value]}"
                                 )
                                 return False
 
@@ -660,11 +660,11 @@ class DNSExporter(MetricsHandler):
                             m = p.match(str(rr))
                             if not m:
                                 # no match so we fail
-                                dnsexp_dns_failure_reason.state(
+                                dnsexp_dns_query_failure_reason.state(
                                     f"invalid_response_{section}_rrs"
                                 )
                                 logger.warning(
-                                    f"query failure, returning {dnsexp_dns_failure_reason._states[dnsexp_dns_failure_reason._value]}"
+                                    f"query failure, returning {dnsexp_dns_query_failure_reason._states[dnsexp_dns_query_failure_reason._value]}"
                                 )
                                 return False
 
@@ -683,9 +683,9 @@ class DNSExporter(MetricsHandler):
                         else:
                             # none of the rrs match this regex
                             logger.warning(
-                                f"query failure, returning {dnsexp_dns_failure_reason._states[dnsexp_dns_failure_reason._value]}"
+                                f"query failure, returning {dnsexp_dns_query_failure_reason._states[dnsexp_dns_query_failure_reason._value]}"
                             )
-                            dnsexp_dns_failure_reason.state(
+                            dnsexp_dns_query_failure_reason.state(
                                 f"invalid_response_{section}_rrs"
                             )
                             return False
@@ -731,10 +731,10 @@ class DNSExporter(MetricsHandler):
             )
             # this is a scrape request, prepare for doing a new dns query
             # clear the metrics, we don't want any history
-            dnsexp_dns_time_seconds.clear()
-            dnsexp_dns_failure_reason.clear()
-            dnsexp_dns_record_ttl_seconds.clear()
-            dnsexp_dns_failure_reason.state("no_failure")
+            dnsexp_dns_query_time_seconds.clear()
+            dnsexp_dns_query_failure_reason.clear()
+            dnsexp_dns_response_rr_ttl_seconds.clear()
+            dnsexp_dns_query_failure_reason.state("no_failure")
 
             # build and validate configuration for this scrape from defaults, config file and request querystring
             if not self.get_config(qs=self.qs):
@@ -838,17 +838,17 @@ class DNSExporter(MetricsHandler):
                 )
             except dns.exception.Timeout:
                 # configured timeout was reached before we got a response
-                dnsexp_dns_failure_reason.state("timeout")
+                dnsexp_dns_query_failure_reason.state("timeout")
                 logger.warning(
-                    f"query failure, returning {dnsexp_dns_failure_reason._states[dnsexp_dns_failure_reason._value]}"
+                    f"query failure, returning {dnsexp_dns_query_failure_reason._states[dnsexp_dns_query_failure_reason._value]}"
                 )
             except Exception:
                 logger.exception(
                     f"Got an exception while looking up qname {self.config.query_name} using server {self.config.server}"
                 )
-                dnsexp_dns_failure_reason.state("other_failure")
+                dnsexp_dns_query_failure_reason.state("other_failure")
                 logger.warning(
-                    f"query failure, returning {dnsexp_dns_failure_reason._states[dnsexp_dns_failure_reason._value]}"
+                    f"query failure, returning {dnsexp_dns_query_failure_reason._states[dnsexp_dns_query_failure_reason._value]}"
                 )
             # clock it
             qtime = time.time() - start
@@ -856,7 +856,7 @@ class DNSExporter(MetricsHandler):
             if r is None:
                 # we did not get a response :(
                 dnsexp_dns_failures_total.inc()
-                dnsexp_dns_success.set(0)
+                dnsexp_dns_query_success.set(0)
                 self.send_metric_response(registry=dnsexp_registry, query=self.qs)
                 logger.debug("Returning DNS query metrics - no response received :(")
                 return
@@ -897,8 +897,8 @@ class DNSExporter(MetricsHandler):
                     labels.update({"nsid": opt.data.decode("ASCII")})
                     break
 
-            # labels complete, observe timing metric
-            dnsexp_dns_time_seconds.labels(**labels).observe(qtime)
+            # labels complete, set timing metric
+            dnsexp_dns_query_time_seconds.labels(**labels).set(qtime)
 
             # register TTL of response RRs
             for section in ["answer", "authority", "additional"]:
@@ -913,7 +913,7 @@ class DNSExporter(MetricsHandler):
                             "rr_value": rr.to_text()[:255],
                         }
                     )
-                    dnsexp_dns_record_ttl_seconds.labels(**labels).observe(rrset.ttl)
+                    dnsexp_dns_response_rr_ttl_seconds.labels(**labels).set(rrset.ttl)
 
             # validate response
             success = self.validate_dnsexp_response(response=r)
@@ -922,7 +922,7 @@ class DNSExporter(MetricsHandler):
                 dnsexp_dns_failures_total.inc()
 
             # register success or not
-            dnsexp_dns_success.set(success)
+            dnsexp_dns_query_success.set(success)
             # send the response
             self.send_metric_response(registry=dnsexp_registry, query=self.qs)
             logger.debug(f"Returning DNS query metrics - query success: {success}")

@@ -7,8 +7,7 @@ importing this module multiple times does not cause problems.
 All metrics exposed by ``dns_exporter`` are prefixed with ``dnsexp_`` (apart from ``up``
 and the built-in Python metrics).
 """
-from prometheus_client import CollectorRegistry, Counter, Enum, Gauge, Histogram, Info
-from prometheus_client.utils import INF
+from prometheus_client import CollectorRegistry, Counter, Enum, Gauge, Info
 
 from dns_exporter.version import __version__
 
@@ -17,17 +16,17 @@ dnsexp_registry = CollectorRegistry()
 
 The following metrics are created in this registry:
 
-    - ``dns_exporter.metrics.dnsexp_dns_time_seconds``
-    - ``dns_exporter.metrics.dnsexp_dns_success``
-    - ``dns_exporter.metrics.dnsexp_dns_failure_reason``
-    - ``dns_exporter.metrics.dnsexp_dns_record_ttl_seconds``
+    - ``dns_exporter.metrics.dnsexp_dns_query_time_seconds``
+    - ``dns_exporter.metrics.dnsexp_dns_query_success``
+    - ``dns_exporter.metrics.dnsexp_dns_query_failure_reason``
+    - ``dns_exporter.metrics.dnsexp_dns_response_rr_ttl_seconds``
 
 The metrics in this registry are all cleared/reset between queries/scrapes.
 """
 
 
-dnsexp_dns_time_seconds = Histogram(
-    "dnsexp_dns_time_seconds",
+dnsexp_dns_query_time_seconds = Gauge(
+    "dnsexp_dns_query_time_seconds",
     "DNS query time in seconds.",
     [
         "protocol",
@@ -48,9 +47,9 @@ dnsexp_dns_time_seconds = Histogram(
     ],
     registry=dnsexp_registry,
 )
-"""``dnsexp_dns_time_seconds`` is the histogram used as the primary timing metric for DNS queries.
+"""``dnsexp_dns_query_time_seconds`` is the gauge used as the primary timing metric for DNS queries.
 
-Each DNS query duration is added to this histogram with the following labels to identify it:
+Each DNS query duration is added to this gauge with the following labels to identify it:
 
     - ``protocol``
     - ``server``
@@ -74,12 +73,12 @@ This metric is cleared between scrapes.
 """
 
 
-dnsexp_dns_success = Gauge(
-    "dnsexp_dns_success",
+dnsexp_dns_query_success = Gauge(
+    "dnsexp_dns_query_success",
     "Was this DNS query successful or not, 1 for success or 0 for failure.",
     registry=dnsexp_registry,
 )
-"""``dnsexp_dns_success`` is a Gauge set to 1 when a DNS query is successful, or 0 otherwise.
+"""``dnsexp_dns_query_success`` is a Gauge set to 1 when a DNS query is successful, or 0 otherwise.
 
 A DNS query is considered failed in the following cases:
     - Configuration issues preventing a DNS query
@@ -94,8 +93,8 @@ This metrics has no labels, so it is not cleared between scrapes, as it only has
 """
 
 
-dnsexp_dns_failure_reason = Enum(
-    "dnsexp_dns_failure_reason",
+dnsexp_dns_query_failure_reason = Enum(
+    "dnsexp_dns_query_failure_reason",
     "The reason this DNS query failed",
     states=[
         "no_failure",  # initial state
@@ -120,7 +119,7 @@ dnsexp_dns_failure_reason = Enum(
     ],
     registry=dnsexp_registry,
 )
-"""``dnsexp_dns_failure_reason`` is an Enum which is set to the failure reason whenever ``dnsexp_dns_success=0``.
+"""``dnsexp_dns_query_failure_reason`` is an Enum which is set to the failure reason whenever ``dnsexp_dns_query_success=0``.
 
 This enum has the following states:
 
@@ -144,13 +143,13 @@ This enum has the following states:
     - ``invalid_response_additional_rrs`` (the ADDITIONAL rrs were not as expected)
     - ``other_failure`` (unknown error cases)
 
-This metric is cleared between scrapes.
+This metric is reset to the initial state ``no_failure`` between scrapes.
 """
 
 
-dnsexp_dns_record_ttl_seconds = Histogram(
-    "dnsexp_dns_record_ttl_seconds",
-    "DNS query response record TTL in seconds.",
+dnsexp_dns_response_rr_ttl_seconds = Gauge(
+    "dnsexp_dns_response_rr_ttl_seconds",
+    "DNS response RR TTL in seconds.",
     [
         "protocol",
         "server",
@@ -173,49 +172,14 @@ dnsexp_dns_record_ttl_seconds = Histogram(
         "rr_value",
     ],
     registry=dnsexp_registry,
-    buckets=(
-        1.0,
-        2.0,
-        4.0,
-        8.0,
-        16.0,
-        32.0,
-        64.0,
-        128.0,
-        256.0,
-        512.0,
-        1024.0,
-        2048.0,
-        4096.0,
-        8192.0,
-        16384.0,
-        32768.0,
-        65536.0,
-        131072.0,
-        262144.0,
-        524288.0,
-        1048576.0,
-        2097152.0,
-        4194304.0,
-        8388608.0,
-        16777216.0,
-        33554432.0,
-        67108864.0,
-        134217728.0,
-        268435456.0,
-        536870912.0,
-        INF,
-    ),
 )
-"""``dnsexp_dns_record_ttl_seconds`` is a Histogram which tracks the TTL of individual response RRs.
+"""``dnsexp_dns_response_rr_ttl_seconds`` is a Gauge which tracks the TTL of individual response RRs.
 
 This metric will often be set multiple times during a scrape, whenever a DNS query results in multiple
 RRs in the answer/authority/additional sections. For example, if a DNS query results in a response with
 2 ``ANSWER``, 0 ``AUTHORITY`` and 4 ``ADDITIONAL`` then this metric will be set 6 times (with different labels).
 
-The buckets of this Histogram start with 1 second and double until reaching max possible TTL.
-
-This Histogram has the following labels, they are the same as ``dns_exporter.metrics.dnsexp_dns_time_seconds`` plus a few more:
+This Gauge has the following labels, they are the same as ``dns_exporter.metrics.dnsexp_dns_query_time_seconds`` plus a few more:
 
     - ``protocol``
     - ``server``
@@ -268,7 +232,7 @@ dnsexp_http_responses_total = Counter(
 """``dnsexp_http_responses_total`` is a persistent Counter keeping track of the total number of HTTP responses sent by the exporter since start.
 
 This metric has two labels:
-    - ``path`` is set to the request path, usually ``/query`` (for making DNS queries) or ``/metrics`` (for getting the internal exporter metrics.
+    - ``path`` is set to the request path, usually ``/query`` (for making DNS queries) or ``/metrics`` (for getting the internal exporter metrics).
     - ``response_code`` is set to the HTTP response code, usually 200.
 """
 
