@@ -34,6 +34,7 @@ jobs:
       - name: "Upload coverage to Codecov"
         uses: "codecov/codecov-action@eaaf4bedf32dbdc6b720b63067d99c4d77d6047d"
         with:
+          token: "${{secrets.CODECOV_TOKEN}}"
           fail_ci_if_error: true
           files: "./src/src/coverage.xml"
 ...
