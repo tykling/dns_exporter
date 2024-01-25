@@ -6,13 +6,13 @@ on:  # yamllint disable-line rule:truthy
 
 jobs:
   build:
-    runs-on: "ubuntu-latest"
+    runs-on: "ubuntu-22.04"
     strategy:
       matrix:
-        python: ["3.10", "3.11"]
+        python: ["3.10", "3.11", "3.12"]
     steps:
       - name: "Setup Python"
-        uses: "actions/setup-python@v3"
+        uses: "actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c"
         with:
           python-version: "${{ matrix.python }}"
 
@@ -20,7 +20,7 @@ jobs:
         run: "sudo apt install -y prometheus"
 
       - name: "Check out main repo"
-        uses: "actions/checkout@v3"
+        uses: "actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11"
         with:
           path: "src"
 
@@ -32,7 +32,7 @@ jobs:
         working-directory: "./src"
 
       - name: "Upload coverage to Codecov"
-        uses: "codecov/codecov-action@v3"
+        uses: "codecov/codecov-action@eaaf4bedf32dbdc6b720b63067d99c4d77d6047d"
         with:
           fail_ci_if_error: true
           files: "./src/src/coverage.xml"
