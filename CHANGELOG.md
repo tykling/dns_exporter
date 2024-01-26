@@ -11,10 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Added
 - RELEASE.md file describing how to do a release
 - `build` module to the `dev` extras in `pyproject.toml`
-- Github action to build a new docker image when a new tag is pushed
 
 ## Changed
 - Delete the `develop` branch, `main` is the new default branch. Update `RELEASE.md` to reflect the change.
+- Update some development dependencies
+
+## Fixed
+- DNS over QUIC support now works. Default port is 853 as per https://www.rfc-editor.org/rfc/rfc9250.html#name-port-selection
+
 
 ## [v0.3.0] - 2024-01-25
 
@@ -28,6 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Added
 - Command-line option to set listen IP, use `-L` or `--listen-ip`. Default is `127.0.0.1`.
 - Unit tests
+- Github action to build a new dockerhub image when a new tag is pushed
+- Python3.12 is now tested in CI
 
 
 ## [v0.2.0] - 2023-04-12
