@@ -11,7 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Added
 - RELEASE.md file describing how to do a release
 - `build` module to the `dev` extras in `pyproject.toml`
+- Github action to build a new docker image when a new tag is pushed
 
+## Changed
+- Delete the `develop` branch, `main` is the new default branch. Update `RELEASE.md` to reflect the change.
 
 ## [v0.3.0] - 2024-01-25
 
