@@ -385,6 +385,7 @@ def test_doq(dns_exporter_example_config, caplog):
     )
     assert r.status_code == 200, "non-200 returncode"
     assert 'transport="UDP"' in r.text
+    assert 'protocol="doq"' in r.text
     assert "Protocol doq got a DNS query response over UDP" in caplog.text
 
 
