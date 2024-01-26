@@ -535,7 +535,7 @@ class DNSExporter(MetricsHandler):
             logger.debug(
                 f"doing DoQ lookup with server {server} (using IP {ip}) port {port} and query {query.question}"
             )
-            r = dns.query.quic(q=query, where=server, port=port, timeout=timeout, one_rr_per_rrset=True)  # type: ignore
+            r = dns.query.quic(q=query, where=str(ip), port=port, server_hostname=server.hostname, timeout=timeout, one_rr_per_rrset=True)  # type: ignore
             transport = "UDP"
         return r, transport
 

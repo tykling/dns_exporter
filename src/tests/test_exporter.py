@@ -370,7 +370,6 @@ def test_doh(dns_exporter_example_config, caplog):
     assert "Protocol doh got a DNS query response over TCP" in caplog.text
 
 
-@pytest.mark.skip(reason="doq doesn't work right now")
 def test_doq(dns_exporter_example_config, caplog):
     caplog.clear()
     caplog.set_level(logging.DEBUG)
