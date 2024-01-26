@@ -34,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Unit tests
 - Github action to build a new dockerhub image when a new tag is pushed
 - Python3.12 is now tested in CI
+- Add a Dockerfile (thanks @dallemon)
 
 
 ## [v0.2.0] - 2023-04-12
