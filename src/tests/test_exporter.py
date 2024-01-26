@@ -367,6 +367,7 @@ def test_doh(dns_exporter_example_config, caplog):
     )
     assert r.status_code == 200, "non-200 returncode"
     assert 'transport="TCP"' in r.text
+    assert 'protocol="doh"' in r.text
     assert "Protocol doh got a DNS query response over TCP" in caplog.text
 
 

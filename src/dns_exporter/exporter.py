@@ -531,7 +531,7 @@ class DNSExporter(MetricsHandler):
             )
 
         elif protocol == "doq":
-            # DoQ query, TODO figure out how to override IP for DoQ
+            # DoQ query, use the IP for where= and use server_hostname for the hostname
             logger.debug(
                 f"doing DoQ lookup with server {server} (using IP {ip}) port {port} and query {query.question}"
             )
