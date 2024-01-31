@@ -754,6 +754,9 @@ class DNSExporter(MetricsHandler):
                 else:
                     # DoH
                     port = 443
+            else:
+                # TODO: write a unit test for this
+                port = self.config.server.port
 
             # config is ready for action, begin the labels dict
             labels: dict[str, str] = {
