@@ -38,24 +38,6 @@ jobs:
         run: |
           echo ${{ steps.platforms.outputs.matrix }}          
 
-      - name: Docker meta
-        id: meta
-        uses: docker/metadata-action@dbef88086f6cef02e264edb7dbf63250c17cef6c
-        with:
-          images: ${{ env.REGISTRY_IMAGE }}
-
-      - name: Rename meta bake definition file
-        run: |
-          mv "${{ steps.meta.outputs.bake-file }}" "/tmp/bake-meta.json"          
-
-      - name: Upload meta bake definition
-        uses: actions/upload-artifact@26f96dfa697d77e81fd5907df203aa23a56210a8
-        with:
-          name: bake-meta
-          path: /tmp/bake-meta.json
-          if-no-files-found: error
-          retention-days: 1
-
   build:
     runs-on: ubuntu-22.04
     needs:
