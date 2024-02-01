@@ -36,24 +36,7 @@ jobs:
 
       - name: Show matrix
         run: |
-          echo ${{ steps.platforms.outputs.matrix }}          
-
-  build:
-    runs-on: ubuntu-22.04
-    needs:
-      - prepare
-    strategy:
-      fail-fast: false
-      matrix:
-        platform: ${{ fromJson(needs.prepare.outputs.matrix) }}
-    steps:
-      - name: Prepare
-        run: |
-          platform=${{ matrix.platform }}
-          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
-
-      - name: Check out the repo
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+          echo ${{ steps.platforms.outputs.matrix }}
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
@@ -85,6 +68,29 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  build:
+    runs-on: ubuntu-22.04
+    needs:
+      - prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: ${{ fromJson(needs.prepare.outputs.matrix) }}
+    steps:
+      - name: Prepare
+        run: |
+          platform=${{ matrix.platform }}
+          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
+
+      - name: Check out the repo
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+
+      - name: Download meta bake definition
+        uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935
+        with:
+          name: bake-meta
+          path: /tmp
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@68827325e0b33c7199eb31dd4e31fbe9023e06e3
 
@@ -111,8 +117,6 @@ jobs:
           set: |
             *.tags=
             *.platform=${{ matrix.platform }}
-            *.cache-from=type=gha,scope=build-${{ env.PLATFORM_PAIR }}
-            *.cache-to=type=gha,scope=build-${{ env.PLATFORM_PAIR }}
             *.output=type=image,"name=${{ env.REGISTRY_IMAGE }}",push-by-digest=true,name-canonical=true,push=${{ github.event_name != 'pull_request' }}
 
       - name: Export digest
@@ -124,7 +128,7 @@ jobs:
       - name: Upload digest
         uses: actions/upload-artifact@26f96dfa697d77e81fd5907df203aa23a56210a8
         with:
-          name: digests
+          name: digests-${{ env.PLATFORM_PAIR }}
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
