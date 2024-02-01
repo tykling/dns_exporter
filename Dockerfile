@@ -8,6 +8,7 @@ RUN apk upgrade -a -l
 # install dependenciess for building package
 RUN apk add -U --no-cache --purge --clean-protected -l -u \
     alpine-sdk \
+    cargo \
     libbsd-dev \
     libffi-dev \
     openssl-dev
