@@ -1,5 +1,4 @@
 ![Tox main](https://github.com/tykling/dns_exporter/actions/workflows/tox.yml/badge.svg?branch=main)
-![Tox develop](https://github.com/tykling/dns_exporter/actions/workflows/tox.yml/badge.svg?branch=develop)
 [![Documentation Status](https://readthedocs.org/projects/dns-exporter/badge/?version=latest)](https://dns-exporter.readthedocs.io/en/latest/?badge=latest)
 
 
