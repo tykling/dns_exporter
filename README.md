@@ -1,4 +1,5 @@
 ![Tox main](https://github.com/tykling/dns_exporter/actions/workflows/tox.yml/badge.svg?branch=main)
+[![codecov](https://codecov.io/gh/tykling/dns_exporter/graph/badge.svg?token=OKP40B9H10)](https://codecov.io/gh/tykling/dns_exporter)
 [![Documentation Status](https://readthedocs.org/projects/dns-exporter/badge/?version=latest)](https://dns-exporter.readthedocs.io/en/latest/?badge=latest)
 
 
