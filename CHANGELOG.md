@@ -11,10 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Added
 - RELEASE.md file describing how to do a release
 - `build` module to the `dev` extras in `pyproject.toml`
+- Add a new `dnsexp_failure_reason` Counter metric with a `reason` label. This is now the place to track failures.
+- Python 3.12 support
 
 ## Changed
 - Delete the `develop` branch, `main` is the new default branch. Update `RELEASE.md` to reflect the change.
 - Update some development dependencies
+- Major refactor: move DNS lookup to a custom `prometheus_client.registry.Collector` class in `collector.py`
+
+## Removed
+- Removed the `dnsexp_dns_query_failure_reason` Enum from /query output.
+- Removed the `dnsexp_dns_failures_total` Counter metric from /metrics output.
 
 ## Fixed
 - DNS over QUIC support now works. Default port is 853 as per https://www.rfc-editor.org/rfc/rfc9250.html#name-port-selection

@@ -112,7 +112,7 @@ class DNSCollector(Collector):
             value=1,
         )
 
-    def collect_dns(self) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
+    def collect_dns(self) -> Iterator[Union[CounterMetricFamily,GaugeMetricFamily]]:
         assert isinstance(self.config.ip, (IPv4Address, IPv6Address))  # mypy
         assert isinstance(self.config.server, urllib.parse.SplitResult)  # mypy
         assert isinstance(self.config.server.port, int)  # mypy
