@@ -258,7 +258,7 @@ class DNSExporter(MetricsHandler):
                 )
                 return False
 
-        logger.info(f"{len(cls.modules)} modules loaded OK.")
+        logger.info(f"{len(modules)} module(s) loaded OK, total modules: {len(cls.modules)}.")
         return True
 
     @staticmethod

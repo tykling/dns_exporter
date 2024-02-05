@@ -37,51 +37,8 @@ logger = logging.getLogger(f"dns_exporter.{__name__}")
 class DNSCollector(Collector):
     """Custom collector class which does DNS lookups and returns metrics."""
 
-    # the modules key is populated by configure() before the class is initialised
-    modules: dict[str, Config] = {}
-
     # set the version on the class
     __version__: str = __version__
-
-    @classmethod
-    def configure(
-        cls,
-        modules: dict[str, ConfigDict] = {},
-    ) -> bool:
-        """Validate and create Config objects.
-
-        Takes a dict of ConfigDict objects and runs cls.prepare_config() on each
-        before creating a Config object and adding it to cls.modules
-
-        If an error is encountered the process stops, but modules loaded until the
-        failure can still be used in cls.modules.
-
-        Args:
-            modules: A dict of names and corresponding ConfigDict objects.
-
-        Returns:
-            bool: True if all ConfigDict objects was validated and loaded OK, False
-                if an error was encountered.
-        """
-        prepared: t.Optional[ConfigDict]
-        for name, config in modules.items():
-            prepared = cls.prepare_config(ConfigDict(**config))  # type: ignore
-            if not prepared:
-                # there is an issue with this config
-                return False
-            try:
-                cls.modules[name] = Config.create(name=name, **prepared)
-            except TypeError:
-                logger.exception(f"Unable to parse config {prepared}")
-                return False
-            except ConfigError:
-                logger.exception(
-                    f"Invalid value found while building config {prepared}"
-                )
-                return False
-
-        logger.info(f"{len(cls.modules)} modules loaded OK.")
-        return True
 
     def __init__(
         self, config: Config, query: QueryMessage, labels: dict[str, str]
@@ -108,7 +65,7 @@ class DNSCollector(Collector):
         yield from self.collect_dns()
         yield GaugeMetricFamily(
             "up",
-            "The value of this Gauge is always 1 when the pfctl_exporter is up",
+            "The value of this Gauge is always 1 when the dns_exporter is up",
             value=1,
         )
 
