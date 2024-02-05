@@ -16,9 +16,12 @@ def test_list_of_servers(prometheus_server, dns_exporter_param_config):
     """Test the list_of_servers snippets from the docs."""
     for _ in range(15):
         r = requests.get(
-            'http://127.0.0.1:9091/api/v1/query?query={job="dnsexp_doh_gmail_mx", dnsexp_dns_query_failure_reason="no_failure", instance=~"dns.google|dns.quad9.net"}'
+            'http://127.0.0.1:9091/api/v1/query?query=sum(dnsexp_failures_total{job="dnsexp_doh_gmail_mx"})'
         )
-        if len(r.json()["data"]["result"]) == 2:
+        if (
+            len(r.json()["data"]["result"]) > 0
+            and r.json()["data"]["result"][0]["value"][1] == "0"
+        ):
             break
         time.sleep(1)
     else:
@@ -35,9 +38,12 @@ def test_list_of_names(caplog, prometheus_server, dns_exporter_param_config):
     """Test the list_of_names snippets from the docs."""
     for _ in range(15):
         r = requests.get(
-            'http://127.0.0.1:9091/api/v1/query?query={job="dnsexp_quad9_mx", dnsexp_dns_query_failure_reason="no_failure", instance=~"gmail.com|outlook.com"}'
+            'http://127.0.0.1:9091/api/v1/query?query=sum(dnsexp_failures_total{job="dnsexp_quad9_mx"})'
         )
-        if len(r.json()["data"]["result"]) == 2:
+        if (
+            len(r.json()["data"]["result"]) > 0
+            and r.json()["data"]["result"][0]["value"][1] == "0"
+        ):
             break
         time.sleep(1)
     else:
