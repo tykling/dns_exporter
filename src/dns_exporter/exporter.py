@@ -258,7 +258,9 @@ class DNSExporter(MetricsHandler):
                 )
                 return False
 
-        logger.info(f"{len(modules)} module(s) loaded OK, total modules: {len(cls.modules)}.")
+        logger.info(
+            f"{len(modules)} module(s) loaded OK, total modules: {len(cls.modules)}."
+        )
         return True
 
     @staticmethod
@@ -347,8 +349,6 @@ class DNSExporter(MetricsHandler):
                     hostname=str(self.config.server.hostname),
                     family=str(self.config.family),
                 )
-                if not resolved:
-                    raise ConfigError("invalid_request_server")
                 self.config.ip = ipaddress.ip_address(resolved)
             method = f"resolved from {self.config.server.hostname}"
 
@@ -378,12 +378,10 @@ class DNSExporter(MetricsHandler):
                 result = socket.getaddrinfo(hostname, 0, family=socket.AF_INET)
                 return str(random.choice(result)[4][0])
             # do we want v6?
-            elif family == "ipv6":
+            else:
                 logger.debug(f"doing getaddrinfo for hostname {hostname} for ipv6")
                 result = socket.getaddrinfo(hostname, 0, family=socket.AF_INET6)
                 return str(random.choice(result)[4][0])
-            else:
-                raise ConfigError("invalid_request_family")
         except socket.gaierror:
             raise ConfigError("invalid_request_server")
 

@@ -18,8 +18,8 @@ from dns.message import Message, QueryMessage
 from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
 from prometheus_client.registry import Collector
 
-from dns_exporter.config import Config, ConfigDict, RRValidator
-from dns_exporter.exceptions import ConfigError, ValidationError
+from dns_exporter.config import Config, RRValidator
+from dns_exporter.exceptions import ValidationError
 from dns_exporter.metrics import (
     FAILURE_REASONS,
     dnsexp_dns_queries_total,
@@ -69,7 +69,7 @@ class DNSCollector(Collector):
             value=1,
         )
 
-    def collect_dns(self) -> Iterator[Union[CounterMetricFamily,GaugeMetricFamily]]:
+    def collect_dns(self) -> Iterator[Union[CounterMetricFamily, GaugeMetricFamily]]:
         assert isinstance(self.config.ip, (IPv4Address, IPv6Address))  # mypy
         assert isinstance(self.config.server, urllib.parse.SplitResult)  # mypy
         assert isinstance(self.config.server.port, int)  # mypy

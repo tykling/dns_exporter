@@ -45,7 +45,6 @@ def test_invalid_timeout():
     """Test with an invalid float."""
     with pytest.raises(ConfigError):
         prepared = DNSExporter.prepare_config(ConfigDict(timeout="timein"))
-        Config.create(name="test", **prepared)
 
 
 def test_invalid_rrvalidator():

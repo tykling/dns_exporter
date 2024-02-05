@@ -5,10 +5,10 @@ import logging
 import pytest
 import requests
 
+from dns_exporter.config import RFValidator, RRValidator
 from dns_exporter.entrypoint import main
 from dns_exporter.exporter import DNSExporter
 from dns_exporter.version import __version__
-from dns_exporter.config import RRValidator, RFValidator
 
 
 def test_main_no_config(dns_exporter_main_no_config_no_debug, caplog):
@@ -486,6 +486,7 @@ def test_validate_flags_fail_if_all_present_3(dns_exporter_example_config, caplo
     )
     assert r.status_code == 200, "non-200 returncode"
 
+
 def test_validate_flags_fail_if_all_absent_3(dns_exporter_example_config, caplog):
     r = requests.get(
         "http://127.0.0.1:25353/query",
@@ -687,7 +688,11 @@ def test_configure_rrvalidator(caplog):
     caplog.set_level(logging.DEBUG)
     exporter = DNSExporter
     exporter.modules = {}
-    exporter.configure(modules={"test": {"validate_answer_rrs": RRValidator.create({"fail_if_count_eq": 4})}})
+    exporter.configure(
+        modules={
+            "test": {"validate_answer_rrs": RRValidator.create({"fail_if_count_eq": 4})}
+        }
+    )
     assert len(exporter.modules) == 1
     assert "1 module(s) loaded OK, total modules: 1." in caplog.text
 
@@ -697,7 +702,15 @@ def test_configure_rfvalidator(caplog):
     caplog.set_level(logging.DEBUG)
     exporter = DNSExporter
     exporter.modules = {}
-    exporter.configure(modules={"test": {"validate_response_flags": RFValidator.create({"fail_if_any_absent": ["peace", "love"]})}})
+    exporter.configure(
+        modules={
+            "test": {
+                "validate_response_flags": RFValidator.create(
+                    {"fail_if_any_absent": ["peace", "love"]}
+                )
+            }
+        }
+    )
     assert len(exporter.modules) == 1
     assert "1 module(s) loaded OK, total modules: 1." in caplog.text
 
@@ -709,4 +722,7 @@ def test_configure_bad_module(caplog):
     exporter.modules = {}
     exporter.configure(modules={"test": {"query_class": "OUT"}})
     assert len(exporter.modules) == 0
-    assert "Invalid value found while building config {'query_class': 'OUT'}" in caplog.text
+    assert (
+        "Invalid value found while building config {'query_class': 'OUT'}"
+        in caplog.text
+    )
