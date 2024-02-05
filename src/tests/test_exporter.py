@@ -25,6 +25,22 @@ def test_main_no_config(dns_exporter_main_no_config_no_debug, caplog):
     assert 'dnsexp_failures_total{reason="timeout"} 0.0' in r.text
 
 
+def test_timeout(dns_exporter_main_no_config_no_debug, caplog):
+    caplog.clear()
+    caplog.set_level(logging.DEBUG)
+    r = requests.get(
+        "http://127.0.0.1:35353/query",
+        params={
+            "server": "dns.google",
+            "query_name": "example.com",
+            "family": "ipv4",
+            "timeout": 0.001,
+        },
+    )
+    assert r.status_code == 200, "non-200 returncode"
+    assert 'dnsexp_failures_total{reason="timeout"} 1.0' in r.text
+
+
 def test_noconfig_server(dns_exporter_no_main_no_config):
     """Test basic lookup functionality."""
     r = requests.get(
