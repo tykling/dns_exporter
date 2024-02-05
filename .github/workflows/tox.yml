@@ -9,7 +9,7 @@ jobs:
     runs-on: "ubuntu-22.04"
     strategy:
       matrix:
-        python: ["3.10", "3.11", "3.12"]
+        python: ["3.9", "3.10", "3.11", "3.12"]
     steps:
       - name: "Setup Python"
         uses: "actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c"
