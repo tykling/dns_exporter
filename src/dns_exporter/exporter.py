@@ -176,7 +176,7 @@ class DNSExporter(MetricsHandler):
         # make sure the server is valid, resolve ip if needed
         self.validate_server_ip()
 
-        # make sure we have a query_name in the config
+        # make sure there is a query_name in the config
         if not self.config.query_name:
             raise ConfigError("invalid_request_query_name")
 
@@ -295,7 +295,7 @@ class DNSExporter(MetricsHandler):
                     splitresult._replace(path="/dns-query", scheme="https")
                 )
             )
-        # do we have an explicit port in the configured server url? use default if not.
+        # is there an explicit port in the configured server url? use default if not.
         if splitresult.port is None:
             if protocol in ["udp", "tcp", "udptcp"]:
                 # plain DNS
@@ -315,12 +315,12 @@ class DNSExporter(MetricsHandler):
 
     def validate_server_ip(self) -> None:
         """Validate the server and resolve IP if needed."""
-        # do we have a server?
+        # is there a server?
         if not self.config.server:
             raise ConfigError("invalid_request_server")
 
         assert isinstance(self.config.server, urllib.parse.SplitResult)  # mypy
-        # do we already have an IP in the config?
+        # is there already an IP in the config?
         if self.config.ip:
             logger.debug(f"checking ip {self.config.ip} of type {type(self.config.ip)}")
 
@@ -336,7 +336,7 @@ class DNSExporter(MetricsHandler):
                     raise ConfigError("invalid_request_ip")
             except ValueError:
                 # server host is a hostname not an ip,
-                # the hostname will NOT be resolved, since we already have an ip to use
+                # the hostname will NOT be resolved, since there already is an ip to use
                 pass
             method = "from config"
         else:
@@ -344,7 +344,7 @@ class DNSExporter(MetricsHandler):
                 # server host might be an ip, attempt to parse it as such
                 self.config.ip = ipaddress.ip_address(str(self.config.server.hostname))
             except ValueError:
-                # we have no ip in the config, we need to get ip by resolving server in dns
+                # there is no ip in the config, need to get ip by resolving server in dns
                 resolved = self.resolve_ip_getaddrinfo(
                     hostname=str(self.config.server.hostname),
                     family=str(self.config.family),
@@ -352,7 +352,6 @@ class DNSExporter(MetricsHandler):
                 self.config.ip = ipaddress.ip_address(resolved)
             method = f"resolved from {self.config.server.hostname}"
 
-        # we now know which IP we are using for this dns query
         logger.debug(
             f"Using server IP {self.config.ip} ({method}) for the DNS server connection"
         )
@@ -372,12 +371,12 @@ class DNSExporter(MetricsHandler):
             f"resolve_ip_getaddrinfo() called with hostname {hostname} and family {family}"
         )
         try:
-            # do we want v4?
+            # use v4?
             if family == "ipv4":
                 logger.debug(f"doing getaddrinfo for hostname {hostname} for ipv4")
                 result = socket.getaddrinfo(hostname, 0, family=socket.AF_INET)
                 return str(random.choice(result)[4][0])
-            # do we want v6?
+            # ok so use v6
             else:
                 logger.debug(f"doing getaddrinfo for hostname {hostname} for ipv6")
                 result = socket.getaddrinfo(hostname, 0, family=socket.AF_INET6)
@@ -391,7 +390,7 @@ class DNSExporter(MetricsHandler):
         url = urllib.parse.urlsplit(self.path)
         parsed_qs = urllib.parse.parse_qs(url.query)
         # querystring values are all lists when returned from parse_qs(),
-        # so take the first item only since we do not support multiple values,
+        # so take the first item only (since multiple values are not supported)
         # behold, a valid usecase for dict comprehension!
         qs: dict[str, str] = {k: v[0] for k, v in parsed_qs.items()}
         return url, qs
@@ -455,24 +454,24 @@ class DNSExporter(MetricsHandler):
 
             # use EDNS?
             if self.config.edns:
-                # we want edns
+                # use edns
                 ednsargs: dict[
                     str, Union[str, int, bool, list[dns.edns.GenericOption]]
                 ] = {"options": []}
                 assert isinstance(ednsargs["options"], list)
-                # do we want the DO bit?
+                # use the DO bit?
                 if self.config.edns_do:
                     ednsargs["ednsflags"] = dns.flags.DO
-                # do we want nsid?
+                # use nsid?
                 if self.config.edns_nsid:
                     ednsargs["options"].append(
                         dns.edns.GenericOption(dns.edns.NSID, "")
                     )
-                # do we need to set bufsize/payload?
+                # set bufsize/payload?
                 if self.config.edns_bufsize:
                     # dnspython calls bufsize "payload"
                     ednsargs["payload"] = int(self.config.edns_bufsize)
-                # do we want padding?
+                # set edns padding?
                 if self.config.edns_pad:
                     ednsargs["options"].append(
                         dns.edns.GenericOption(

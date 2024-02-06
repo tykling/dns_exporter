@@ -142,7 +142,7 @@ def main(mockargs: Optional[list[str]] = None) -> None:
             f"Read {len(configfile['modules'])} modules from config file {getattr(args, 'config-file')}: {list(configfile['modules'].keys())}"
         )
     else:
-        # we have no config file
+        # there is no config file
         configfile = {"modules": {}}
         logger.debug(
             "No -c / --config-file found so a config file will not be used. No modules loaded."

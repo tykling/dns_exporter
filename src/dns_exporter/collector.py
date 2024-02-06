@@ -88,7 +88,7 @@ class DNSCollector(Collector):
                 f"Protocol {self.config.protocol} got a DNS query response over {transport}"
             )
         except dns.exception.Timeout:
-            # configured timeout was reached before we got a response
+            # configured timeout was reached before a response arrived
             yield from self.yield_failure_reason_metric(failure_reason="timeout")
         except Exception:
             logger.exception(
@@ -105,7 +105,7 @@ class DNSCollector(Collector):
             yield get_dns_success_metric(value=0)
             return None
 
-        # we got a response, increase the response counter
+        # response received, increase the response counter
         dnsexp_dns_responses_total.inc()
 
         # make mypy happy
@@ -133,11 +133,11 @@ class DNSCollector(Collector):
             }
         )
 
-        # did we get nsid?
+        # does the answer have nsid?
         assert hasattr(r, "options")  # mypy
         for opt in r.options:
             if opt.otype == dns.edns.NSID:
-                # treat nsid as ascii, we need text for prom labels
+                # treat nsid as ascii text for prom labels
                 self.labels.update({"nsid": opt.data.decode("ASCII")})
                 break
 
@@ -280,7 +280,7 @@ class DNSCollector(Collector):
 
     def validate_dnsexp_response(self, response: Message) -> None:
         """Validate the DNS response using the validation config in the config."""
-        # do we want to validate the response rcode?
+        # validate the response rcode?
         if self.config.valid_rcodes:
             # get the rcode from the respose and validate it
             rcode = dns.rcode.to_text(response.rcode())
@@ -290,9 +290,9 @@ class DNSCollector(Collector):
                     "invalid_response_rcode",
                 )
 
-        # do we want to validate flags?
+        # validate flags?
         if self.config.validate_response_flags:
-            # we need a nice list of flags as text like ["QR", "AD"]
+            # create e list of flags as text like ["QR", "AD"]
             flags = dns.flags.to_text(response.flags).split(" ")
 
             if self.config.validate_response_flags.fail_if_any_present:
@@ -306,7 +306,7 @@ class DNSCollector(Collector):
 
             if self.config.validate_response_flags.fail_if_all_present:
                 for flag in self.config.validate_response_flags.fail_if_all_present:
-                    # if all these flags are found in the response we fail
+                    # if all these flags are found in the response then fail
                     if flag not in flags:
                         break
                 else:
@@ -318,7 +318,7 @@ class DNSCollector(Collector):
 
             if self.config.validate_response_flags.fail_if_any_absent:
                 for flag in self.config.validate_response_flags.fail_if_any_absent:
-                    # if any of these flags is missing from the response we fail
+                    # if any of these flags is missing from the response then fail
                     if flag not in flags:
                         raise ValidationError(
                             f"The flag {flag} is missing and in fail_if_any_absent",
@@ -327,7 +327,7 @@ class DNSCollector(Collector):
 
             if self.config.validate_response_flags.fail_if_all_absent:
                 for flag in self.config.validate_response_flags.fail_if_all_absent:
-                    # if all these flags are missing from the response we fail
+                    # if all these flags are missing from the response then fail
                     if flag in flags:
                         break
                 else:
@@ -337,7 +337,7 @@ class DNSCollector(Collector):
                         "invalid_response_flags",
                     )
 
-        # do we want response rr validation?
+        # check response rr validation?
         for section in ["answer", "authority", "additional"]:
             key = f"validate_{section}_rrs"
             rrs = getattr(response, section)
@@ -352,7 +352,7 @@ class DNSCollector(Collector):
                         for rr in rrs:
                             m = p.match(str(rr))
                             if m:
-                                # we have a match
+                                # a match!
                                 raise ValidationError(
                                     "rr match in fail_if_matches_regexp",
                                     f"invalid_response_{section}_rrs",
@@ -387,7 +387,7 @@ class DNSCollector(Collector):
                         for rr in rrs:
                             m = p.match(str(rr))
                             if not m:
-                                # no match so we fail
+                                # no match, raise
                                 raise ValidationError(
                                     "rr doesn't match fail_if_not_matches_regexp",
                                     f"invalid_response_{section}_rrs",
@@ -403,7 +403,7 @@ class DNSCollector(Collector):
                             logger.debug(f"matching rr {rr} with regex {regex} ...")
                             m = p.match(str(rr))
                             if m:
-                                # we have a match for this rr, break out of the loop
+                                # found a match for this rr, break out of the loop
                                 break
                         else:
                             # none of the rrs match this regex
