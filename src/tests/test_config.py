@@ -43,23 +43,20 @@ def test_invalid_qtype():
 
 def test_invalid_timeout():
     """Test with an invalid float."""
-    prepared = DNSExporter.prepare_config(ConfigDict(timeout="timein"))
     with pytest.raises(ConfigError):
-        Config.create(name="test", **prepared)
+        prepared = DNSExporter.prepare_config(ConfigDict(timeout="timein"))
 
 
 def test_invalid_rrvalidator():
     """Test with something not an RRValidator object."""
-    prepared = DNSExporter.prepare_config(ConfigDict(validate_answer_rrs=42))
-    with pytest.raises(TypeError):
-        Config.create(name="test", **prepared)
+    with pytest.raises(ConfigError):
+        DNSExporter.prepare_config(ConfigDict(validate_answer_rrs=42))
 
 
 def test_invalid_rfvalidator():
     """Test with something not an RFValidator object."""
-    prepared = DNSExporter.prepare_config(ConfigDict(validate_response_flags=42))
-    with pytest.raises(TypeError):
-        Config.create(name="test", **prepared)
+    with pytest.raises(ConfigError):
+        DNSExporter.prepare_config(ConfigDict(validate_response_flags=42))
 
 
 def test_invalid_rcode():

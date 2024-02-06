@@ -47,3 +47,6 @@ packages = ["dns_exporter"]
 [tool.pydocstyle]
 convention = "google"
 match = "src/dns_exporter/"
+
+[tool.coverage.run]
+omit = ["*tests*"]

@@ -5,6 +5,7 @@ import logging
 import pytest
 import requests
 
+from dns_exporter.config import RFValidator, RRValidator
 from dns_exporter.entrypoint import main
 from dns_exporter.exporter import DNSExporter
 from dns_exporter.version import __version__
@@ -22,10 +23,23 @@ def test_main_no_config(dns_exporter_main_no_config_no_debug, caplog):
         },
     )
     assert r.status_code == 200, "non-200 returncode"
-    assert (
-        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="no_failure"} 1.0'
-        in r.text
+    assert 'dnsexp_failures_total{reason="timeout"} 0.0' in r.text
+
+
+def test_timeout(dns_exporter_example_config, caplog):
+    caplog.clear()
+    caplog.set_level(logging.DEBUG)
+    r = requests.get(
+        "http://127.0.0.1:35353/query",
+        params={
+            "server": "dns.google",
+            "query_name": "example.com",
+            "family": "ipv4",
+            "timeout": 0.001,
+        },
     )
+    assert r.status_code == 200, "non-200 returncode"
+    assert 'dnsexp_failures_total{reason="timeout"} 1.0' in r.text
 
 
 def test_noconfig_server(dns_exporter_no_main_no_config):
@@ -64,7 +78,7 @@ def test_config_endpoint(dns_exporter_example_config):
         },
     )
     config = r.json()
-    assert config["server"] == "udp://dns.google"
+    assert config["server"] == "udp://dns.google:53"
     assert config["query_name"] == "example.com"
 
     r = requests.get(
@@ -75,7 +89,7 @@ def test_config_endpoint(dns_exporter_example_config):
     )
     config = r.json()
     assert config["protocol"] == "doh"
-    assert config["server"] == "https://1dot1dot1dot1.cloudflare-dns.com/dns-query"
+    assert config["server"] == "https://1dot1dot1dot1.cloudflare-dns.com:443/dns-query"
     assert config["query_name"] == "bornhack.dk"
     assert config["query_type"] == "NS"
     assert config["validate_response_flags"]["fail_if_any_absent"] == ["AD"]
@@ -91,10 +105,7 @@ def test_invalid_qs_ip(dns_exporter_example_config):
         },
     )
     assert r.status_code == 200, "non-200 returncode"
-    assert (
-        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_request_ip"} 1.0'
-        in r.text
-    )
+    assert 'dnsexp_failures_total{reason="invalid_request_ip"} 1.0' in r.text
 
 
 def test_invalid_configfile_ip(caplog):
@@ -112,10 +123,7 @@ def test_missing_query_name(dns_exporter_example_config):
         },
     )
     assert r.status_code == 200, "non-200 returncode"
-    assert (
-        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_request_query_name"} 1.0'
-        in r.text
-    )
+    assert 'dnsexp_failures_total{reason="invalid_request_query_name"} 1.0' in r.text
 
 
 def test_missing_server(dns_exporter_example_config):
@@ -126,10 +134,7 @@ def test_missing_server(dns_exporter_example_config):
         },
     )
     assert r.status_code == 200, "non-200 returncode"
-    assert (
-        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_request_server"} 1.0'
-        in r.text
-    )
+    assert 'dnsexp_failures_total{reason="invalid_request_server"} 1.0' in r.text
 
 
 def test_undefined_module(dns_exporter_example_config, caplog):
@@ -140,10 +145,7 @@ def test_undefined_module(dns_exporter_example_config, caplog):
         },
     )
     assert r.status_code == 200, "non-200 returncode"
-    assert (
-        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_request_module"} 1.0'
-        in r.text
-    )
+    assert 'dnsexp_failures_total{reason="invalid_request_module"} 1.0' in r.text
 
 
 def test_unknown_config_key(dns_exporter_example_config, caplog):
@@ -155,10 +157,7 @@ def test_unknown_config_key(dns_exporter_example_config, caplog):
         },
     )
     assert r.status_code == 200, "non-200 returncode"
-    assert (
-        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_request_config"} 1.0'
-        in r.text
-    )
+    assert 'dnsexp_failures_total{reason="invalid_request_config"} 1.0' in r.text
 
 
 def test_ip_family_conflict(dns_exporter_example_config, caplog):
@@ -172,10 +171,7 @@ def test_ip_family_conflict(dns_exporter_example_config, caplog):
         },
     )
     assert r.status_code == 200, "non-200 returncode"
-    assert (
-        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_request_ip"} 1.0'
-        in r.text
-    )
+    assert 'dnsexp_failures_total{reason="invalid_request_ip"} 1.0' in r.text
 
 
 def test_ip_conflict(dns_exporter_example_config, caplog):
@@ -189,10 +185,7 @@ def test_ip_conflict(dns_exporter_example_config, caplog):
         },
     )
     assert r.status_code == 200, "non-200 returncode"
-    assert (
-        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_request_ip"} 1.0'
-        in r.text
-    )
+    assert 'dnsexp_failures_total{reason="invalid_request_ip"} 1.0' in r.text
 
 
 def test_ip_and_hostname(dns_exporter_example_config, caplog):
@@ -225,10 +218,7 @@ def test_unresolvable_server(dns_exporter_example_config, caplog):
         },
     )
     assert r.status_code == 200, "non-200 returncode"
-    assert (
-        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_request_server"} 1.0'
-        in r.text
-    )
+    assert 'dnsexp_failures_total{reason="invalid_request_server"} 1.0' in r.text
 
 
 def test_ipv6_family(dns_exporter_example_config, caplog):
@@ -244,7 +234,6 @@ def test_ipv6_family(dns_exporter_example_config, caplog):
         },
     )
     assert r.status_code == 200, "non-200 returncode"
-    print(caplog.text)
     assert (
         "Using server IP 2001:4860:4860::8888 (from config) for the DNS server connection"
         in caplog.text
@@ -263,10 +252,7 @@ def test_ipv7_family(dns_exporter_example_config, caplog):
         },
     )
     assert r.status_code == 200, "non-200 returncode"
-    assert (
-        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_request_family"} 1.0'
-        in r.text
-    )
+    assert 'dnsexp_failures_total{reason="invalid_request_family"} 1.0' in r.text
 
 
 def test_internal_metrics(dns_exporter_example_config, caplog):
@@ -399,10 +385,7 @@ def test_validate_rcode(dns_exporter_example_config, caplog):
         },
     )
     assert r.status_code == 200, "non-200 returncode"
-    assert (
-        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_response_rcode"} 1.0'
-        in r.text
-    )
+    assert 'dnsexp_failures_total{reason="invalid_response_rcode"} 1.0' in r.text
     assert 'rcode="NXDOMAIN"' in r.text
 
 
@@ -417,10 +400,7 @@ def test_validate_flags_fail_if_any_absent(dns_exporter_example_config, caplog):
         },
     )
     assert r.status_code == 200, "non-200 returncode"
-    assert (
-        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_response_flags"} 1.0'
-        in r.text
-    )
+    assert 'dnsexp_failures_total{reason="invalid_response_flags"} 1.0' in r.text
 
 
 def test_validate_flags_fail_if_any_present(dns_exporter_example_config, caplog):
@@ -434,10 +414,7 @@ def test_validate_flags_fail_if_any_present(dns_exporter_example_config, caplog)
         },
     )
     assert r.status_code == 200, "non-200 returncode"
-    assert (
-        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_response_flags"} 1.0'
-        in r.text
-    )
+    assert 'dnsexp_failures_total{reason="invalid_response_flags"} 1.0' in r.text
 
 
 def test_validate_flags_fail_if_all_present(dns_exporter_example_config, caplog):
@@ -451,10 +428,7 @@ def test_validate_flags_fail_if_all_present(dns_exporter_example_config, caplog)
         },
     )
     assert r.status_code == 200, "non-200 returncode"
-    assert (
-        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_response_flags"} 1.0'
-        in r.text
-    )
+    assert 'dnsexp_failures_total{reason="invalid_response_flags"} 1.0' in r.text
 
 
 def test_validate_flags_fail_if_all_absent(dns_exporter_example_config, caplog):
@@ -468,10 +442,7 @@ def test_validate_flags_fail_if_all_absent(dns_exporter_example_config, caplog):
         },
     )
     assert r.status_code == 200, "non-200 returncode"
-    assert (
-        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_response_flags"} 1.0'
-        in r.text
-    )
+    assert 'dnsexp_failures_total{reason="invalid_response_flags"} 1.0' in r.text
 
 
 def test_validate_flags_fail_if_all_present_2(dns_exporter_example_config, caplog):
@@ -485,10 +456,7 @@ def test_validate_flags_fail_if_all_present_2(dns_exporter_example_config, caplo
         },
     )
     assert r.status_code == 200, "non-200 returncode"
-    assert (
-        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_response_flags"} 1.0'
-        in r.text
-    )
+    assert 'dnsexp_failures_total{reason="invalid_response_flags"} 1.0' in r.text
 
 
 def test_validate_flags_fail_if_all_absent_2(dns_exporter_example_config, caplog):
@@ -502,10 +470,7 @@ def test_validate_flags_fail_if_all_absent_2(dns_exporter_example_config, caplog
         },
     )
     assert r.status_code == 200, "non-200 returncode"
-    assert (
-        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_response_flags"} 1.0'
-        in r.text
-    )
+    assert 'dnsexp_failures_total{reason="invalid_response_flags"} 1.0' in r.text
 
 
 def test_validate_flags_fail_if_all_present_3(dns_exporter_example_config, caplog):
@@ -520,10 +485,6 @@ def test_validate_flags_fail_if_all_present_3(dns_exporter_example_config, caplo
         },
     )
     assert r.status_code == 200, "non-200 returncode"
-    assert (
-        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="no_failure"} 1.0'
-        in r.text
-    )
 
 
 def test_validate_flags_fail_if_all_absent_3(dns_exporter_example_config, caplog):
@@ -551,10 +512,7 @@ def test_validate_rr_fail_if_matches_regexp(dns_exporter_example_config, caplog)
         },
     )
     assert r.status_code == 200, "non-200 returncode"
-    assert (
-        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_response_answer_rrs"} 1.0'
-        in r.text
-    )
+    assert 'dnsexp_failures_total{reason="invalid_response_answer_rrs"} 1.0' in r.text
 
 
 def test_validate_rrs_fail_if_all_match_regexp(dns_exporter_example_config, caplog):
@@ -570,8 +528,7 @@ def test_validate_rrs_fail_if_all_match_regexp(dns_exporter_example_config, capl
     )
     assert r.status_code == 200, "non-200 returncode"
     assert (
-        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_response_additional_rrs"} 1.0'
-        in r.text
+        'dnsexp_failures_total{reason="invalid_response_additional_rrs"} 1.0' in r.text
     )
 
 
@@ -601,10 +558,7 @@ def test_validate_rrs_fail_if_not_matches_regexp(dns_exporter_example_config, ca
         },
     )
     assert r.status_code == 200, "non-200 returncode"
-    assert (
-        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_response_answer_rrs"} 1.0'
-        in r.text
-    )
+    assert 'dnsexp_failures_total{reason="invalid_response_answer_rrs"} 1.0' in r.text
 
 
 def test_validate_rrs_fail_if_none_matches_regexp(dns_exporter_example_config, caplog):
@@ -619,10 +573,7 @@ def test_validate_rrs_fail_if_none_matches_regexp(dns_exporter_example_config, c
         },
     )
     assert r.status_code == 200, "non-200 returncode"
-    assert (
-        'dnsexp_dns_query_failure_reason{dnsexp_dns_query_failure_reason="invalid_response_answer_rrs"} 1.0'
-        in r.text
-    )
+    assert 'dnsexp_failures_total{reason="invalid_response_answer_rrs"} 1.0' in r.text
 
 
 def test_validate_rrs_fail_if_none_matches_regexp_2(
@@ -703,3 +654,75 @@ def test_invalid_yaml_config(caplog, dns_exporter_invalid_yaml_configfile):
     assert E.type == SystemExit, f"Exit was not as expected, it was {E.type}"
     assert "An error occurred while configuring dns_exporter" in caplog.text
     assert E.value.code == 1, "Exit code not 1 as expected with invalid yaml config"
+
+
+def test_configure(caplog):
+    caplog.clear()
+    caplog.set_level(logging.DEBUG)
+    exporter = DNSExporter
+    exporter.modules = {}
+    exporter.configure(modules={"test": {"ip": "127.0.0.1"}})
+    assert len(exporter.modules) == 1
+    assert "1 module(s) loaded OK, total modules: 1." in caplog.text
+
+
+def test_invalid_integer(dns_exporter_example_config, caplog):
+    caplog.clear()
+    caplog.set_level(logging.DEBUG)
+    r = requests.get(
+        "http://127.0.0.1:25353/query",
+        params={
+            "server": "dns.google",
+            "query_name": "example.com",
+            "edns_bufsize": "foo",
+        },
+    )
+    assert r.status_code == 200, "non-200 returncode"
+    assert "Unable to parse integer for key edns_bufsize: foo" in caplog.text
+    assert "ValueError: invalid literal for int() with base 10: 'foo'" in caplog.text
+    assert 'dnsexp_failures_total{reason="invalid_request_config"} 1.0' in r.text
+
+
+def test_configure_rrvalidator(caplog):
+    caplog.clear()
+    caplog.set_level(logging.DEBUG)
+    exporter = DNSExporter
+    exporter.modules = {}
+    exporter.configure(
+        modules={
+            "test": {"validate_answer_rrs": RRValidator.create({"fail_if_count_eq": 4})}
+        }
+    )
+    assert len(exporter.modules) == 1
+    assert "1 module(s) loaded OK, total modules: 1." in caplog.text
+
+
+def test_configure_rfvalidator(caplog):
+    caplog.clear()
+    caplog.set_level(logging.DEBUG)
+    exporter = DNSExporter
+    exporter.modules = {}
+    exporter.configure(
+        modules={
+            "test": {
+                "validate_response_flags": RFValidator.create(
+                    {"fail_if_any_absent": ["peace", "love"]}
+                )
+            }
+        }
+    )
+    assert len(exporter.modules) == 1
+    assert "1 module(s) loaded OK, total modules: 1." in caplog.text
+
+
+def test_configure_bad_module(caplog):
+    caplog.clear()
+    caplog.set_level(logging.DEBUG)
+    exporter = DNSExporter
+    exporter.modules = {}
+    exporter.configure(modules={"test": {"query_class": "OUT"}})
+    assert len(exporter.modules) == 0
+    assert (
+        "Invalid value found while building config {'query_class': 'OUT'}"
+        in caplog.text
+    )
