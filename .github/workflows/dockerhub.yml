@@ -7,18 +7,11 @@ concurrency:
 
 on:  # yamllint disable-line rule:truthy
   push:
-    branches:
-      - 'main'
     tags:
       - 'v*'
-    paths-ignore:
-      - '**.md'
-  pull_request:
-    paths-ignore:
-      - '**.md'
 
 env:
-  REGISTRY_IMAGE: tykling/dns_exporter
+  IMAGE: tykling/dns_exporter
 
 jobs:
   prepare:
@@ -32,7 +25,8 @@ jobs:
       - name: Create matrix
         id: platforms
         run: |
-          echo "matrix=$(docker buildx bake image-all --print | jq -cr '.target."image-all".platforms')" >>${GITHUB_OUTPUT}          
+          echo "matrix=$(docker buildx bake image-all --print \
+          | jq -cr '.target."image-all".platforms')" >>${GITHUB_OUTPUT}
 
       - name: Show matrix
         run: |
@@ -43,14 +37,7 @@ jobs:
         uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81
         with:
           images: |
-            ${{ env.REGISTRY_IMAGE }}
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=ref,event=branch
-            type=ref,event=pr
-            type=sha
+            ${{ env.IMAGE }}
           labels: |
             org.opencontainers.image.title=dns_exporter
             org.opencontainers.image.description=A Blackbox-style Prometheus exporter with a focus on DNS monitoring
@@ -117,7 +104,7 @@ jobs:
           set: |
             *.tags=
             *.platform=${{ matrix.platform }}
-            *.output=type=image,"name=${{ env.REGISTRY_IMAGE }}",push-by-digest=true,name-canonical=true,push=${{ github.event_name != 'pull_request' }}
+            *.output=type=image,"name=${{ env.IMAGE }}",push-by-digest=true,name-canonical=true
 
       - name: Export digest
         run: |
@@ -164,10 +151,11 @@ jobs:
       - name: Create manifest list and push
         working-directory: /tmp/digests
         run: |
-          docker buildx imagetools create $(jq -cr '.target."docker-metadata-action".tags | map(select(startswith("${{ env.REGISTRY_IMAGE }}")) | "-t " + .) | join(" ")' /tmp/bake-meta.json) \
-            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
+          docker buildx imagetools create $(jq -cr '.target."docker-metadata-action".tags \
+          | map(select(startswith("${{ env.IMAGE }}")) \
+          | "-t " + .) \
+          | join(" ")' /tmp/bake-meta.json) $(printf '${{ env.IMAGE }}@sha256:%s ' *)
 
       - name: Inspect image
-        run: |
-          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:$(jq -r '.target."docker-metadata-action".args.DOCKER_META_VERSION' /tmp/bake-meta.json)
+        run: docker buildx imagetools inspect ${{ env.IMAGE }}:$(jq -r '.target."docker-metadata-action".args.DOCKER_META_VERSION' /tmp/bake-meta.json)  # yamllint disable-line rule:line-length
 ...
