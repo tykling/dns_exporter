@@ -1,11 +1,23 @@
 # type: ignore
 """tests for example configuration snippets."""
+import shutil
 import time
 
 import pytest
 import requests
 
+# the tests in this module require Prometheus to be installed and in $PATH
+prom = shutil.which("prometheus")
+if prom is None:
+    pytest.skip(
+        "Skipping example tests because Prometheus is not installed",
+        allow_module_level=True,
+    )
 
+
+@pytest.mark.skipif(
+    prom is None, reason="test_examples.py pyspark tests only required for CI"
+)
 @pytest.mark.parametrize(
     "prometheus_server", ["list_of_servers/prometheus.yml"], indirect=True
 )
