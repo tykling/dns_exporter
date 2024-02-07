@@ -11,8 +11,10 @@ from dns_exporter.entrypoint import main
 from dns_exporter.exporter import DNSExporter
 from dns_exporter.version import __version__
 
+
 class TestExporter(DNSExporter):
     """This is just here so tests can mess around with cls.modules without changing the global DNSExporter class."""
+
     __test__ = False
 
 

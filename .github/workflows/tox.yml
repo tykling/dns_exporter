@@ -36,6 +36,6 @@ jobs:
         with:
           token: "${{secrets.CODECOV_TOKEN}}"
           # disable until codecov improves stability
-          #fail_ci_if_error: true
+          # fail_ci_if_error: true
           files: "./src/src/coverage.xml"
 ...
