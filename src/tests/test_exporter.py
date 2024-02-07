@@ -2,6 +2,7 @@
 """dns_exporter test suite extravaganza."""
 import logging
 
+import cryptography
 import pytest
 import requests
 
@@ -358,21 +359,22 @@ def test_doh(dns_exporter_example_config, caplog):
 
 
 def test_doq(dns_exporter_example_config, caplog):
-    caplog.clear()
-    caplog.set_level(logging.DEBUG)
-    r = requests.get(
-        "http://127.0.0.1:25353/query",
-        params={
-            "server": "quic://dns-unfiltered.adguard.com",
-            "query_name": "example.com",
-            "protocol": "doq",
-            "family": "ipv4",
-        },
-    )
-    assert r.status_code == 200, "non-200 returncode"
-    assert 'transport="UDP"' in r.text
-    assert 'protocol="doq"' in r.text
-    assert "Protocol doq got a DNS query response over UDP" in caplog.text
+    with pytest.warns(cryptography.utils.CryptographyDeprecationWarning):
+        caplog.clear()
+        caplog.set_level(logging.DEBUG)
+        r = requests.get(
+            "http://127.0.0.1:25353/query",
+            params={
+                "server": "quic://dns-unfiltered.adguard.com",
+                "query_name": "example.com",
+                "protocol": "doq",
+                "family": "ipv4",
+            },
+        )
+        assert r.status_code == 200, "non-200 returncode"
+        assert 'transport="UDP"' in r.text
+        assert 'protocol="doq"' in r.text
+        assert "Protocol doq got a DNS query response over UDP" in caplog.text
 
 
 def test_validate_rcode(dns_exporter_example_config, caplog):
