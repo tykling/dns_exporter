@@ -27,9 +27,7 @@ def test_main_no_config(dns_exporter_main_no_config_no_debug, caplog):
     assert 'dnsexp_failures_total{reason="timeout"} 0.0' in r.text
 
 
-def test_timeout(dns_exporter_example_config, caplog):
-    caplog.clear()
-    caplog.set_level(logging.DEBUG)
+def test_timeout(dns_exporter_main_no_config_no_debug):
     r = requests.get(
         "http://127.0.0.1:35353/query",
         params={
