@@ -11,6 +11,10 @@ from dns_exporter.entrypoint import main
 from dns_exporter.exporter import DNSExporter
 from dns_exporter.version import __version__
 
+class TestExporter(DNSExporter):
+    """This is just here so tests can mess around with cls.modules without changing the global DNSExporter class."""
+    __test__ = False
+
 
 def test_main_no_config(dns_exporter_main_no_config_no_debug, caplog):
     caplog.clear()
@@ -109,7 +113,7 @@ def test_invalid_qs_ip(dns_exporter_example_config):
 
 def test_invalid_configfile_ip(caplog):
     caplog.clear()
-    exporter = DNSExporter
+    exporter = TestExporter
     exporter.configure(modules={"test": {"ip": "notanip"}})
     assert "Unable to parse IP address notanip" in caplog.text
 
@@ -662,7 +666,7 @@ def test_invalid_yaml_config(caplog, dns_exporter_invalid_yaml_configfile):
 def test_configure(caplog):
     caplog.clear()
     caplog.set_level(logging.DEBUG)
-    exporter = DNSExporter
+    exporter = TestExporter
     exporter.modules = {}
     exporter.configure(modules={"test": {"ip": "127.0.0.1"}})
     assert len(exporter.modules) == 1
@@ -689,7 +693,7 @@ def test_invalid_integer(dns_exporter_example_config, caplog):
 def test_configure_rrvalidator(caplog):
     caplog.clear()
     caplog.set_level(logging.DEBUG)
-    exporter = DNSExporter
+    exporter = TestExporter
     exporter.modules = {}
     exporter.configure(
         modules={
@@ -703,7 +707,7 @@ def test_configure_rrvalidator(caplog):
 def test_configure_rfvalidator(caplog):
     caplog.clear()
     caplog.set_level(logging.DEBUG)
-    exporter = DNSExporter
+    exporter = TestExporter
     exporter.modules = {}
     exporter.configure(
         modules={
@@ -721,7 +725,7 @@ def test_configure_rfvalidator(caplog):
 def test_configure_bad_module(caplog):
     caplog.clear()
     caplog.set_level(logging.DEBUG)
-    exporter = DNSExporter
+    exporter = TestExporter
     exporter.modules = {}
     exporter.configure(modules={"test": {"query_class": "OUT"}})
     assert len(exporter.modules) == 0

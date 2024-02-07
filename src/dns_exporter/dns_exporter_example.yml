@@ -168,7 +168,7 @@ modules:  # this is the only key currently read from the config
         - ".*2001:4860:4860::8888"
         - ".*2001:4860:4860::8844"
 
-  cf_doh:  # make sure cloudflare public dns a DNSSEC validated response for bornhack.dk over DoH
+  cf_doh:  # make sure cloudflare public dns returns a DNSSEC validated response for bornhack.dk over DoH
     protocol: "doh"
     server: "1dot1dot1dot1.cloudflare-dns.com"
     query_name: "bornhack.dk"

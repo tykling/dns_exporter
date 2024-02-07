@@ -42,7 +42,7 @@ def dns_exporter_example_config():
     print("Beginning teardown")
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def dns_exporter_main_no_config_no_debug():
     """Run a server with main() and no config."""
     print("Running server with no config on 127.0.0.1:35353 ...")
