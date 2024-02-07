@@ -359,10 +359,10 @@ def test_doh(dns_exporter_example_config, caplog):
 
 
 def test_doq(dns_exporter_example_config, caplog):
+    # this silences the warning for py3.12
+    # with pytest.deprecated_call():
     # this silences the warning for py3.9-py3.11 but not for py3.12
     with pytest.warns(cryptography.utils.CryptographyDeprecationWarning):
-    # this silences the warning for py3.12
-    #with pytest.deprecated_call():
         caplog.clear()
         caplog.set_level(logging.DEBUG)
         r = requests.get(
