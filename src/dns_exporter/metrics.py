@@ -3,7 +3,13 @@
 All metrics exposed by ``dns_exporter`` are prefixed with ``dnsexp_`` (apart from ``up``
 and the built-in Python metrics).
 """
-from prometheus_client.core import Counter, CounterMetricFamily, GaugeMetricFamily, Info
+from prometheus_client.core import (
+    Counter,
+    CounterMetricFamily,
+    GaugeMetricFamily,
+    Histogram,
+    Info,
+)
 
 from dns_exporter.version import __version__
 
@@ -57,21 +63,21 @@ def get_dns_qtime_metric() -> GaugeMetricFamily:
 
     Each DNS query duration is added to this gauge with the following labels to identify it:
 
-        - ``protocol``
         - ``server``
-        - ``family``
         - ``ip``
         - ``port``
-        - ``transport``
+        - ``protocol``
+        - ``family``
         - ``query_name``
         - ``query_type``
+        - ``transport``
         - ``opcode``
         - ``rcode``
         - ``flags``
-        - ``nsid``
         - ``answer``
         - ``authority``
         - ``additional``
+        - ``nsid``
 
     In some cases the ``nsid`` label has no value and the placeholder ``no_nsid`` is used instead.
     """
@@ -110,21 +116,21 @@ def get_dns_ttl_metric() -> GaugeMetricFamily:
 
     This Gauge has the following labels, they are the same as ``dns_exporter.metrics.dnsexp_dns_query_time_seconds`` plus a few more:
 
-        - ``protocol``
         - ``server``
-        - ``family``
         - ``ip``
         - ``port``
-        - ``transport``
+        - ``protocol``
+        - ``family``
         - ``query_name``
         - ``query_type``
+        - ``transport``
         - ``opcode``
         - ``rcode``
         - ``flags``
-        - ``nsid``
         - ``answer``
         - ``authority``
         - ``additional``
+        - ``nsid``
         - ``rr_section`` (answer, authority or additional)
         - ``rr_name`` (the RR name)
         - ``rr_type`` (the RR type)
@@ -201,13 +207,32 @@ dnsexp_dns_queries_total = Counter(
 This metric has no labels.
 """
 
-dnsexp_dns_responses_total = Counter(
-    name="dnsexp_dns_responses_total",
-    documentation="The total number of DNS query responses received since start. This counter is increased every time the dns_exporter receives a query response (before timeout).",
+dnsexp_dns_responsetime_seconds = Histogram(
+    name="dnsexp_dns_responsetime_seconds",
+    documentation="DNS query response timing histogram. This histogram is updated every time the dns_exporter receives a query response.",
+    labelnames=QTIME_LABELS,
 )
-"""``dnsexp_dns_responses_total`` is the Counter keeping track of how many DNS responses this exporter received since start.
+"""``dnsexp_dns_responsetime_seconds`` is the Histogram keeping track of how many DNS responses this exporter received since start and how long the query took.
 
-This metric has no labels.
+    Each DNS query duration is observed in this histogram with the following labels to identify it:
+
+        - ``server``
+        - ``ip``
+        - ``port``
+        - ``protocol``
+        - ``family``
+        - ``query_name``
+        - ``query_type``
+        - ``transport``
+        - ``opcode``
+        - ``rcode``
+        - ``flags``
+        - ``answer``
+        - ``authority``
+        - ``additional``
+        - ``nsid``
+
+    In some cases the ``nsid`` label has no value and the placeholder ``no_nsid`` is used instead.
 """
 
 dnsexp_scrape_failures_total = Counter(

@@ -23,7 +23,7 @@ from dns_exporter.exceptions import ValidationError
 from dns_exporter.metrics import (
     FAILURE_REASONS,
     dnsexp_dns_queries_total,
-    dnsexp_dns_responses_total,
+    dnsexp_dns_responsetime_seconds,
     dnsexp_scrape_failures_total,
     get_dns_failure_metric,
     get_dns_qtime_metric,
@@ -106,9 +106,6 @@ class DNSCollector(Collector):
             yield get_dns_success_metric(value=0)
             return None
 
-        # response received, increase the response counter
-        dnsexp_dns_responses_total.inc()
-
         # make mypy happy
         assert hasattr(r, "opcode")
         assert hasattr(r, "rcode")
@@ -146,6 +143,9 @@ class DNSCollector(Collector):
         qtime_metric = get_dns_qtime_metric()
         qtime_metric.add_metric(labels=list(self.labels.values()), value=qtime)
         yield qtime_metric
+
+        # update internal exporter metric
+        dnsexp_dns_responsetime_seconds.labels(**self.labels).observe(qtime)
 
         # register TTL of response RRs and yield ttl metric
         ttl = get_dns_ttl_metric()
