@@ -268,6 +268,7 @@ def test_internal_metrics(dns_exporter_example_config, caplog):
     r = requests.get(
         "http://127.0.0.1:25353/metrics",
     )
+    print(r.text)
     assert r.status_code == 200, "non-200 returncode"
     assert f'dnsexp_build_version_info{{version="{__version__}"}} 1.0' in r.text
     assert "Returning exporter metrics for request to /metrics" in caplog.text
