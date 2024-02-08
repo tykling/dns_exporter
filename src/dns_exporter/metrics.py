@@ -209,3 +209,14 @@ dnsexp_dns_responses_total = Counter(
 
 This metric has no labels.
 """
+
+dnsexp_scrape_failures_total = Counter(
+    name="dnsexp_scrape_failures_total",
+    documentation="The total number of scrapes failed by failure reason. This counter is increased every time the dns_exporter receives a scrape request which fails for some reason, including response validation logic.",
+    labelnames=["reason"],
+)
+"""``dnsexp_scrape_failures_total`` is the Counter keeping track of how many scrape requests failed for some reason.
+
+This metric has one label:
+    - ``reason`` is set to the failure reason.
+"""

@@ -216,12 +216,14 @@ class Config:
         for key in ["edns", "edns_do", "edns_nsid", "recursion_desired"]:
             # validate bools
             if not isinstance(getattr(self, key), bool):
+                logger.error("Not a bool")
                 raise ConfigError("invalid_request_config")
 
         # validate integers
         # TODO: maybe check that edns_bufsize is not too big?
         for key in ["edns_bufsize", "edns_pad"]:
             if not getattr(self, key) >= 0:
+                logger.error("Invalid integer")
                 raise ConfigError("invalid_request_config")
 
         # validate family
@@ -257,6 +259,7 @@ class Config:
         all_rcodes = [dns.rcode.to_text(x) for x in dns.rcode.Rcode]
         invalid_rcodes = set(self.valid_rcodes).difference(all_rcodes)
         if invalid_rcodes:
+            logger.error("Invalid rcodes used")
             raise ConfigError(
                 "invalid_request_config",
             )

@@ -24,6 +24,7 @@ from dns_exporter.metrics import (
     FAILURE_REASONS,
     dnsexp_dns_queries_total,
     dnsexp_dns_responses_total,
+    dnsexp_scrape_failures_total,
     get_dns_failure_metric,
     get_dns_qtime_metric,
     get_dns_success_metric,
@@ -167,7 +168,7 @@ class DNSCollector(Collector):
         # validate response and yield remaining metrics
         try:
             self.validate_dnsexp_response(response=r)
-            yield from self.yield_failure_reason_metric(failure_reason="no_failure")
+            yield from self.yield_failure_reason_metric(failure_reason="")
             yield get_dns_success_metric(1)
         except ValidationError as E:
             logger.warning(f"Validation failed: {E.args[1]}")
@@ -419,8 +420,19 @@ class DNSCollector(Collector):
     def yield_failure_reason_metric(
         failure_reason: str,
     ) -> Iterator[CounterMetricFamily]:
+        """This method is used to maintain failure metrics.
+
+        If an empty string is passed as failure_reason (meaning success) the failure counters will not be increased.
+        """
+        if failure_reason:
+            # also increase the global failure counter
+            dnsexp_scrape_failures_total.labels(reason=failure_reason).inc()
+        # get the failure metric
         fail = get_dns_failure_metric()
+        # initialise all labels in the per-scrape metric,
+        # loop over known failure reasons
         for reason in FAILURE_REASONS:
+            # set counter to 1 on match (custom collector - the metrics only exist during the scrape)
             if reason == failure_reason:
                 fail.add_metric([reason], 1)
             else:
@@ -439,7 +451,7 @@ class FailCollector(DNSCollector):
         self, mock_output: Union[str, None] = None
     ) -> Iterator[Union[CounterMetricFamily, GaugeMetricFamily]]:
         """Do not collect anything, just return the error message."""
-        logger.warning(f"FailCollector returning failure reason: {self.reason}")
+        logger.debug(f"FailCollector returning failure reason: {self.reason}")
         yield get_dns_qtime_metric()
         yield get_dns_ttl_metric()
         yield get_dns_success_metric(value=0)

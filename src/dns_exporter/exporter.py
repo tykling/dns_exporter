@@ -155,6 +155,7 @@ class DNSExporter(MetricsHandler):
                 try:
                     config[key] = float(config[key])  # type: ignore
                 except ValueError:
+                    logger.exception("Invalid float")
                     raise ConfigError("invalid_request_config")
 
         # parse server?
@@ -213,6 +214,9 @@ class DNSExporter(MetricsHandler):
         try:
             self.config = Config.create(**config)
         except TypeError:
+            logger.exception(
+                "Exception while creating config - invalid field specified?"
+            )
             raise ConfigError("invalid_request_config")
 
         # validate config
@@ -317,6 +321,7 @@ class DNSExporter(MetricsHandler):
         """Validate the server and resolve IP if needed."""
         # is there a server?
         if not self.config.server:
+            logger.error("No server found in config")
             raise ConfigError("invalid_request_server")
 
         assert isinstance(self.config.server, urllib.parse.SplitResult)  # mypy
@@ -382,6 +387,7 @@ class DNSExporter(MetricsHandler):
                 result = socket.getaddrinfo(hostname, 0, family=socket.AF_INET6)
                 return str(random.choice(result)[4][0])
         except socket.gaierror:
+            logger.error("Unable to resolve server")
             raise ConfigError("invalid_request_server")
 
     def parse_querystring(self) -> tuple[urllib.parse.SplitResult, dict[str, str]]:

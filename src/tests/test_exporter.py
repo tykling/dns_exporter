@@ -260,6 +260,8 @@ def test_ipv7_family(dns_exporter_example_config, caplog):
     assert 'dnsexp_failures_total{reason="invalid_request_family"} 1.0' in r.text
 
 
+# run this test last
+@pytest.mark.order(-1)
 def test_internal_metrics(dns_exporter_example_config, caplog):
     caplog.clear()
     caplog.set_level(logging.DEBUG)
@@ -269,6 +271,31 @@ def test_internal_metrics(dns_exporter_example_config, caplog):
     assert r.status_code == 200, "non-200 returncode"
     assert f'dnsexp_build_version_info{{version="{__version__}"}} 1.0' in r.text
     assert "Returning exporter metrics for request to /metrics" in caplog.text
+    for metric in """dnsexp_http_requests_total{path="/notfound"} 1.0
+dnsexp_http_requests_total{path="/query"} 38.0
+dnsexp_http_requests_total{path="/config"} 2.0
+dnsexp_http_requests_total{path="/"} 1.0
+dnsexp_http_requests_total{path="/metrics"} 1.0
+dnsexp_http_responses_total{path="/notfound",response_code="404"} 1.0
+dnsexp_http_responses_total{path="/query",response_code="200"} 38.0
+dnsexp_http_responses_total{path="/",response_code="200"} 1.0
+dnsexp_dns_queries_total 28.0
+dnsexp_dns_responses_total 26.0
+dnsexp_scrape_failures_total{reason="timeout"} 1.0
+dnsexp_scrape_failures_total{reason="invalid_response_flags"} 6.0
+dnsexp_scrape_failures_total{reason="invalid_response_answer_rrs"} 3.0
+dnsexp_scrape_failures_total{reason="invalid_response_rcode"} 1.0
+dnsexp_scrape_failures_total{reason="invalid_response_additional_rrs"} 1.0
+dnsexp_scrape_failures_total{reason="invalid_request_server"} 2.0
+dnsexp_scrape_failures_total{reason="invalid_request_module"} 1.0
+dnsexp_scrape_failures_total{reason="invalid_request_config"} 2.0
+dnsexp_scrape_failures_total{reason="invalid_request_ip"} 3.0
+dnsexp_scrape_failures_total{reason="invalid_request_family"} 1.0
+dnsexp_scrape_failures_total{reason="other_failure"} 1.0
+dnsexp_scrape_failures_total{reason="invalid_request_query_name"} 1.0""".split(
+        "\n"
+    ):
+        assert metric in r.text
 
 
 def test_index(dns_exporter_example_config, caplog):
