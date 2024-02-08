@@ -8,9 +8,4 @@ Creating a release
     <enter something like "Release v0.4.0">
     git push origin v0.4.0
 
-3. Upload new release to pypi:
-    rm dist/*
-    python -m build
-    twine upload dist/dns_exporter*
-
-4. Then update `CHANGELOG.md` again, commit and push.
+3. Then update `CHANGELOG.md` again, commit and push.
