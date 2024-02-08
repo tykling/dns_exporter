@@ -268,7 +268,6 @@ def test_internal_metrics(dns_exporter_example_config, caplog):
     r = requests.get(
         "http://127.0.0.1:25353/metrics",
     )
-    print(r.text)
     assert r.status_code == 200, "non-200 returncode"
     assert f'dnsexp_build_version_info{{version="{__version__}"}} 1.0' in r.text
     assert "Returning exporter metrics for request to /metrics" in caplog.text
@@ -281,7 +280,7 @@ dnsexp_http_responses_total{path="/notfound",response_code="404"} 1.0
 dnsexp_http_responses_total{path="/query",response_code="200"} 38.0
 dnsexp_http_responses_total{path="/",response_code="200"} 1.0
 dnsexp_dns_queries_total 28.0
-dnsexp_dns_responsetime_seconds_bucket{additional="0",answer="1",authority="0",family="ipv4",flags="QR RA RD",ip="8.8.4.4",le="0.005",nsid="gpdns-ham",opcode="QUERY",port="53",protocol="udp",query_name="example.com",query_type="A",rcode="NOERROR",server="udp://dns.google:53",transport="UDP"}
+dnsexp_dns_responsetime_seconds_bucket{additional="0",answer="1",authority="0",family="ipv4",flags="QR RA RD",ip="8.8.4.4",le="0.005",nsid="no_nsid",opcode="QUERY",port="53",protocol="udp",query_name="example.com",query_type="A",rcode="NOERROR",server="udp://dns.google:53",transport="UDP"}
 dnsexp_scrape_failures_total{reason="timeout"} 1.0
 dnsexp_scrape_failures_total{reason="invalid_response_flags"} 6.0
 dnsexp_scrape_failures_total{reason="invalid_response_answer_rrs"} 3.0
@@ -649,6 +648,7 @@ def test_no_edns(dns_exporter_example_config, caplog):
             "server": "dns.google",
             "query_name": "example.com",
             "family": "ipv4",
+            "ip": "8.8.4.4",
             "edns": False,
         },
     )
