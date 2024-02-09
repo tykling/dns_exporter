@@ -7,7 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## unreleased
-- No changes yet.
+
+### Changed
+- Update CHANGELOG
+- Add more badges to README.md
 
 
 ## [v1.0.0-alpha1] - 2024-02-08
@@ -21,7 +24,7 @@ The metrics exposed under /query (per-scrape metrics) are now:
 - dnsexp_failures_total (Counter, renamed and changed from Enum)
 
 The metrics exposed under /metrics (persistent exporter-internal metrics) are now:
-- dnsexp_build_version (Info)
+- dnsexp_build_version (Info, unchanged)
 - dnsexp_http_requests_total (Counter, unchanged)
 - dnsexp_http_responses_total (Counter, unchanged)
 - dnsexp_dns_queries_total (Counter, unchanged)
@@ -30,17 +33,19 @@ The metrics exposed under /metrics (persistent exporter-internal metrics) are no
 
 Further changes are mostly technical details.
 
-## Added
+### Added
 - RELEASE.md file describing how to do a release
 - `build` module to the `dev` extras in `pyproject.toml`
 - Python 3.12 support
+- Automatic DockerHub upload of containers when new releases are tagged
+- Automatic PyPi upload of packages when new releases are tagged
 
-## Changed
+### Changed
 - Delete the `develop` branch, `main` is the new default branch. Update `RELEASE.md` to reflect the change.
 - Update some development dependencies
 - Major refactor: move DNS lookup to a custom `prometheus_client.registry.Collector` class in `collector.py`
 
-## Fixed
+### Fixed
 - DNS over QUIC support now works. Default port is 853 as per https://www.rfc-editor.org/rfc/rfc9250.html#name-port-selection
 
 
@@ -53,7 +58,7 @@ Further changes are mostly technical details.
 - Rename `dnsexp_dns_failure_reason` to `dnsexp_dns_query_failure_reason`
 - Rename `dnsexp_dns_record_ttl_seconds` to `dnsexp_dns_response_rr_ttl_seconds` and change from Histogram to Gauge
 
-## Added
+### Added
 - Command-line option to set listen IP, use `-L` or `--listen-ip`. Default is `127.0.0.1`.
 - Unit tests
 - Github action to build a new dockerhub image when a new tag is pushed
