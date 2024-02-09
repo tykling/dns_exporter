@@ -1,8 +1,8 @@
-![Tox main](https://github.com/tykling/dns_exporter/actions/workflows/tox.yml/badge.svg?branch=main)
-![codecov](https://codecov.io/gh/tykling/dns_exporter/graph/badge.svg?token=OKP40B9H10)](https://codecov.io/gh/tykling/dns_exporter)
-![Documentation Status](https://readthedocs.org/projects/dns-exporter/badge/?version=latest)](https://dns-exporter.readthedocs.io/en/latest/?badge=latest)
-![PyPI version](https://badge.fury.io/py/dns-exporter.svg)](https://badge.fury.io/py/dns-exporter)
-![Docker Image Version (latest semver)](https://img.shields.io/docker/v/tykling/dns_exporter)
+[![Tox main](https://github.com/tykling/dns_exporter/actions/workflows/tox.yml/badge.svg?branch=main)](https://github.com/tykling/dns_exporter/actions/workflows/tox.yml/badge.svg?branch=main)
+[![codecov](https://codecov.io/gh/tykling/dns_exporter/graph/badge.svg?token=OKP40B9H10)](https://codecov.io/gh/tykling/dns_exporter)
+[![Documentation Status](https://readthedocs.org/projects/dns-exporter/badge/?version=latest)](https://dns-exporter.readthedocs.io/en/latest/)
+[![PyPI version](https://badge.fury.io/py/dns-exporter.svg)](https://pypi.org/project/dns-exporter/)
+[![Docker Image Version (latest semver)](https://img.shields.io/docker/v/tykling/dns_exporter)](https://hub.docker.com/r/tykling/dns_exporter)
 
 
 # dns_exporter
