@@ -1,6 +1,6 @@
 [![Run Tox CI](https://github.com/tykling/dns_exporter/actions/workflows/tox.yml/badge.svg?branch=main)](https://github.com/tykling/dns_exporter/actions/workflows/tox.yml)
 [![codecov](https://codecov.io/gh/tykling/dns_exporter/graph/badge.svg?token=OKP40B9H10)](https://codecov.io/gh/tykling/dns_exporter)
-[![Documentation Status](https://readthedocs.org/projects/dns-exporter/badge/?version=latest)](https://dns-exporter.readthedocs.io/en/latest/)
+[![Documentation Status](https://readthedocs.org/projects/dns-exporter/badge/?version=latest)](https://dns-exporter.readthedocs.io/latest/)
 [![PyPI version](https://badge.fury.io/py/dns-exporter.svg)](https://pypi.org/project/dns-exporter/)
 [![Docker Image Version (latest semver)](https://img.shields.io/docker/v/tykling/dns_exporter)](https://hub.docker.com/r/tykling/dns_exporter)
 
@@ -16,7 +16,7 @@ This means that for each scrape Prometheus speaks HTTP to the `dns_exporter` whi
 
 
 # Documentation
-The documentation is available on [ReadTheDocs](https://dns-exporter.readthedocs.io/en/latest/?badge=latest)
+The documentation is available on [ReadTheDocs](https://dns-exporter.readthedocs.io/latest/)
 
 
 # Versioning and Releases of dns_exporter
