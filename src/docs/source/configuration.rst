@@ -144,7 +144,7 @@ This setting decides which protocol to use. It must be one of:
    DNS-over-HTTPS. Defaults to port 443.
 
 ``doq``
-   DNS-over-QUIC. Defaults to port 443.
+   DNS-over-QUIC. Defaults to port 853.
 
 The default value is ``udp``.
 
@@ -207,7 +207,7 @@ This setting defines validation rules for the ``ANSWER`` section of the DNS resp
    A list of regular expressions. Each RR in the ``ANSWER`` section is checked against each regular expression in the list. The query is considered failed if a match is found.
 
 ``fail_if_all_match_regexp``
-   A list of regular expressions. Each RR in the ``ANSWER`` section is checked against each regular expression in the list. The query is considered failed if an RR match all regular expressions in the list.
+   A list of regular expressions. Each RR in the ``ANSWER`` section is checked against each regular expression in the list. The query is considered failed if a RR match all regular expressions in the list.
    
 ``fail_if_not_matches_regexp``
    A list of regular expressions. Each RR in the ``ANSWER`` section is checked against each regular expression in the list. The query is considered failed if a nonmatch is found.

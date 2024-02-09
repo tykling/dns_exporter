@@ -1,0 +1,68 @@
+# HELP dnsexp_dns_query_time_seconds DNS query time in seconds.
+# TYPE dnsexp_dns_query_time_seconds gauge
+dnsexp_dns_query_time_seconds{additional="0",answer="5",authority="0",family="ipv4",flags="QR RA RD",ip="149.112.112.112",nsid="res730.arn.rrdns.pch.net",opcode="QUERY",port="53",protocol="udp",query_name="gmail.com",query_type="MX",rcode="NOERROR",server="udp://dns.quad9.net:53",transport="UDP"} 0.015439748764038086
+# HELP dnsexp_dns_response_rr_ttl_seconds DNS response RR TTL in seconds.
+# TYPE dnsexp_dns_response_rr_ttl_seconds gauge
+dnsexp_dns_response_rr_ttl_seconds{additional="0",answer="5",authority="0",family="ipv4",flags="QR RA RD",ip="149.112.112.112",nsid="res730.arn.rrdns.pch.net",opcode="QUERY",port="53",protocol="udp",query_name="gmail.com",query_type="MX",rcode="NOERROR",rr_name="gmail.com.",rr_section="answer",rr_type="MX",rr_value="20 alt2.gmail-smtp-in.l.google.com.",server="udp://dns.quad9.net:53",transport="UDP"} 2174.0
+dnsexp_dns_response_rr_ttl_seconds{additional="0",answer="5",authority="0",family="ipv4",flags="QR RA RD",ip="149.112.112.112",nsid="res730.arn.rrdns.pch.net",opcode="QUERY",port="53",protocol="udp",query_name="gmail.com",query_type="MX",rcode="NOERROR",rr_name="gmail.com.",rr_section="answer",rr_type="MX",rr_value="30 alt3.gmail-smtp-in.l.google.com.",server="udp://dns.quad9.net:53",transport="UDP"} 2174.0
+dnsexp_dns_response_rr_ttl_seconds{additional="0",answer="5",authority="0",family="ipv4",flags="QR RA RD",ip="149.112.112.112",nsid="res730.arn.rrdns.pch.net",opcode="QUERY",port="53",protocol="udp",query_name="gmail.com",query_type="MX",rcode="NOERROR",rr_name="gmail.com.",rr_section="answer",rr_type="MX",rr_value="10 alt1.gmail-smtp-in.l.google.com.",server="udp://dns.quad9.net:53",transport="UDP"} 2174.0
+dnsexp_dns_response_rr_ttl_seconds{additional="0",answer="5",authority="0",family="ipv4",flags="QR RA RD",ip="149.112.112.112",nsid="res730.arn.rrdns.pch.net",opcode="QUERY",port="53",protocol="udp",query_name="gmail.com",query_type="MX",rcode="NOERROR",rr_name="gmail.com.",rr_section="answer",rr_type="MX",rr_value="40 alt4.gmail-smtp-in.l.google.com.",server="udp://dns.quad9.net:53",transport="UDP"} 2174.0
+dnsexp_dns_response_rr_ttl_seconds{additional="0",answer="5",authority="0",family="ipv4",flags="QR RA RD",ip="149.112.112.112",nsid="res730.arn.rrdns.pch.net",opcode="QUERY",port="53",protocol="udp",query_name="gmail.com",query_type="MX",rcode="NOERROR",rr_name="gmail.com.",rr_section="answer",rr_type="MX",rr_value="5 gmail-smtp-in.l.google.com.",server="udp://dns.quad9.net:53",transport="UDP"} 2174.0
+# HELP dnsexp_failures_total The total number of scrape failures by failure reason. This counter is increased every time a scrape is initiated and a valid response (considering validation rules) is not received.
+# TYPE dnsexp_failures_total counter
+dnsexp_failures_total{reason="invalid_request_module"} 0.0
+dnsexp_failures_total{reason="invalid_request_config"} 0.0
+dnsexp_failures_total{reason="invalid_request_server"} 0.0
+dnsexp_failures_total{reason="invalid_request_family"} 0.0
+dnsexp_failures_total{reason="invalid_request_ip"} 0.0
+dnsexp_failures_total{reason="invalid_request_port"} 0.0
+dnsexp_failures_total{reason="invalid_request_path"} 0.0
+dnsexp_failures_total{reason="invalid_request_protocol"} 0.0
+dnsexp_failures_total{reason="invalid_request_query_name"} 0.0
+dnsexp_failures_total{reason="invalid_request_query_type"} 0.0
+dnsexp_failures_total{reason="invalid_request_query_class"} 0.0
+dnsexp_failures_total{reason="timeout"} 0.0
+dnsexp_failures_total{reason="invalid_response_rcode"} 0.0
+dnsexp_failures_total{reason="invalid_response_flags"} 0.0
+dnsexp_failures_total{reason="invalid_response_answer_rrs"} 0.0
+dnsexp_failures_total{reason="invalid_response_authority_rrs"} 0.0
+dnsexp_failures_total{reason="invalid_response_additional_rrs"} 0.0
+dnsexp_failures_total{reason="other_failure"} 0.0
+# HELP dnsexp_dns_query_success Was this DNS query successful or not, 1 for success or 0 for failure.
+# TYPE dnsexp_dns_query_success gauge
+dnsexp_dns_query_success 1.0
+# HELP up The value of this Gauge is always 1 when the dns_exporter is up
+# TYPE up gauge
+up 1.0
+# HELP dnsexp_dns_query_time_seconds DNS query time in seconds.
+# TYPE dnsexp_dns_query_time_seconds gauge
+dnsexp_dns_query_time_seconds{additional="0",answer="1",authority="0",family="ipv4",flags="QR RA RD",ip="9.9.9.9",nsid="res111.arn.rrdns.pch.net",opcode="QUERY",port="53",protocol="udp",query_name="outlook.com",query_type="MX",rcode="NOERROR",server="udp://dns.quad9.net:53",transport="UDP"} 0.029553651809692383
+# HELP dnsexp_dns_response_rr_ttl_seconds DNS response RR TTL in seconds.
+# TYPE dnsexp_dns_response_rr_ttl_seconds gauge
+dnsexp_dns_response_rr_ttl_seconds{additional="0",answer="1",authority="0",family="ipv4",flags="QR RA RD",ip="9.9.9.9",nsid="res111.arn.rrdns.pch.net",opcode="QUERY",port="53",protocol="udp",query_name="outlook.com",query_type="MX",rcode="NOERROR",rr_name="outlook.com.",rr_section="answer",rr_type="MX",rr_value="5 outlook-com.olc.protection.outlook.com.",server="udp://dns.quad9.net:53",transport="UDP"} 300.0
+# HELP dnsexp_failures_total The total number of scrape failures by failure reason. This counter is increased every time a scrape is initiated and a valid response (considering validation rules) is not received.
+# TYPE dnsexp_failures_total counter
+dnsexp_failures_total{reason="invalid_request_module"} 0.0
+dnsexp_failures_total{reason="invalid_request_config"} 0.0
+dnsexp_failures_total{reason="invalid_request_server"} 0.0
+dnsexp_failures_total{reason="invalid_request_family"} 0.0
+dnsexp_failures_total{reason="invalid_request_ip"} 0.0
+dnsexp_failures_total{reason="invalid_request_port"} 0.0
+dnsexp_failures_total{reason="invalid_request_path"} 0.0
+dnsexp_failures_total{reason="invalid_request_protocol"} 0.0
+dnsexp_failures_total{reason="invalid_request_query_name"} 0.0
+dnsexp_failures_total{reason="invalid_request_query_type"} 0.0
+dnsexp_failures_total{reason="invalid_request_query_class"} 0.0
+dnsexp_failures_total{reason="timeout"} 0.0
+dnsexp_failures_total{reason="invalid_response_rcode"} 0.0
+dnsexp_failures_total{reason="invalid_response_flags"} 0.0
+dnsexp_failures_total{reason="invalid_response_answer_rrs"} 0.0
+dnsexp_failures_total{reason="invalid_response_authority_rrs"} 0.0
+dnsexp_failures_total{reason="invalid_response_additional_rrs"} 0.0
+dnsexp_failures_total{reason="other_failure"} 0.0
+# HELP dnsexp_dns_query_success Was this DNS query successful or not, 1 for success or 0 for failure.
+# TYPE dnsexp_dns_query_success gauge
+dnsexp_dns_query_success 1.0
+# HELP up The value of this Gauge is always 1 when the dns_exporter is up
+# TYPE up gauge
+up 1.0
