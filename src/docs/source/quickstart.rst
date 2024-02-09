@@ -17,7 +17,7 @@ You can also checkout the sources from Github and install without pypi::
    git clone https://github.com/tykling/dns_exporter.git
    pip install ./dns_exporter/
 
-.. Warning:: Installing directly from Github with the above command will install the latest unreleased code from the ``develop`` branch. This may not be what you want.
+.. Warning:: Installing directly from Github with the above command will install the latest unreleased code from the ``main`` branch. This may not be what you want.
 
 
 Running ``dns_exporter``
