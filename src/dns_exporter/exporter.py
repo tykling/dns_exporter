@@ -282,9 +282,10 @@ class DNSExporter(MetricsHandler):
           - a https:// url with an IP:port
           - a https:// url with a hostname and no port
           - a https:// url with a hostname:port
-          In the DoH https:// cases the url can be with or without a path.
 
-        Parse it with urllib.parse.urlsplit, add port if needed, and return the result.
+        In the DoH https:// cases the url can be with or without a path.
+
+        Parse it with urllib.parse.urlsplit, add explicit port if needed, and return the result.
         """
         logger.debug(
             f"inside parse_server with server {server} and protocol {protocol}"

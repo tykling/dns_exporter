@@ -37,8 +37,10 @@ The scrape job needs to:
 
 .. Note:: Targets can be from any SD, this example uses ``static_configs``.
 
-This would make Prometheus scrape the ``MX`` records for ``gmail.com`` and ``outlook.com`` every 10 seconds using ``dns.quad9.net``, returning metrics like these:
+This would make Prometheus scrape the ``MX`` records for ``gmail.com`` and ``outlook.com`` every 10 seconds using ``dns.quad9.net``.
 
+``Example Metrics``
+~~~~~~~~~~~~~~~~~~~
 .. Note::  These metrics are taken directly from the exporter, so they don't have the Prometheus added ``instance`` and ``job`` labels yet
 
 .. literalinclude:: ../../tests/prometheus/list_of_names/metrics.txt
@@ -69,8 +71,10 @@ With the ``dns_exporter`` running at ``dnsexp.example.com:15353``:
 
 .. literalinclude:: ../../tests/prometheus/list_of_servers/prometheus.yml
 
-Would make Prometheus scrape the ``MX`` records for ``gmail.com`` every 10 seconds using Googles and Quad9s public DoH servers, returning metrics like these:
+Would make Prometheus scrape the ``MX`` records for ``gmail.com`` every 10 seconds using Googles and Quad9s public DoH servers.
 
+``Example Metrics``
+~~~~~~~~~~~~~~~~~~~
 .. Note::  These metrics are taken directly from the exporter, so they don't have the Prometheus added ``instance`` and ``job`` labels yet
 
 .. literalinclude:: ../../tests/prometheus/list_of_servers/metrics.txt
