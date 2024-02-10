@@ -150,11 +150,7 @@ jobs:
 
       - name: Create manifest list and push
         working-directory: /tmp/digests
-        run: |
-          docker buildx imagetools create $(jq -cr '.target."docker-metadata-action".tags \
-          | map(select(startswith("${{ env.IMAGE }}")) \
-          | "-t " + .) \
-          | join(" ")' /tmp/bake-meta.json) $(printf '${{ env.IMAGE }}@sha256:%s ' *)
+        run: docker buildx imagetools create $(jq -cr '.target."docker-metadata-action".tags | map(select(startswith("${{ env.IMAGE }}")) | "-t " + .) | join(" ")' /tmp/bake-meta.json) $(printf '${{ env.IMAGE }}@sha256:%s ' *)  # yamllint disable-line rule:line-length
 
       - name: Inspect image
         run: docker buildx imagetools inspect ${{ env.IMAGE }}:$(jq -r '.target."docker-metadata-action".args.DOCKER_META_VERSION' /tmp/bake-meta.json)  # yamllint disable-line rule:line-length
