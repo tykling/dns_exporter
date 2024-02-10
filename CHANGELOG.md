@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## unreleased
 
-- No changes yet
+### Fixed
+- DockerHub workflow unbroken
 
 
 ## [v1.0.0-beta1] - 2024-02-09
