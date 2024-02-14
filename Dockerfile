@@ -1,12 +1,12 @@
 #syntax=docker/dockerfile:1.6.0
-FROM python:3.12.1-alpine3.19 AS builder
+FROM python:3.12.2-alpine3.19 AS builder
 # don't create .pyc files
 ENV PYTHONDONTWRITEBYTECODE 1
-# upgrade image packages
+# upgrade build image packages
 RUN apk update
 RUN apk upgrade -a -l
 # install dependenciess for building package
-RUN apk add -U --no-cache --purge --clean-protected -l -u \
+RUN apk add --purge --clean-protected -l -u \
     alpine-sdk \
     cargo \
     libbsd-dev \
@@ -21,18 +21,18 @@ USER nonroot
 WORKDIR /home/nonroot
 # copy source
 COPY --chown=nonroot:nonroot . .
-# create empty config
-RUN touch dns_exporter.yml
 # install dns_exporter
 RUN pip install .
 # cleanup
 RUN find /home/nonroot/ | grep -E "(\/.cache$|\/__pycache__$|\.pyc$|\.pyo$)" | xargs rm -rf
 
 FROM scratch AS tmp
+# copy dns_exporter and dependencies
 COPY --from=builder /home/nonroot/.local /home/nonroot/.local
-COPY --from=builder /home/nonroot/dns_exporter.yml /home/nonroot/dns_exporter.yml
+# copy example config
+COPY --from=builder /home/nonroot/src/dns_exporter/dns_exporter_example.yml /home/nonroot/dns_exporter.yml
 
-FROM python:3.12.1-alpine3.19 AS runtime
+FROM python:3.12.2-alpine3.19 AS runtime
 # add nonroot user and do additional cleanup
 RUN addgroup -g 65532 -S nonroot && \
     adduser -S -D -g "" -G nonroot -u 65532 nonroot && \
