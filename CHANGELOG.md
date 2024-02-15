@@ -5,9 +5,10 @@ All notable changes to `dns_exporter` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## [v1.0.0-beta3] - 2024-02-15
 
-- No changes yet
+### Fixed
+- DockerHub workflow unbroken, take 2
 
 
 ## [v1.0.0-beta2] - 2024-02-10
