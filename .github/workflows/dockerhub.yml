@@ -11,7 +11,7 @@ on:  # yamllint disable-line rule:truthy
       - 'v*'
 
 env:
-  IMAGE: tykling/dns_exporter
+  REGISTRY_IMAGE: tykling/dns_exporter
 
 jobs:
   prepare:
@@ -37,7 +37,7 @@ jobs:
         uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81
         with:
           images: |
-            ${{ env.IMAGE }}
+            ${{ env.REGISTRY_IMAGE }}
           labels: |
             org.opencontainers.image.title=dns_exporter
             org.opencontainers.image.description=A Blackbox-style Prometheus exporter with a focus on DNS monitoring
@@ -48,7 +48,7 @@ jobs:
           mv "${{ steps.meta.outputs.bake-file }}" "/tmp/bake-meta.json"
 
       - name: Upload meta bake definition
-        uses: actions/upload-artifact@26f96dfa697d77e81fd5907df203aa23a56210a8
+        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3
         with:
           name: bake-meta
           path: /tmp/bake-meta.json
@@ -73,7 +73,7 @@ jobs:
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
 
       - name: Download meta bake definition
-        uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935
+        uses: actions/download-artifact@eaceaf801fd36c7dee90939fad912460b18a1ffe
         with:
           name: bake-meta
           path: /tmp
@@ -104,7 +104,7 @@ jobs:
           set: |
             *.tags=
             *.platform=${{ matrix.platform }}
-            *.output=type=image,"name=${{ env.IMAGE }}",push-by-digest=true,name-canonical=true
+            *.output=type=image,"name=${{ env.REGISTRY_IMAGE }}",push-by-digest=true,name-canonical=true,push=true
 
       - name: Export digest
         run: |
@@ -113,7 +113,7 @@ jobs:
           touch "/tmp/digests/${digest#sha256:}"
 
       - name: Upload digest
-        uses: actions/upload-artifact@26f96dfa697d77e81fd5907df203aa23a56210a8
+        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3
         with:
           name: digests-${{ env.PLATFORM_PAIR }}
           path: /tmp/digests/*
@@ -127,13 +127,13 @@ jobs:
       - build
     steps:
       - name: Download meta bake definition
-        uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935
+        uses: actions/download-artifact@eaceaf801fd36c7dee90939fad912460b18a1ffe
         with:
           name: bake-meta
           path: /tmp
 
       - name: Download digests
-        uses: actions/download-artifact@6b208ae046db98c579e8a3aa621ab581ff575935
+        uses: actions/download-artifact@eaceaf801fd36c7dee90939fad912460b18a1ffe
         with:
           path: /tmp/digests
           pattern: digests-*
@@ -150,8 +150,8 @@ jobs:
 
       - name: Create manifest list and push
         working-directory: /tmp/digests
-        run: docker buildx imagetools create $(jq -cr '.target."docker-metadata-action".tags | map(select(startswith("${{ env.IMAGE }}")) | "-t " + .) | join(" ")' /tmp/bake-meta.json) $(printf '${{ env.IMAGE }}@sha256:%s ' *)  # yamllint disable-line rule:line-length
+        run: docker buildx imagetools create $(jq -cr '.target."docker-metadata-action".tags | map(select(startswith("${{ env.REGISTRY_IMAGE }}")) | "-t " + .) | join(" ")' /tmp/bake-meta.json) $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)  # yamllint disable-line rule:line-length
 
       - name: Inspect image
-        run: docker buildx imagetools inspect ${{ env.IMAGE }}:$(jq -r '.target."docker-metadata-action".args.DOCKER_META_VERSION' /tmp/bake-meta.json)  # yamllint disable-line rule:line-length
+        run: docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:$(jq -r '.target."docker-metadata-action".args.DOCKER_META_VERSION' /tmp/bake-meta.json)  # yamllint disable-line rule:line-length
 ...
