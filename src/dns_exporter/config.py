@@ -175,6 +175,9 @@ class Config:
     query_type: str
     """str: The query type used for this DNS query, like ``A`` or ``MX``. Default is ``A``"""
 
+    socks_proxy: str
+    """str: The socks proxy to use for this DNS query, for example ``127.0.0.1:5000``. Leave empty to use no proxy. Default is no proxy."""
+
     recursion_desired: bool
     """bool: Set this bool to ``True`` to set the ``RD`` flag in the DNS query. Default is ``True``"""
 
@@ -264,6 +267,14 @@ class Config:
                 "invalid_request_config",
             )
 
+        # validate socks proxy
+        if self.socks_proxy:
+            if self.protocol in ["udp", "udptcp", "quic"]:
+                logger.error("socks_proxy not valid for UDP based protocols")
+                raise ConfigError(
+                    "invalid_request_config",
+                )
+
     @classmethod
     def create(
         cls: t.Type["Config"],
@@ -278,6 +289,7 @@ class Config:
         query_class: str = "IN",
         query_type: str = "A",
         recursion_desired: bool = True,
+        socks_proxy: str = "",
         timeout: float = 5.0,
         validate_answer_rrs: RRValidator = RRValidator.create(),
         validate_authority_rrs: RRValidator = RRValidator.create(),
@@ -320,6 +332,7 @@ class Config:
             query_class=query_class.upper(),
             query_type=query_type.upper(),
             recursion_desired=recursion_desired,
+            socks_proxy=socks_proxy,
             timeout=float(timeout),
             validate_answer_rrs=validate_answer_rrs,
             validate_authority_rrs=validate_authority_rrs,
@@ -368,3 +381,4 @@ class ConfigDict(t.TypedDict, total=False):
     ip: t.Union[IPv4Address, IPv6Address, None]
     server: t.Union[urllib.parse.SplitResult, None]
     query_name: t.Optional[str]
+    socks_proxy: str
