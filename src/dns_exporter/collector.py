@@ -135,8 +135,13 @@ class DNSCollector(Collector):
         assert hasattr(r, "options")  # mypy
         for opt in r.options:
             if opt.otype == dns.edns.NSID:
-                # treat nsid as ascii text for prom labels
-                self.labels.update({"nsid": opt.data.decode("ASCII")})
+                if hasattr(opt, "data"):
+                    # dnspython < 2.6.0 compatibility
+                    # treat nsid as ascii text for prom labels
+                    self.labels.update({"nsid": opt.data.decode("ASCII")})
+                else:
+                    # for dnspython 2.6.0+
+                    self.labels.update({"nsid": opt.to_text()})
                 break
 
         # labels complete, yield timing metric
