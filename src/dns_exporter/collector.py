@@ -455,7 +455,7 @@ class FailCollector(DNSCollector):
         """Save failure reason for use later."""
         self.reason = failure_reason
 
-    def collect(
+    def collect_dns(
         self, mock_output: Union[str, None] = None
     ) -> Iterator[Union[CounterMetricFamily, GaugeMetricFamily]]:
         """Do not collect anything, just return the error message."""
