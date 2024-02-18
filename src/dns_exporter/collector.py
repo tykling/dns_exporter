@@ -50,21 +50,22 @@ class DNSCollector(Collector):
         self.query = query
         self.labels = labels
 
-    # def describe(self) -> Iterator[Union[CounterMetricFamily, GaugeMetricFamily]]:
-    def describe(self) -> list[GaugeMetricFamily]:
+    def describe(self) -> Iterator[Union[CounterMetricFamily, GaugeMetricFamily]]:
         """Describe the metrics that are to be returned by this collector."""
-        # TODO: figure out why this doesn't work
-        # yield get_dns_qtime_metric()
-        # yield get_dns_success_metric()
-        # yield get_dns_failure_metric()
-        # yield get_dns_ttl_metric()
-        return []
+        yield get_dns_qtime_metric()
+        yield get_dns_success_metric()
+        yield get_dns_failure_metric()
+        yield get_dns_ttl_metric()
+        yield from self.collect_up()
 
     def collect(
         self, mock_output: Union[str, None] = None
     ) -> Iterator[Union[CounterMetricFamily, GaugeMetricFamily]]:
         """Do DNS lookup and yield metrics."""
         yield from self.collect_dns()
+        yield from self.collect_up()
+
+    def collect_up(self) -> Iterator[GaugeMetricFamily]:
         yield GaugeMetricFamily(
             "up",
             "The value of this Gauge is always 1 when the dns_exporter is up",
