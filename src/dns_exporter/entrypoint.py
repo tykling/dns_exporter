@@ -5,6 +5,7 @@ This module is mostly boilerplate code for command-line argument handling and lo
 import argparse
 import logging
 import sys
+import warnings
 from http.server import HTTPServer
 from typing import Optional
 
@@ -94,6 +95,10 @@ def parse_args(
 
 def main(mockargs: Optional[list[str]] = None) -> None:
     """Read config and start exporter."""
+    # suppress warnings at runtime
+    if not sys.warnoptions:
+        warnings.simplefilter("ignore")
+
     # get arpparser and parse args
     parser, args = parse_args(mockargs)
 

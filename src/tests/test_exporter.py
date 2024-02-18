@@ -1,6 +1,7 @@
 # type: ignore
 """Unit tests for dns_exporter/exporter.py."""
 import logging
+import sys
 
 import cryptography
 import pytest
@@ -393,25 +394,35 @@ def test_doh(dns_exporter_example_config, caplog):
 
 
 def test_doq(dns_exporter_example_config, caplog):
-    # this silences the warning for py3.12
-    # with pytest.deprecated_call():
-    # this silences the warning for py3.9-py3.11 but not for py3.12
-    with pytest.warns(cryptography.utils.CryptographyDeprecationWarning):
-        caplog.clear()
-        caplog.set_level(logging.DEBUG)
-        r = requests.get(
-            "http://127.0.0.1:25353/query",
-            params={
-                "server": "quic://dns-unfiltered.adguard.com",
-                "query_name": "example.com",
-                "protocol": "doq",
-                "family": "ipv4",
-            },
-        )
-        assert r.status_code == 200, "non-200 returncode"
-        assert 'transport="UDP"' in r.text
-        assert 'protocol="doq"' in r.text
-        assert "Protocol doq got a DNS query response over UDP" in caplog.text
+    # aioquic causes a cryptography deprecationwarning: DeprecationWarning: datetime.datetime.utcnow() is deprecated,
+    # warnings are silenced in runtime for for unit tests they need to be explicitly silenced, and this one has to be
+    # handled different from 3.12 onwards.
+    if sys.version_info >= (3, 12):
+        # this silences the warning for py3.12
+        with pytest.deprecated_call():
+            doq(dns_exporter_example_config, caplog)
+    else:
+        # this silences the warning for py3.9-py3.11 but not for py3.12
+        with pytest.warns(cryptography.utils.CryptographyDeprecationWarning):
+            doq(dns_exporter_example_config, caplog)
+
+
+def doq(dns_exporter_example_config, caplog):
+    caplog.clear()
+    caplog.set_level(logging.DEBUG)
+    r = requests.get(
+        "http://127.0.0.1:25353/query",
+        params={
+            "server": "quic://dns-unfiltered.adguard.com",
+            "query_name": "example.com",
+            "protocol": "doq",
+            "family": "ipv4",
+        },
+    )
+    assert r.status_code == 200, "non-200 returncode"
+    assert 'transport="UDP"' in r.text
+    assert 'protocol="doq"' in r.text
+    assert "Protocol doq got a DNS query response over UDP" in caplog.text
 
 
 def test_validate_rcode(dns_exporter_example_config, caplog):
