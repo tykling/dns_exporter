@@ -41,6 +41,7 @@ FAILURE_REASONS = [
     "invalid_request_module",
     "invalid_request_config",
     "invalid_request_server",
+    "invalid_request_proxy",
     "invalid_request_family",
     "invalid_request_ip",
     "invalid_request_port",

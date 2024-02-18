@@ -29,6 +29,7 @@ import dns.query
 import dns.rcode
 import dns.rdatatype
 import dns.resolver
+import socks  # type: ignore
 from prometheus_client import CollectorRegistry, MetricsHandler, exposition
 from prometheus_client.registry import RestrictedRegistry
 
@@ -169,6 +170,39 @@ class DNSExporter(MetricsHandler):
             config["server"] = cls.parse_server(
                 server=config["server"], protocol=config["protocol"]
             )
+
+        # parse socks_proxy?
+        if (
+            "socks_proxy" in config.keys()
+            and config["socks_proxy"]
+            and not isinstance(config["socks_proxy"], urllib.parse.SplitResult)
+        ):
+            if "://" not in config["socks_proxy"]:
+                logger.error("No scheme in proxy")
+                raise ConfigError("invalid_request_proxy")
+
+            # parse socks proxy into a SplitResult
+            splitresult = urllib.parse.urlsplit(config["socks_proxy"])
+            if (
+                not splitresult.scheme
+                or splitresult.scheme.upper() not in socks.PROXY_TYPES.keys()
+            ):
+                logger.error(f"Invalid proxy scheme {splitresult}")
+                raise ConfigError("invalid_request_proxy")
+
+            # make port explicit
+            if splitresult.port is None:
+                # SOCKS4 and SOCKS5 default to port 1080
+                port = 80 if splitresult.scheme == "http" else 1080
+                splitresult = splitresult._replace(
+                    netloc=f"{splitresult.netloc}:{port}"
+                )
+
+            # keep only scheme and netloc
+            config["socks_proxy"] = urllib.parse.urlsplit(
+                splitresult.scheme + "://" + splitresult.netloc
+            )
+            logger.debug(f"Using socks proxy {str(splitresult.geturl())}")
 
         return config
 

@@ -1,8 +1,8 @@
 import logging
 import re
+import socket
 import time
 import typing as t
-import socket
 import urllib.parse
 from ipaddress import IPv4Address, IPv6Address
 from typing import Iterator, Optional, Union
@@ -15,8 +15,8 @@ import dns.query
 import dns.rcode
 import dns.rdatatype
 import dns.resolver
-import socks  # type: ignore
 import httpx  # type: ignore
+import socks  # type: ignore
 from dns.message import Message, QueryMessage
 from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
 from prometheus_client.registry import Collector
@@ -55,16 +55,15 @@ class DNSCollector(Collector):
         # set proxy?
         if self.config.socks_proxy:
             socks.set_default_proxy(
-                proxy_type=socks.SOCKS5,
-                addr=self.config.socks_proxy.split(":")[0],
-                port=int(self.config.socks_proxy.split(":")[1]),
+                proxy_type=getattr(socks, self.config.socks_proxy.scheme.upper()),
+                addr=self.config.socks_proxy.hostname,
+                port=self.config.socks_proxy.port,
             )
             dns.query.socket_factory = socks.socksocket
             logger.debug(f"Using socks5 proxy {self.config.socks_proxy}")
         else:
             dns.query.socket_factory = socket.socket
             logger.debug("Not using a socks proxy")
-
 
     def describe(self) -> Iterator[Union[CounterMetricFamily, GaugeMetricFamily]]:
         """Describe the metrics that are to be returned by this collector."""
