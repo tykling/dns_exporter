@@ -38,5 +38,5 @@ jobs:
           # disable until codecov improves stability
           # fail_ci_if_error: true
           files: "./src/coverage.xml"
-        working-directory: "./src"
+          working-directory: "./src"
 ...
