@@ -15,9 +15,7 @@ if prom is None:
     )
 
 
-@pytest.mark.skipif(
-    prom is None, reason="test_examples.py requires prometheus to run"
-)
+@pytest.mark.skipif(prom is None, reason="test_examples.py requires prometheus to run")
 @pytest.mark.parametrize(
     "prometheus_server", ["list_of_servers/prometheus.yml"], indirect=True
 )

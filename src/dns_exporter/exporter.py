@@ -316,6 +316,7 @@ class DNSExporter(MetricsHandler):
             )
             splitresult = splitresult._replace(netloc=f"{splitresult.netloc}:{port}")
         # return the parsed server
+        logger.debug(f"Using server {str(splitresult.geturl())}")
         return splitresult
 
     def validate_server_ip(self) -> None:

@@ -91,9 +91,14 @@ class DNSCollector(Collector):
         except dns.exception.Timeout:
             # configured timeout was reached before a response arrived
             yield from self.yield_failure_reason_metric(failure_reason="timeout")
+        except ConnectionRefusedError:
+            # server actively refused the connection
+            yield from self.yield_failure_reason_metric(
+                failure_reason="connection_refused"
+            )
         except Exception:
             logger.exception(
-                f"Got an exception while looking up qname {self.config.query_name} using server {self.config.server}"
+                f"Caught an unknown exception while looking up qname {self.config.query_name} using server {str(self.config.server.geturl())} - exception details follow, returning other_failure"
             )
             yield from self.yield_failure_reason_metric(failure_reason="other_failure")
         # clock it
