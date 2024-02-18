@@ -175,8 +175,8 @@ class Config:
     query_type: str
     """str: The query type used for this DNS query, like ``A`` or ``MX``. Default is ``A``"""
 
-    socks_proxy: t.Optional[urllib.parse.SplitResult]
-    """str: The socks proxy to use for this DNS query, for example ``socks5://127.0.0.1:5000``. Supported proxy types are SOCKS4, SOCKS5, and HTTP. Leave empty to use no proxy. Default is no proxy."""
+    proxy: t.Optional[urllib.parse.SplitResult]
+    """str: The proxy to use for this DNS query, for example ``socks5://127.0.0.1:5000``. Supported proxy types are SOCKS4, SOCKS5, and HTTP. Leave empty to use no proxy. Default is no proxy."""
 
     recursion_desired: bool
     """bool: Set this bool to ``True`` to set the ``RD`` flag in the DNS query. Default is ``True``"""
@@ -265,9 +265,9 @@ class Config:
             )
 
         # validate socks proxy
-        if self.socks_proxy:
+        if self.proxy:
             if self.protocol in ["udp", "udptcp", "quic", "dot"]:
-                logger.error("socks_proxy not valid for UDP based protocols and DoT")
+                logger.error("proxy not valid for UDP based protocols and DoT")
                 raise ConfigError(
                     "invalid_request_config",
                 )
@@ -286,7 +286,7 @@ class Config:
         query_class: str = "IN",
         query_type: str = "A",
         recursion_desired: bool = True,
-        socks_proxy: t.Optional[urllib.parse.SplitResult] = None,
+        proxy: t.Optional[urllib.parse.SplitResult] = None,
         timeout: float = 5.0,
         validate_answer_rrs: RRValidator = RRValidator.create(),
         validate_authority_rrs: RRValidator = RRValidator.create(),
@@ -329,7 +329,7 @@ class Config:
             query_class=query_class.upper(),
             query_type=query_type.upper(),
             recursion_desired=recursion_desired,
-            socks_proxy=socks_proxy,
+            proxy=proxy,
             timeout=float(timeout),
             validate_answer_rrs=validate_answer_rrs,
             validate_authority_rrs=validate_authority_rrs,
@@ -347,8 +347,8 @@ class Config:
         conf: dict[str, t.Any] = asdict(self)
         conf["ip"] = str(conf["ip"])
         conf["server"] = conf["server"].geturl()
-        if conf["socks_proxy"]:
-            conf["socks_proxy"] = conf["socks_proxy"].geturl()
+        if conf["proxy"]:
+            conf["proxy"] = conf["proxy"].geturl()
         return json.dumps(conf)
 
 
@@ -380,4 +380,4 @@ class ConfigDict(t.TypedDict, total=False):
     ip: t.Union[IPv4Address, IPv6Address, None]
     server: t.Optional[urllib.parse.SplitResult]
     query_name: t.Optional[str]
-    socks_proxy: t.Optional[urllib.parse.SplitResult]
+    proxy: t.Optional[urllib.parse.SplitResult]

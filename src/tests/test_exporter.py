@@ -83,7 +83,7 @@ def test_config_endpoint(dns_exporter_example_config):
             "server": "dns.google",
             "query_name": "example.com",
             "protocol": "tcp",
-            "socks_proxy": "socks5://127.0.0.1:1081",
+            "proxy": "socks5://127.0.0.1:1081",
         },
     )
     config = r.json()

@@ -171,18 +171,18 @@ class DNSExporter(MetricsHandler):
                 server=config["server"], protocol=config["protocol"]
             )
 
-        # parse socks_proxy?
+        # parse proxy?
         if (
-            "socks_proxy" in config.keys()
-            and config["socks_proxy"]
-            and not isinstance(config["socks_proxy"], urllib.parse.SplitResult)
+            "proxy" in config.keys()
+            and config["proxy"]
+            and not isinstance(config["proxy"], urllib.parse.SplitResult)
         ):
-            if "://" not in config["socks_proxy"]:
+            if "://" not in config["proxy"]:
                 logger.error("No scheme in proxy")
                 raise ConfigError("invalid_request_proxy")
 
             # parse socks proxy into a SplitResult
-            splitresult = urllib.parse.urlsplit(config["socks_proxy"])
+            splitresult = urllib.parse.urlsplit(config["proxy"])
             if (
                 not splitresult.scheme
                 or splitresult.scheme.upper() not in socks.PROXY_TYPES.keys()
@@ -199,7 +199,7 @@ class DNSExporter(MetricsHandler):
                 )
 
             # keep only scheme and netloc
-            config["socks_proxy"] = urllib.parse.urlsplit(
+            config["proxy"] = urllib.parse.urlsplit(
                 splitresult.scheme + "://" + splitresult.netloc
             )
             logger.debug(f"Using socks proxy {str(splitresult.geturl())}")

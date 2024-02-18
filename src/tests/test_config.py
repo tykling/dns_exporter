@@ -102,9 +102,9 @@ def test_rd_false():
 
 
 def test_proxy_for_unsupported_protocol():
-    """Test socks_proxy with a protocol not supported."""
+    """Test proxy with a protocol not supported."""
     prepared = DNSExporter.prepare_config(
-        ConfigDict(protocol="udp", socks_proxy="socks5://127.0.0.1")
+        ConfigDict(protocol="udp", proxy="socks5://127.0.0.1")
     )
     with pytest.raises(ConfigError):
         Config.create(name="test", **prepared)

@@ -53,14 +53,14 @@ class DNSCollector(Collector):
         self.labels = labels
 
         # set proxy?
-        if self.config.socks_proxy:
+        if self.config.proxy:
             socks.set_default_proxy(
-                proxy_type=getattr(socks, self.config.socks_proxy.scheme.upper()),
-                addr=self.config.socks_proxy.hostname,
-                port=self.config.socks_proxy.port,
+                proxy_type=getattr(socks, self.config.proxy.scheme.upper()),
+                addr=self.config.proxy.hostname,
+                port=self.config.proxy.port,
             )
             dns.query.socket_factory = socks.socksocket
-            logger.debug(f"Using socks5 proxy {self.config.socks_proxy}")
+            logger.debug(f"Using proxy {self.config.proxy.geturl()}")
         else:
             dns.query.socket_factory = socket.socket
             logger.debug("Not using a socks proxy")
