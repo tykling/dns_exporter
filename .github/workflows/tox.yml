@@ -32,7 +32,7 @@ jobs:
         working-directory: "./src"
 
       - name: "Upload coverage to Codecov"
-        uses: "codecov/codecov-action@eaaf4bedf32dbdc6b720b63067d99c4d77d6047d"
+        uses: "codecov/codecov-action@v4"
         with:
           token: "${{secrets.CODECOV_TOKEN}}"
           # disable until codecov improves stability
