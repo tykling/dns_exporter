@@ -169,8 +169,8 @@ def main(mockargs: Optional[list[str]] = None) -> None:
     try:
         HTTPServer((args.listen_ip, args.port), handler).serve_forever()
     except OSError:
-        logger.exception(
-            f"Unable to start listener, maybe {args.port} is in use? bailing out"
+        logger.error(
+            f"Unable to start listener, maybe port {args.port} is in use? bailing out"
         )
         sys.exit(1)
 
