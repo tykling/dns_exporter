@@ -347,7 +347,8 @@ class Config:
         conf: dict[str, t.Any] = asdict(self)
         conf["ip"] = str(conf["ip"])
         conf["server"] = conf["server"].geturl()
-        conf["socks_proxy"] = conf["socks_proxy"].geturl()
+        if conf["socks_proxy"]:
+            conf["socks_proxy"] = conf["socks_proxy"].geturl()
         return json.dumps(conf)
 
 
