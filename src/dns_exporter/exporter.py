@@ -404,7 +404,7 @@ class DNSExporter(MetricsHandler):
         return url, qs
 
     def do_GET(self) -> None:
-        """Handle incoming scrape requests."""
+        """Handle incoming HTTP GET requests."""
         # parse the scrape request url and querystring
         self.url, self.qs = self.parse_querystring()
 
@@ -416,7 +416,6 @@ class DNSExporter(MetricsHandler):
             logger.debug(
                 f"Got {self.url.path} request from client {self.client_address}"
             )
-
             logger.debug(
                 "Initialising CollectorRegistry dnsexp_registry and fail_registry"
             )
