@@ -287,9 +287,6 @@ class DNSExporter(MetricsHandler):
 
         Parse it with urllib.parse.urlsplit, add explicit port if needed, and return the result.
         """
-        logger.debug(
-            f"inside parse_server with server {server} and protocol {protocol}"
-        )
         if "://" not in server:
             server = f"{protocol}://{server}"
         splitresult = urllib.parse.urlsplit(server)
@@ -316,6 +313,7 @@ class DNSExporter(MetricsHandler):
             )
             splitresult = splitresult._replace(netloc=f"{splitresult.netloc}:{port}")
         # return the parsed server
+        logger.debug(f"Using server {str(splitresult.geturl())}")
         return splitresult
 
     def validate_server_ip(self) -> None:
@@ -403,7 +401,7 @@ class DNSExporter(MetricsHandler):
         return url, qs
 
     def do_GET(self) -> None:
-        """Handle incoming scrape requests."""
+        """Handle incoming HTTP GET requests."""
         # parse the scrape request url and querystring
         self.url, self.qs = self.parse_querystring()
 
@@ -415,7 +413,6 @@ class DNSExporter(MetricsHandler):
             logger.debug(
                 f"Got {self.url.path} request from client {self.client_address}"
             )
-
             logger.debug(
                 "Initialising CollectorRegistry dnsexp_registry and fail_registry"
             )

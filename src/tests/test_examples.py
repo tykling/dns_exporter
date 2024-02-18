@@ -15,9 +15,6 @@ if prom is None:
     )
 
 
-@pytest.mark.skipif(
-    prom is None, reason="test_examples.py pyspark tests only required for CI"
-)
 @pytest.mark.parametrize(
     "prometheus_server", ["list_of_servers/prometheus.yml"], indirect=True
 )

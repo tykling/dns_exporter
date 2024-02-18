@@ -16,6 +16,7 @@ import dns.rcode
 import dns.rdatatype
 import dns.resolver
 import socks  # type: ignore
+import httpx  # type: ignore
 from dns.message import Message, QueryMessage
 from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
 from prometheus_client.registry import Collector
@@ -64,21 +65,23 @@ class DNSCollector(Collector):
             dns.query.socket_factory = socket.socket
             logger.debug("Not using a socks proxy")
 
-    # def describe(self) -> Iterator[Union[CounterMetricFamily, GaugeMetricFamily]]:
-    def describe(self) -> list[GaugeMetricFamily]:
+
+    def describe(self) -> Iterator[Union[CounterMetricFamily, GaugeMetricFamily]]:
         """Describe the metrics that are to be returned by this collector."""
-        # TODO: figure out why this doesn't work
-        # yield get_dns_qtime_metric()
-        # yield get_dns_success_metric()
-        # yield get_dns_failure_metric()
-        # yield get_dns_ttl_metric()
-        return []
+        yield get_dns_qtime_metric()
+        yield get_dns_success_metric()
+        yield get_dns_failure_metric()
+        yield get_dns_ttl_metric()
+        yield from self.collect_up()
 
     def collect(
         self, mock_output: Union[str, None] = None
     ) -> Iterator[Union[CounterMetricFamily, GaugeMetricFamily]]:
         """Do DNS lookup and yield metrics."""
         yield from self.collect_dns()
+        yield from self.collect_up()
+
+    def collect_up(self) -> Iterator[GaugeMetricFamily]:
         yield GaugeMetricFamily(
             "up",
             "The value of this Gauge is always 1 when the dns_exporter is up",
@@ -106,9 +109,19 @@ class DNSCollector(Collector):
         except dns.exception.Timeout:
             # configured timeout was reached before a response arrived
             yield from self.yield_failure_reason_metric(failure_reason="timeout")
+        except ConnectionRefusedError:
+            # server actively refused the connection
+            yield from self.yield_failure_reason_metric(
+                failure_reason="connection_refused"
+            )
+        except httpx.ConnectError:
+            # there was an error while establishing the connection
+            yield from self.yield_failure_reason_metric(
+                failure_reason="connection_error"
+            )
         except Exception:
             logger.exception(
-                f"Got an exception while looking up qname {self.config.query_name} using server {self.config.server}"
+                f"Caught an unknown exception while looking up qname {self.config.query_name} using server {str(self.config.server.geturl())} - exception details follow, returning other_failure"
             )
             yield from self.yield_failure_reason_metric(failure_reason="other_failure")
         # clock it
@@ -150,8 +163,13 @@ class DNSCollector(Collector):
         assert hasattr(r, "options")  # mypy
         for opt in r.options:
             if opt.otype == dns.edns.NSID:
-                # treat nsid as ascii text for prom labels
-                self.labels.update({"nsid": opt.data.decode("ASCII")})
+                if hasattr(opt, "data"):
+                    # dnspython < 2.6.0 compatibility
+                    # treat nsid as ascii text for prom labels
+                    self.labels.update({"nsid": opt.data.decode("ASCII")})
+                else:
+                    # for dnspython 2.6.0+
+                    self.labels.update({"nsid": opt.to_text()})
                 break
 
         # labels complete, yield timing metric
@@ -165,18 +183,21 @@ class DNSCollector(Collector):
         # register TTL of response RRs and yield ttl metric
         ttl = get_dns_ttl_metric()
         for section in ["answer", "authority", "additional"]:
+            logger.debug(f"processing section {section}")
             rrsets = getattr(r, section)
             for rrset in rrsets:
-                rr = rrset[0]
-                self.labels.update(
-                    {
-                        "rr_section": section,
-                        "rr_name": str(rrset.name),
-                        "rr_type": dns.rdatatype.to_text(rr.rdtype),
-                        "rr_value": rr.to_text()[:255],
-                    }
-                )
-                ttl.add_metric(list(self.labels.values()), rrset.ttl)
+                logger.debug(f"processing rrset {rrset}...")
+                for rr in rrset:
+                    logger.debug(f"processing rr {rr}")
+                    self.labels.update(
+                        {
+                            "rr_section": section,
+                            "rr_name": str(rrset.name),
+                            "rr_type": dns.rdatatype.to_text(rr.rdtype),
+                            "rr_value": rr.to_text()[:255],
+                        }
+                    )
+                    ttl.add_metric(list(self.labels.values()), rrset.ttl)
         # yield all the ttl metrics
         yield ttl
 
@@ -462,7 +483,7 @@ class FailCollector(DNSCollector):
         """Save failure reason for use later."""
         self.reason = failure_reason
 
-    def collect(
+    def collect_dns(
         self, mock_output: Union[str, None] = None
     ) -> Iterator[Union[CounterMetricFamily, GaugeMetricFamily]]:
         """Do not collect anything, just return the error message."""

@@ -3,6 +3,8 @@
 All metrics exposed by ``dns_exporter`` are prefixed with ``dnsexp_`` (apart from ``up``
 and the built-in Python metrics).
 """
+from typing import Optional
+
 from prometheus_client.core import (
     Counter,
     CounterMetricFamily,
@@ -47,6 +49,8 @@ FAILURE_REASONS = [
     "invalid_request_query_name",
     "invalid_request_query_type",
     "invalid_request_query_class",
+    "connection_error",
+    "connection_refused",
     "timeout",
     "invalid_response_rcode",
     "invalid_response_flags",
@@ -88,7 +92,7 @@ def get_dns_qtime_metric() -> GaugeMetricFamily:
     )
 
 
-def get_dns_success_metric(value: int) -> GaugeMetricFamily:
+def get_dns_success_metric(value: Optional[int] = None) -> GaugeMetricFamily:
     """``dnsexp_dns_query_success`` is a Gauge set to 1 when a DNS query is successful, or 0 otherwise.
 
     A DNS query is considered failed in the following cases:

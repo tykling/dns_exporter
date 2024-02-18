@@ -1,6 +1,7 @@
 # type: ignore
-"""dns_exporter test suite extravaganza."""
+"""Unit tests for dns_exporter/exporter.py."""
 import logging
+import sys
 
 import cryptography
 import pytest
@@ -15,6 +16,7 @@ from dns_exporter.version import __version__
 class TestExporter(DNSExporter):
     """This is just here so tests can mess around with cls.modules without changing the global DNSExporter class."""
 
+    # tell pytest this is not a class containing unit tests
     __test__ = False
 
 
@@ -272,14 +274,14 @@ def test_internal_metrics(dns_exporter_example_config, caplog):
     assert f'dnsexp_build_version_info{{version="{__version__}"}} 1.0' in r.text
     assert "Returning exporter metrics for request to /metrics" in caplog.text
     for metric in """dnsexp_http_requests_total{path="/notfound"} 1.0
-dnsexp_http_requests_total{path="/query"} 38.0
+dnsexp_http_requests_total{path="/query"} 40.0
 dnsexp_http_requests_total{path="/config"} 2.0
 dnsexp_http_requests_total{path="/"} 1.0
 dnsexp_http_requests_total{path="/metrics"} 1.0
 dnsexp_http_responses_total{path="/notfound",response_code="404"} 1.0
-dnsexp_http_responses_total{path="/query",response_code="200"} 38.0
+dnsexp_http_responses_total{path="/query",response_code="200"} 40.0
 dnsexp_http_responses_total{path="/",response_code="200"} 1.0
-dnsexp_dns_queries_total 28.0
+dnsexp_dns_queries_total 29.0
 dnsexp_dns_responsetime_seconds_bucket{additional="0",answer="1",authority="0",family="ipv4",flags="QR RA RD",ip="8.8.4.4",le="0.005",nsid="no_nsid",opcode="QUERY",port="53",protocol="udp",query_name="example.com",query_type="A",rcode="NOERROR",server="udp://dns.google:53",transport="UDP"}
 dnsexp_scrape_failures_total{reason="timeout"} 1.0
 dnsexp_scrape_failures_total{reason="invalid_response_flags"} 6.0
@@ -292,6 +294,8 @@ dnsexp_scrape_failures_total{reason="invalid_request_config"} 2.0
 dnsexp_scrape_failures_total{reason="invalid_request_ip"} 3.0
 dnsexp_scrape_failures_total{reason="invalid_request_family"} 1.0
 dnsexp_scrape_failures_total{reason="other_failure"} 1.0
+dnsexp_scrape_failures_total{reason="connection_refused"} 1.0
+dnsexp_scrape_failures_total{reason="connection_error"} 1.0
 dnsexp_scrape_failures_total{reason="invalid_request_query_name"} 1.0""".split(
         "\n"
     ):
@@ -390,25 +394,35 @@ def test_doh(dns_exporter_example_config, caplog):
 
 
 def test_doq(dns_exporter_example_config, caplog):
-    # this silences the warning for py3.12
-    # with pytest.deprecated_call():
-    # this silences the warning for py3.9-py3.11 but not for py3.12
-    with pytest.warns(cryptography.utils.CryptographyDeprecationWarning):
-        caplog.clear()
-        caplog.set_level(logging.DEBUG)
-        r = requests.get(
-            "http://127.0.0.1:25353/query",
-            params={
-                "server": "quic://dns-unfiltered.adguard.com",
-                "query_name": "example.com",
-                "protocol": "doq",
-                "family": "ipv4",
-            },
-        )
-        assert r.status_code == 200, "non-200 returncode"
-        assert 'transport="UDP"' in r.text
-        assert 'protocol="doq"' in r.text
-        assert "Protocol doq got a DNS query response over UDP" in caplog.text
+    # aioquic uses some deprecated cryptography methods and it causes some deprecation warnings
+    # which have to be handled different from 3.12 onwards
+    if sys.version_info >= (3, 12):
+        # py3.12 raises an extra DeprecationWarning
+        with pytest.deprecated_call():
+            with pytest.warns(cryptography.utils.CryptographyDeprecationWarning):
+                doq(dns_exporter_example_config, caplog)
+    else:
+        # just silence the CryptographyDeprecationWarning for py3.9-py3.11
+        with pytest.warns(cryptography.utils.CryptographyDeprecationWarning):
+            doq(dns_exporter_example_config, caplog)
+
+
+def doq(dns_exporter_example_config, caplog):
+    caplog.clear()
+    caplog.set_level(logging.DEBUG)
+    r = requests.get(
+        "http://127.0.0.1:25353/query",
+        params={
+            "server": "quic://dns-unfiltered.adguard.com",
+            "query_name": "example.com",
+            "protocol": "doq",
+            "family": "ipv4",
+        },
+    )
+    assert r.status_code == 200, "non-200 returncode"
+    assert 'transport="UDP"' in r.text
+    assert 'protocol="doq"' in r.text
+    assert "Protocol doq got a DNS query response over UDP" in caplog.text
 
 
 def test_validate_rcode(dns_exporter_example_config, caplog):
@@ -763,3 +777,32 @@ def test_configure_bad_module(caplog):
         "Invalid value found while building config {'query_class': 'OUT'}"
         in caplog.text
     )
+
+
+def test_connrefused_server(dns_exporter_example_config, caplog):
+    caplog.clear()
+    caplog.set_level(logging.DEBUG)
+    r = requests.get(
+        "http://127.0.0.1:25353/query",
+        params={
+            "server": "127.0.0.1:53",
+            "protocol": "tcp",
+            "query_name": "example.com",
+        },
+    )
+    assert r.status_code == 200, "non-200 returncode"
+    assert 'dnsexp_failures_total{reason="connection_refused"} 1.0' in r.text
+
+
+def test_httpx_connecterror(
+    dns_exporter_example_config, mock_collect_httpx_connecterror
+):
+    r = requests.get(
+        "http://127.0.0.1:25353/query",
+        params={
+            "query_name": "example.com",
+            "server": "dns.google",
+            "family": "ipv4",
+        },
+    )
+    assert 'dnsexp_failures_total{reason="connection_error"} 1.0' in r.text

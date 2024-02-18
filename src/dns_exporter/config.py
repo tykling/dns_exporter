@@ -223,7 +223,6 @@ class Config:
                 raise ConfigError("invalid_request_config")
 
         # validate integers
-        # TODO: maybe check that edns_bufsize is not too big?
         for key in ["edns_bufsize", "edns_pad"]:
             if not getattr(self, key) >= 0:
                 logger.error("Invalid integer")
