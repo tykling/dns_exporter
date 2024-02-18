@@ -37,5 +37,6 @@ jobs:
           token: "${{secrets.CODECOV_TOKEN}}"
           # disable until codecov improves stability
           # fail_ci_if_error: true
-          files: "/home/runner/work/dns_exporter/dns_exporter/src/src/coverage.xml"
+          files: "./src/coverage.xml"
+        working-directory: "./src"
 ...
