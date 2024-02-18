@@ -7,6 +7,7 @@ from http.server import HTTPServer
 from pathlib import Path
 from threading import Thread
 
+import httpx
 import pytest
 import yaml
 
@@ -144,3 +145,11 @@ def prometheus_server(request, tmp_path_factory, tmpdir_factory):
     print("Stopping prometheus server...")
     proc.terminate()
     print("Teardown finished!")
+
+
+@pytest.fixture
+def mock_collect_httpx_connecterror(mocker):
+    mocker.patch(
+        "dns_exporter.collector.DNSCollector.get_dns_response",
+        side_effect=httpx.ConnectError("mocked"),
+    )

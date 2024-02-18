@@ -273,12 +273,12 @@ def test_internal_metrics(dns_exporter_example_config, caplog):
     assert f'dnsexp_build_version_info{{version="{__version__}"}} 1.0' in r.text
     assert "Returning exporter metrics for request to /metrics" in caplog.text
     for metric in """dnsexp_http_requests_total{path="/notfound"} 1.0
-dnsexp_http_requests_total{path="/query"} 39.0
+dnsexp_http_requests_total{path="/query"} 40.0
 dnsexp_http_requests_total{path="/config"} 2.0
 dnsexp_http_requests_total{path="/"} 1.0
 dnsexp_http_requests_total{path="/metrics"} 1.0
 dnsexp_http_responses_total{path="/notfound",response_code="404"} 1.0
-dnsexp_http_responses_total{path="/query",response_code="200"} 39.0
+dnsexp_http_responses_total{path="/query",response_code="200"} 40.0
 dnsexp_http_responses_total{path="/",response_code="200"} 1.0
 dnsexp_dns_queries_total 29.0
 dnsexp_dns_responsetime_seconds_bucket{additional="0",answer="1",authority="0",family="ipv4",flags="QR RA RD",ip="8.8.4.4",le="0.005",nsid="no_nsid",opcode="QUERY",port="53",protocol="udp",query_name="example.com",query_type="A",rcode="NOERROR",server="udp://dns.google:53",transport="UDP"}
@@ -294,6 +294,7 @@ dnsexp_scrape_failures_total{reason="invalid_request_ip"} 3.0
 dnsexp_scrape_failures_total{reason="invalid_request_family"} 1.0
 dnsexp_scrape_failures_total{reason="other_failure"} 1.0
 dnsexp_scrape_failures_total{reason="connection_refused"} 1.0
+dnsexp_scrape_failures_total{reason="connection_error"} 1.0
 dnsexp_scrape_failures_total{reason="invalid_request_query_name"} 1.0""".split(
         "\n"
     ):
@@ -780,3 +781,17 @@ def test_connrefused_server(dns_exporter_example_config, caplog):
     )
     assert r.status_code == 200, "non-200 returncode"
     assert 'dnsexp_failures_total{reason="connection_refused"} 1.0' in r.text
+
+
+def test_httpx_connecterror(
+    dns_exporter_example_config, mock_collect_httpx_connecterror
+):
+    r = requests.get(
+        "http://127.0.0.1:25353/query",
+        params={
+            "query_name": "example.com",
+            "server": "dns.google",
+            "family": "ipv4",
+        },
+    )
+    assert 'dnsexp_failures_total{reason="connection_error"} 1.0' in r.text

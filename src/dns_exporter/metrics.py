@@ -47,6 +47,7 @@ FAILURE_REASONS = [
     "invalid_request_query_name",
     "invalid_request_query_type",
     "invalid_request_query_class",
+    "connection_error",
     "connection_refused",
     "timeout",
     "invalid_response_rcode",

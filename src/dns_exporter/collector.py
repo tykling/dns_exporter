@@ -14,6 +14,7 @@ import dns.query
 import dns.rcode
 import dns.rdatatype
 import dns.resolver
+import httpx  # type: ignore
 from dns.message import Message, QueryMessage
 from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
 from prometheus_client.registry import Collector
@@ -95,6 +96,11 @@ class DNSCollector(Collector):
             # server actively refused the connection
             yield from self.yield_failure_reason_metric(
                 failure_reason="connection_refused"
+            )
+        except httpx.ConnectError:
+            # there was an error while establishing the connection
+            yield from self.yield_failure_reason_metric(
+                failure_reason="connection_error"
             )
         except Exception:
             logger.exception(
