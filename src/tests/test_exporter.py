@@ -394,15 +394,15 @@ def test_doh(dns_exporter_example_config, caplog):
 
 
 def test_doq(dns_exporter_example_config, caplog):
-    # aioquic causes a cryptography deprecationwarning: DeprecationWarning: datetime.datetime.utcnow() is deprecated,
-    # warnings are silenced in runtime for for unit tests they need to be explicitly silenced, and this one has to be
-    # handled different from 3.12 onwards.
+    # aioquic uses some deprecated cryptography methods and it causes some deprecation warnings
+    # which have to be handled different from 3.12 onwards
     if sys.version_info >= (3, 12):
-        # this silences the warning for py3.12
+        # py3.12 raises an extra DeprecationWarning
         with pytest.deprecated_call():
-            doq(dns_exporter_example_config, caplog)
+            with pytest.warns(cryptography.utils.CryptographyDeprecationWarning):
+                doq(dns_exporter_example_config, caplog)
     else:
-        # this silences the warning for py3.9-py3.11 but not for py3.12
+        # just silence the CryptographyDeprecationWarning for py3.9-py3.11
         with pytest.warns(cryptography.utils.CryptographyDeprecationWarning):
             doq(dns_exporter_example_config, caplog)
 
