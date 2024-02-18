@@ -81,6 +81,7 @@ class DNSCollector(Collector):
         yield from self.collect_up()
 
     def collect_up(self) -> Iterator[GaugeMetricFamily]:
+        """Yield the up metric."""
         yield GaugeMetricFamily(
             "up",
             "The value of this Gauge is always 1 when the dns_exporter is up",
@@ -88,6 +89,7 @@ class DNSCollector(Collector):
         )
 
     def collect_dns(self) -> Iterator[Union[CounterMetricFamily, GaugeMetricFamily]]:
+        """Collect and yield DNS metrics."""
         assert isinstance(self.config.ip, (IPv4Address, IPv6Address))  # mypy
         assert isinstance(self.config.server, urllib.parse.SplitResult)  # mypy
         assert isinstance(self.config.server.port, int)  # mypy

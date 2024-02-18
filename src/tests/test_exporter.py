@@ -82,12 +82,17 @@ def test_config_endpoint(dns_exporter_example_config):
         params={
             "server": "dns.google",
             "query_name": "example.com",
+            "protocol": "tcp",
+            "socks_proxy": "socks5://127.0.0.1:1081",
         },
     )
     config = r.json()
-    assert config["server"] == "udp://dns.google:53"
+    assert config["server"] == "tcp://dns.google:53"
     assert config["query_name"] == "example.com"
 
+
+def test_config_endpoint_2(dns_exporter_example_config):
+    """Test the /config endpoint some more."""
     r = requests.get(
         "http://127.0.0.1:25353/config",
         params={
