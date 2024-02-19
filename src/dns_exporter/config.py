@@ -264,7 +264,7 @@ class Config:
                 "invalid_request_config",
             )
 
-        # validate socks proxy
+        # validate proxy
         if self.proxy:
             if self.protocol in ["udp", "udptcp", "quic", "dot"]:
                 logger.error("proxy not valid for UDP based protocols and DoT")

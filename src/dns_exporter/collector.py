@@ -63,7 +63,7 @@ class DNSCollector(Collector):
             logger.debug(f"Using proxy {self.config.proxy.geturl()}")
         else:
             dns.query.socket_factory = socket.socket
-            logger.debug("Not using a socks proxy")
+            logger.debug("Not using a proxy for this request")
 
     def describe(self) -> Iterator[Union[CounterMetricFamily, GaugeMetricFamily]]:
         """Describe the metrics that are to be returned by this collector."""
