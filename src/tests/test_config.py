@@ -99,3 +99,12 @@ def test_rd_false():
     prepared = DNSExporter.prepare_config(ConfigDict(recursion_desired="false"))
     c = Config.create(name="test", **prepared)
     assert c.recursion_desired is False
+
+
+def test_proxy_for_unsupported_protocol():
+    """Test proxy with a protocol not supported."""
+    prepared = DNSExporter.prepare_config(
+        ConfigDict(protocol="udp", proxy="socks5://127.0.0.1")
+    )
+    with pytest.raises(ConfigError):
+        Config.create(name="test", **prepared)

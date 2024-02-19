@@ -166,7 +166,13 @@ def main(mockargs: Optional[list[str]] = None) -> None:
     logger.debug(
         f"Ready to serve requests. Starting listener on {args.listen_ip} port {args.port}..."
     )
-    HTTPServer((args.listen_ip, args.port), handler).serve_forever()
+    try:
+        HTTPServer((args.listen_ip, args.port), handler).serve_forever()
+    except OSError:
+        logger.error(
+            f"Unable to start listener, maybe port {args.port} is in use? bailing out"
+        )
+        sys.exit(1)
 
 
 if __name__ == "__main__":

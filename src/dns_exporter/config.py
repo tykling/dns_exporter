@@ -175,6 +175,9 @@ class Config:
     query_type: str
     """str: The query type used for this DNS query, like ``A`` or ``MX``. Default is ``A``"""
 
+    proxy: t.Optional[urllib.parse.SplitResult]
+    """str: The proxy to use for this DNS query, for example ``socks5://127.0.0.1:5000``. Supported proxy types are SOCKS4, SOCKS5, and HTTP. Leave empty to use no proxy. Default is no proxy."""
+
     recursion_desired: bool
     """bool: Set this bool to ``True`` to set the ``RD`` flag in the DNS query. Default is ``True``"""
 
@@ -203,9 +206,7 @@ class Config:
     )
     """IPv4Address | IPv6Address | None: The IP to use instead of using IP or hostname from server. Default is ``None``"""
 
-    server: t.Union[urllib.parse.SplitResult, None] = field(
-        default_factory=lambda: None
-    )
+    server: t.Optional[urllib.parse.SplitResult] = field(default_factory=lambda: None)
     """urllib.parse.SplitResult | None: The DNS server to use in parsed form. Default is ``None``"""
 
     query_name: t.Optional[str] = field(default_factory=lambda: None)
@@ -263,6 +264,15 @@ class Config:
                 "invalid_request_config",
             )
 
+        # validate proxy
+        if self.proxy:
+            # proxy support only works for plain tcp for now
+            if self.protocol not in ["tcp"]:
+                logger.error(f"proxy not valid for protocol {self.protocol}")
+                raise ConfigError(
+                    "invalid_request_config",
+                )
+
     @classmethod
     def create(
         cls: t.Type["Config"],
@@ -277,6 +287,7 @@ class Config:
         query_class: str = "IN",
         query_type: str = "A",
         recursion_desired: bool = True,
+        proxy: t.Optional[urllib.parse.SplitResult] = None,
         timeout: float = 5.0,
         validate_answer_rrs: RRValidator = RRValidator.create(),
         validate_authority_rrs: RRValidator = RRValidator.create(),
@@ -319,6 +330,7 @@ class Config:
             query_class=query_class.upper(),
             query_type=query_type.upper(),
             recursion_desired=recursion_desired,
+            proxy=proxy,
             timeout=float(timeout),
             validate_answer_rrs=validate_answer_rrs,
             validate_authority_rrs=validate_authority_rrs,
@@ -336,6 +348,8 @@ class Config:
         conf: dict[str, t.Any] = asdict(self)
         conf["ip"] = str(conf["ip"])
         conf["server"] = conf["server"].geturl()
+        if conf["proxy"]:
+            conf["proxy"] = conf["proxy"].geturl()
         return json.dumps(conf)
 
 
@@ -365,5 +379,6 @@ class ConfigDict(t.TypedDict, total=False):
     validate_response_flags: RFValidator
     valid_rcodes: list[str]
     ip: t.Union[IPv4Address, IPv6Address, None]
-    server: t.Union[urllib.parse.SplitResult, None]
+    server: t.Optional[urllib.parse.SplitResult]
     query_name: t.Optional[str]
+    proxy: t.Optional[urllib.parse.SplitResult]

@@ -29,6 +29,7 @@ import dns.query
 import dns.rcode
 import dns.rdatatype
 import dns.resolver
+import socks  # type: ignore
 from prometheus_client import CollectorRegistry, MetricsHandler, exposition
 from prometheus_client.registry import RestrictedRegistry
 
@@ -169,6 +170,39 @@ class DNSExporter(MetricsHandler):
             config["server"] = cls.parse_server(
                 server=config["server"], protocol=config["protocol"]
             )
+
+        # parse proxy?
+        if (
+            "proxy" in config.keys()
+            and config["proxy"]
+            and not isinstance(config["proxy"], urllib.parse.SplitResult)
+        ):
+            if "://" not in config["proxy"]:
+                logger.error("No scheme in proxy")
+                raise ConfigError("invalid_request_proxy")
+
+            # parse proxy into a SplitResult
+            splitresult = urllib.parse.urlsplit(config["proxy"])
+            if (
+                not splitresult.scheme
+                or splitresult.scheme.upper() not in socks.PROXY_TYPES.keys()
+            ):
+                logger.error(f"Invalid proxy scheme {splitresult}")
+                raise ConfigError("invalid_request_proxy")
+
+            # make port explicit
+            if splitresult.port is None:
+                # SOCKS4 and SOCKS5 default to port 1080
+                port = 8080 if splitresult.scheme == "http" else 1080
+                splitresult = splitresult._replace(
+                    netloc=f"{splitresult.netloc}:{port}"
+                )
+
+            # keep only scheme and netloc
+            config["proxy"] = urllib.parse.urlsplit(
+                splitresult.scheme + "://" + splitresult.netloc
+            )
+            logger.debug(f"Using proxy {str(splitresult.geturl())}")
 
         return config
 
@@ -444,6 +478,9 @@ class DNSExporter(MetricsHandler):
                 "port": str(self.config.server.port),
                 "protocol": str(self.config.protocol),
                 "family": str(self.config.family),
+                "proxy": str(self.config.proxy.geturl())
+                if self.config.proxy
+                else "none",
                 "query_name": str(self.config.query_name),
                 "query_type": str(self.config.query_type),
             }

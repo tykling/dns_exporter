@@ -66,6 +66,9 @@ def dns_exporter_param_config(request):
     proc = subprocess.Popen(
         args=["dns_exporter", "-c", str(conf), "-d"],
     )
+    if proc.poll():
+        # process didn't start properly, bail out
+        return
     time.sleep(1)
     yield
     print(f"Stopping dns_exporter with config {request.param} on 127.0.0.1:15353 ...")

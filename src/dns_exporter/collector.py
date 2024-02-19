@@ -1,5 +1,6 @@
 import logging
 import re
+import socket
 import time
 import typing as t
 import urllib.parse
@@ -15,6 +16,7 @@ import dns.rcode
 import dns.rdatatype
 import dns.resolver
 import httpx  # type: ignore
+import socks  # type: ignore
 from dns.message import Message, QueryMessage
 from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
 from prometheus_client.registry import Collector
@@ -50,6 +52,19 @@ class DNSCollector(Collector):
         self.query = query
         self.labels = labels
 
+        # set proxy?
+        if self.config.proxy:
+            socks.set_default_proxy(
+                proxy_type=getattr(socks, self.config.proxy.scheme.upper()),
+                addr=self.config.proxy.hostname,
+                port=self.config.proxy.port,
+            )
+            dns.query.socket_factory = socks.socksocket
+            logger.debug(f"Using proxy {self.config.proxy.geturl()}")
+        else:
+            dns.query.socket_factory = socket.socket
+            logger.debug("Not using a proxy for this request")
+
     def describe(self) -> Iterator[Union[CounterMetricFamily, GaugeMetricFamily]]:
         """Describe the metrics that are to be returned by this collector."""
         yield get_dns_qtime_metric()
@@ -66,6 +81,7 @@ class DNSCollector(Collector):
         yield from self.collect_up()
 
     def collect_up(self) -> Iterator[GaugeMetricFamily]:
+        """Yield the up metric."""
         yield GaugeMetricFamily(
             "up",
             "The value of this Gauge is always 1 when the dns_exporter is up",
@@ -73,6 +89,7 @@ class DNSCollector(Collector):
         )
 
     def collect_dns(self) -> Iterator[Union[CounterMetricFamily, GaugeMetricFamily]]:
+        """Collect and yield DNS metrics."""
         assert isinstance(self.config.ip, (IPv4Address, IPv6Address))  # mypy
         assert isinstance(self.config.server, urllib.parse.SplitResult)  # mypy
         assert isinstance(self.config.server.port, int)  # mypy

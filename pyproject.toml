@@ -16,6 +16,7 @@ dependencies = [
     "dnspython[doh,dnssec,idna,doq] >= 2.2.1",
     "PyYAML >= 6.0",
     "prometheus-client >= 0.15.0",
+    "PySocks >= 1.7.1",
 ]
 description = "Prometheus exporter for blackbox-style DNS monitoring"
 dynamic = ["version"]
