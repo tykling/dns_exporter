@@ -25,6 +25,7 @@ QTIME_LABELS = [
     "port",
     "protocol",
     "family",
+    "proxy",
     "query_name",
     "query_type",
     "transport",

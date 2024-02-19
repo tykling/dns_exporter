@@ -266,8 +266,9 @@ class Config:
 
         # validate proxy
         if self.proxy:
-            if self.protocol in ["udp", "udptcp", "quic", "dot"]:
-                logger.error("proxy not valid for UDP based protocols and DoT")
+            # proxy support only works for plain tcp for now
+            if self.protocol not in ["tcp"]:
+                logger.error(f"proxy not valid for protocol {self.protocol}")
                 raise ConfigError(
                     "invalid_request_config",
                 )

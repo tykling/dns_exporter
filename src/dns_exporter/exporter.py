@@ -193,7 +193,7 @@ class DNSExporter(MetricsHandler):
             # make port explicit
             if splitresult.port is None:
                 # SOCKS4 and SOCKS5 default to port 1080
-                port = 80 if splitresult.scheme == "http" else 1080
+                port = 8080 if splitresult.scheme == "http" else 1080
                 splitresult = splitresult._replace(
                     netloc=f"{splitresult.netloc}:{port}"
                 )
@@ -478,6 +478,9 @@ class DNSExporter(MetricsHandler):
                 "port": str(self.config.server.port),
                 "protocol": str(self.config.protocol),
                 "family": str(self.config.family),
+                "proxy": str(self.config.proxy.geturl())
+                if self.config.proxy
+                else "none",
                 "query_name": str(self.config.query_name),
                 "query_type": str(self.config.query_type),
             }
