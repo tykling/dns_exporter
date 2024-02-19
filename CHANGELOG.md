@@ -7,7 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-- No changes yet
+### Fixed
+- Update codecov GH action to silence warning in CI
+- Handle errors in unit test setup better
+- Wrote a real describe() method in the collector
+- Support dnspython 2.6.0 as well as earlier versions
+- Add ttl metrics for all rrs.
+- Improve logformat used during unit tests
+
+### Added
+- Basic proxy support for plain TCP DNS lookups, supported proxy types are SOCKS4, SOCKS5 and HTTP.
+- Introduced pytest-mock test dependency to help with testing proxy code
+- Three new failure modes: `invalid_request_proxy`, `connection_error`, `connection_refused`
+
+
+### Changed
+- Suppress warnings at runtime (to silence dependencies)
+- Fail with a nice message if the port is in use when starting the exporter
 
 
 ## [v1.0.0-beta3] - 2024-02-15
