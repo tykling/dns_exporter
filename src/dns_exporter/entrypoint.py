@@ -108,7 +108,7 @@ def main(mockargs: Optional[list[str]] = None) -> None:
         sys.exit(0)
 
     # configure the log format and level
-    console_logformat = "%(asctime)s %(name)s %(levelname)s DNSExporter.%(funcName)s():%(lineno)i:  %(message)s"
+    console_logformat = "%(asctime)s %(levelname)s %(name)s.%(funcName)s():%(lineno)i:  %(message)s"
     level = getattr(args, "log-level")
     logging.basicConfig(
         level=level,
