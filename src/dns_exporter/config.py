@@ -267,7 +267,7 @@ class Config:
         # validate proxy
         if self.proxy:
             # proxy support only works for plain tcp for now
-            if self.protocol not in ["tcp"]:
+            if self.protocol not in ["tcp", "doh"]:
                 logger.error(f"proxy not valid for protocol {self.protocol}")
                 raise ConfigError(
                     "invalid_request_config",
