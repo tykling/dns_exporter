@@ -79,6 +79,7 @@ class DNSCollector(Collector):
         """Do DNS lookup and yield metrics."""
         yield from self.collect_dns()
         yield from self.collect_up()
+        logger.debug("Done, returning HTTP response")
 
     def collect_up(self) -> Iterator[GaugeMetricFamily]:
         """Yield the up metric."""
@@ -200,9 +201,11 @@ class DNSCollector(Collector):
                     )
                     ttl.add_metric(list(self.labels.values()), rrset.ttl)
         # yield all the ttl metrics
+        logger.debug("yielding ttl metrics")
         yield ttl
 
         # validate response and yield remaining metrics
+        logger.debug("yielding success and failure metrics")
         try:
             self.validate_dnsexp_response(response=r)
             yield from self.yield_failure_reason_metric(failure_reason="")
@@ -229,12 +232,13 @@ class DNSCollector(Collector):
         r = None
         # the transport protocol, TCP or UDP
         transport: str = "TCP"
+        proxy = self.config.proxy.geturl() if self.config.proxy else "is not active"
+        logger.debug(
+            f"Doing DNS query {query.question} with server {server.geturl()} (using IP {ip}) and proxy {proxy}"
+        )
 
         if protocol == "udp":
             # plain UDP lookup, nothing fancy here
-            logger.debug(
-                f"doing UDP lookup with server {server.netloc} (using IP {ip}) port {port} and query {query.question}"
-            )
             r = dns.query.udp(
                 q=query,
                 where=str(ip),
@@ -246,9 +250,6 @@ class DNSCollector(Collector):
 
         elif protocol == "tcp":
             # plain TCP lookup, nothing fancy here
-            logger.debug(
-                f"doing TCP lookup with server {server.netloc} (using IP {ip}) port {port} and query {query.question}"
-            )
             r = dns.query.tcp(
                 q=query,
                 where=str(ip),
@@ -259,9 +260,6 @@ class DNSCollector(Collector):
 
         elif protocol == "udptcp":
             # plain UDP lookup with fallback to TCP lookup
-            logger.debug(
-                f"doing UDP>TCP lookup with server {server.netloc} (using IP {ip}) port {port} and query {query.question}"
-            )
             r, tcp = dns.query.udp_with_fallback(
                 q=query,
                 where=str(ip),
@@ -273,9 +271,6 @@ class DNSCollector(Collector):
 
         elif protocol == "dot":
             # DoT query, use the ip for where= and set tls hostname with server_hostname=
-            logger.debug(
-                f"doing DoT lookup with server {server.netloc} (using IP {ip}) port {port} and query {query.question}"
-            )
             r = dns.query.tls(
                 q=query,
                 where=str(ip),
@@ -288,9 +283,6 @@ class DNSCollector(Collector):
         elif protocol == "doh":
             # DoH query, use the url for where= and use bootstrap_address= for the ip
             url = f"https://{server.hostname}{server.path}"
-            logger.debug(
-                f"doing DoH lookup with url {url} (using IP {ip}) port {port} and query {query.question}"
-            )
             r = dns.query.https(
                 q=query,
                 where=url,
@@ -302,9 +294,6 @@ class DNSCollector(Collector):
 
         elif protocol == "doq":
             # DoQ query, use the IP for where= and use server_hostname for the hostname
-            logger.debug(
-                f"doing DoQ lookup with server {server} (using IP {ip}) port {port} and query {query.question}"
-            )
             r = dns.query.quic(
                 q=query,
                 where=str(ip),
