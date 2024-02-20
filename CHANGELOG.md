@@ -5,6 +5,15 @@ All notable changes to `dns_exporter` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Changed
+- Updated some dev and test dependencies
+- Improve debug logging
+- Enable proxy support for all protocols except DoT
+
+
+
 ## [v1.0.0-beta4] - 2024-02-19
 
 ### Fixed
