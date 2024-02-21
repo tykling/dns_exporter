@@ -123,7 +123,7 @@ class DNSCollector(Collector):
             )
         except Exception:
             logger.exception(
-                f"Caught an unknown exception while looking up qname {self.config.query_name} using server {str(self.config.server.geturl())} - exception details follow, returning other_failure"
+                f"Caught an unknown exception while looking up qname {self.config.query_name} using server {self.config.server.geturl()} and proxy {self.config.proxy.geturl() if self.config.proxy else 'none'} - exception details follow, returning other_failure"
             )
             yield from self.yield_failure_reason_metric(failure_reason="other_failure")
         # clock it

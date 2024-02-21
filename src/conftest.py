@@ -24,6 +24,8 @@ def dns_exporter_no_main_no_config():
     thread.daemon = True
     thread.start()
     time.sleep(1)
+    if not thread.is_alive():
+        pytest.fail("Unable to create test instance on 127.0.0.1:45353")
     yield
     print("Beginning teardown")
 
@@ -39,6 +41,8 @@ def dns_exporter_example_config():
     thread.daemon = True
     thread.start()
     time.sleep(1)
+    if not thread.is_alive():
+        pytest.fail("Unable to create test instance on 127.0.0.1:25353")
     yield
     print("Beginning teardown")
 
@@ -54,6 +58,8 @@ def dns_exporter_main_no_config_no_debug():
     thread.daemon = True
     thread.start()
     time.sleep(1)
+    if not thread.is_alive():
+        pytest.fail("Unable to create test instance on 127.0.0.1:35353")
     yield
     print("Beginning teardown")
 
@@ -66,10 +72,12 @@ def dns_exporter_param_config(request):
     proc = subprocess.Popen(
         args=["dns_exporter", "-c", str(conf), "-d"],
     )
+    time.sleep(1)
     if proc.poll():
         # process didn't start properly, bail out
-        return
-    time.sleep(1)
+        pytest.fail(
+            f"Unable to create test instance with config {request.param} on 127.0.0.1:15353"
+        )
     yield
     print(f"Stopping dns_exporter with config {request.param} on 127.0.0.1:15353 ...")
     proc.terminate()
@@ -135,9 +143,11 @@ def prometheus_server(request, tmp_path_factory, tmpdir_factory):
             "--storage.tsdb.path",
             prompath,
             "--web.listen-address",
-            "127.0.0.1:9091",
+            "127.0.0.1:9092",
         ],
     )
+    if proc.poll():
+        pytest.fail("Unable to start prometheus on 127.0.0.1:9091")
     print("Setup finished - prometheus is running!")
 
     # end buildup
@@ -147,6 +157,7 @@ def prometheus_server(request, tmp_path_factory, tmpdir_factory):
     print("Beginning teardown")
     print("Stopping prometheus server...")
     proc.terminate()
+    proc.communicate()
     print("Teardown finished!")
 
 
@@ -156,3 +167,31 @@ def mock_collect_httpx_connecterror(mocker):
         "dns_exporter.collector.DNSCollector.get_dns_response",
         side_effect=httpx.ConnectError("mocked"),
     )
+
+
+@pytest.fixture(scope="session")
+def proxy_server():
+    print("Running proxy server on 127.0.0.1:1080...")
+    proc = subprocess.Popen(
+        args=[
+            "python3",
+            "-m",
+            "gera2ld.socks.server",
+            "-b",
+            "127.0.0.1:1080",
+        ],
+    )
+    time.sleep(2)
+    if proc.poll():
+        pytest.fail("Unable to start proxy on 127.0.0.1:1080")
+    print("Setup finished - proxy is running on 127.0.0.1:1080!")
+
+    # end buildup
+    yield
+    # begin teardown
+
+    print("Beginning teardown")
+    print("Stopping proxy server...")
+    proc.terminate()
+    proc.communicate()
+    print("Teardown finished!")

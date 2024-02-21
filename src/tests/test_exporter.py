@@ -279,14 +279,14 @@ def test_internal_metrics(dns_exporter_example_config, caplog):
     assert f'dnsexp_build_version_info{{version="{__version__}"}} 1.0' in r.text
     assert "Returning exporter metrics for request to /metrics" in caplog.text
     for metric in """dnsexp_http_requests_total{path="/notfound"} 1.0
-dnsexp_http_requests_total{path="/query"} 40.0
+dnsexp_http_requests_total{path="/query"} 43.0
 dnsexp_http_requests_total{path="/config"} 2.0
 dnsexp_http_requests_total{path="/"} 1.0
 dnsexp_http_requests_total{path="/metrics"} 1.0
 dnsexp_http_responses_total{path="/notfound",response_code="404"} 1.0
-dnsexp_http_responses_total{path="/query",response_code="200"} 40.0
+dnsexp_http_responses_total{path="/query",response_code="200"} 43.0
 dnsexp_http_responses_total{path="/",response_code="200"} 1.0
-dnsexp_dns_queries_total 29.0
+dnsexp_dns_queries_total 32.0
 dnsexp_dns_responsetime_seconds_bucket{additional="0",answer="1",authority="0",family="ipv4",flags="QR RA RD",ip="8.8.4.4",le="0.005",nsid="no_nsid",opcode="QUERY",port="53",protocol="udp",proxy="none",query_name="example.com",query_type="A",rcode="NOERROR",server="udp://dns.google:53",transport="UDP"}
 dnsexp_scrape_failures_total{reason="timeout"} 1.0
 dnsexp_scrape_failures_total{reason="invalid_response_flags"} 6.0
@@ -811,3 +811,51 @@ def test_httpx_connecterror(
         },
     )
     assert 'dnsexp_failures_total{reason="connection_error"} 1.0' in r.text
+
+
+def test_proxy_udp(dns_exporter_example_config, proxy_server):
+    """Test proxy functionality for udp protocol."""
+    r = requests.get(
+        "http://127.0.0.1:25353/query",
+        params={
+            "query_name": "example.com",
+            "server": "dns.google",
+            "family": "ipv4",
+            "protocol": "udp",
+            "proxy": "socks5://127.0.0.1:1080",
+        },
+    )
+    assert 'proxy="socks5://127.0.0.1:1080"' in r.text
+    assert 'server="udp://dns.google:53"' in r.text
+
+
+def test_proxy_tcp(dns_exporter_example_config, proxy_server):
+    """Test proxy functionality for tcp protocol."""
+    r = requests.get(
+        "http://127.0.0.1:25353/query",
+        params={
+            "query_name": "example.com",
+            "server": "dns.google",
+            "family": "ipv4",
+            "protocol": "tcp",
+            "proxy": "socks5://127.0.0.1:1080",
+        },
+    )
+    assert 'proxy="socks5://127.0.0.1:1080"' in r.text
+    assert 'server="tcp://dns.google:53"' in r.text
+
+
+def test_proxy_doh(dns_exporter_example_config, proxy_server):
+    """Test proxy functionality for doh protocol."""
+    r = requests.get(
+        "http://127.0.0.1:25353/query",
+        params={
+            "query_name": "example.com",
+            "server": "dns.google",
+            "family": "ipv4",
+            "protocol": "doh",
+            "proxy": "socks5://127.0.0.1:1080",
+        },
+    )
+    assert 'proxy="socks5://127.0.0.1:1080"' in r.text
+    assert 'server="https://dns.google:443/dns-query"' in r.text

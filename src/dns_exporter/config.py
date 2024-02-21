@@ -266,8 +266,8 @@ class Config:
 
         # validate proxy
         if self.proxy:
-            # proxy support doesn't work for DoT for now
-            if self.protocol in ["dot"]:
+            # proxy support doesn't work for DoT and DoQ for now
+            if self.protocol in ["dot", "doq"]:
                 logger.error(f"proxy not valid for protocol {self.protocol}")
                 raise ConfigError(
                     "invalid_request_config",

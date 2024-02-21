@@ -438,7 +438,9 @@ class DNSExporter(MetricsHandler):
         """Handle incoming HTTP GET requests."""
         # parse the scrape request url and querystring
         self.url, self.qs = self.parse_querystring()
-
+        logger.debug(
+            f"Got HTTP request for {self.url.geturl()} - parsed qs is {self.qs}"
+        )
         # increase the persistent http request metric
         dnsexp_http_requests_total.labels(path=self.url.path).inc()
 
