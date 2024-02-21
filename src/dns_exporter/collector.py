@@ -56,7 +56,6 @@ class DNSCollector(Collector):
         self.config = config
         self.query = query
         self.labels = labels
-
         # set proxy?
         if self.config.proxy:
             socks.set_default_proxy(
@@ -64,20 +63,24 @@ class DNSCollector(Collector):
                 addr=self.config.proxy.hostname,
                 port=self.config.proxy.port,
             )
+            # use proxy socket for protocols udp, tcp, doh
             dns.query.socket_factory = socks.socksocket
-            # this should begin working pending the next dnspython release
+            # for protocol doq - method depends on the dnspython version
             # https://github.com/rthalley/dnspython/issues/1059
-            # dns.quic._sync.socket_factory = socks.socksocket
-            # patch socket.socket until then
-            socket.socket = socks.socksocket  # type: ignore
+            if hasattr(dns.quic._sync, "socket_factory"):
+                dns.quic._sync.socket_factory = socks.socksocket
+            else:
+                socket.socket = socks.socksocket  # type: ignore
             logger.debug(f"Using proxy {self.config.proxy.geturl()}")
         else:
+            # restore regular socket.socket for protocols udp, tcp, doh
             dns.query.socket_factory = socket.socket
-            # this should begin working pending the next dnspython release
+            # for protocol doq - method depends on the dnspython version
             # https://github.com/rthalley/dnspython/issues/1059
-            # dns.quic._sync.socket_factory = socket.socket
-            # unpatch socket.socket until then
-            socket.socket = _socket  # type: ignore
+            if hasattr(dns.quic._sync, "socket_factory"):
+                dns.quic._sync.socket_factory = socket.socket
+            else:
+                socket.socket = _socket  # type: ignore
             logger.debug("Not using a proxy for this request")
 
     def describe(self) -> Iterator[Union[CounterMetricFamily, GaugeMetricFamily]]:

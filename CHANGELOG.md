@@ -8,7 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-- No changes yet
+### Added
+- Unit tests for proxy code
+
+
+### Fixed
+- Proxy support for DoQ should work properly now
+
 
 
 ## [v1.0.0-beta5] - 2024-02-20
