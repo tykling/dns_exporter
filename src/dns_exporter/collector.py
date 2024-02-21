@@ -12,6 +12,7 @@ import dns.exception
 import dns.flags
 import dns.opcode
 import dns.query
+import dns.quic
 import dns.rcode
 import dns.rdatatype
 import dns.resolver
@@ -37,6 +38,10 @@ from dns_exporter.version import __version__
 
 logger = logging.getLogger(f"dns_exporter.{__name__}")
 
+# this can be removed pending the next dnspython release
+# https://github.com/rthalley/dnspython/issues/1059
+_socket = socket.socket
+
 
 class DNSCollector(Collector):
     """Custom collector class which does DNS lookups and returns metrics."""
@@ -60,9 +65,19 @@ class DNSCollector(Collector):
                 port=self.config.proxy.port,
             )
             dns.query.socket_factory = socks.socksocket
+            # this should begin working pending the next dnspython release
+            # https://github.com/rthalley/dnspython/issues/1059
+            # dns.quic._sync.socket_factory = socks.socksocket
+            # patch socket.socket until then
+            socket.socket = socks.socksocket  # type: ignore
             logger.debug(f"Using proxy {self.config.proxy.geturl()}")
         else:
             dns.query.socket_factory = socket.socket
+            # this should begin working pending the next dnspython release
+            # https://github.com/rthalley/dnspython/issues/1059
+            # dns.quic._sync.socket_factory = socket.socket
+            # unpatch socket.socket until then
+            socket.socket = _socket  # type: ignore
             logger.debug("Not using a proxy for this request")
 
     def describe(self) -> Iterator[Union[CounterMetricFamily, GaugeMetricFamily]]:

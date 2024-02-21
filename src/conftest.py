@@ -181,7 +181,7 @@ def proxy_server():
             "127.0.0.1:1080",
         ],
     )
-    time.sleep(2)
+    time.sleep(3)
     if proc.poll():
         pytest.fail("Unable to start proxy on 127.0.0.1:1080")
     print("Setup finished - proxy is running on 127.0.0.1:1080!")

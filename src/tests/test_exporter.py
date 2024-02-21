@@ -1,9 +1,7 @@
 # type: ignore
 """Unit tests for dns_exporter/exporter.py."""
 import logging
-import sys
 
-import cryptography
 import pytest
 import requests
 
@@ -279,14 +277,14 @@ def test_internal_metrics(dns_exporter_example_config, caplog):
     assert f'dnsexp_build_version_info{{version="{__version__}"}} 1.0' in r.text
     assert "Returning exporter metrics for request to /metrics" in caplog.text
     for metric in """dnsexp_http_requests_total{path="/notfound"} 1.0
-dnsexp_http_requests_total{path="/query"} 43.0
+dnsexp_http_requests_total{path="/query"} 44.0
 dnsexp_http_requests_total{path="/config"} 2.0
 dnsexp_http_requests_total{path="/"} 1.0
 dnsexp_http_requests_total{path="/metrics"} 1.0
 dnsexp_http_responses_total{path="/notfound",response_code="404"} 1.0
-dnsexp_http_responses_total{path="/query",response_code="200"} 43.0
+dnsexp_http_responses_total{path="/query",response_code="200"} 44.0
 dnsexp_http_responses_total{path="/",response_code="200"} 1.0
-dnsexp_dns_queries_total 32.0
+dnsexp_dns_queries_total 33.0
 dnsexp_dns_responsetime_seconds_bucket{additional="0",answer="1",authority="0",family="ipv4",flags="QR RA RD",ip="8.8.4.4",le="0.005",nsid="no_nsid",opcode="QUERY",port="53",protocol="udp",proxy="none",query_name="example.com",query_type="A",rcode="NOERROR",server="udp://dns.google:53",transport="UDP"}
 dnsexp_scrape_failures_total{reason="timeout"} 1.0
 dnsexp_scrape_failures_total{reason="invalid_response_flags"} 6.0
@@ -398,21 +396,7 @@ def test_doh(dns_exporter_example_config, caplog):
     assert "Protocol doh got a DNS query response over TCP" in caplog.text
 
 
-def test_doq(dns_exporter_example_config, caplog):
-    # aioquic uses some deprecated cryptography methods and it causes some deprecation warnings
-    # which have to be handled different from 3.12 onwards
-    if sys.version_info >= (3, 12):
-        # py3.12 raises an extra DeprecationWarning
-        with pytest.deprecated_call():
-            with pytest.warns(cryptography.utils.CryptographyDeprecationWarning):
-                doq(dns_exporter_example_config, caplog)
-    else:
-        # just silence the CryptographyDeprecationWarning for py3.9-py3.11
-        with pytest.warns(cryptography.utils.CryptographyDeprecationWarning):
-            doq(dns_exporter_example_config, caplog)
-
-
-def doq(dns_exporter_example_config, caplog):
+def test_doq(dns_exporter_example_config, caplog, recwarn):
     caplog.clear()
     caplog.set_level(logging.DEBUG)
     r = requests.get(
@@ -859,3 +843,19 @@ def test_proxy_doh(dns_exporter_example_config, proxy_server):
     )
     assert 'proxy="socks5://127.0.0.1:1080"' in r.text
     assert 'server="https://dns.google:443/dns-query"' in r.text
+
+
+def test_proxy_doq(dns_exporter_example_config, proxy_server, recwarn):
+    """Test proxy functionality for doq protocol."""
+    r = requests.get(
+        "http://127.0.0.1:25353/query",
+        params={
+            "query_name": "example.com",
+            "server": "dns-unfiltered.adguard.com",
+            "family": "ipv4",
+            "protocol": "doq",
+            "proxy": "socks5://127.0.0.1:1080",
+        },
+    )
+    assert 'proxy="socks5://127.0.0.1:1080"' in r.text
+    assert 'server="doq://dns-unfiltered.adguard.com:853"' in r.text
