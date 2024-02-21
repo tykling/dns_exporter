@@ -12,6 +12,14 @@ Installing ``dns_exporter`` can be done from pypi. This is the recommended way t
 
    pip install dns_exporter
 
+There is also a Docker image so you can get your container on::
+
+   docker run -p 15353:15353 tykling/dns_exporter:latest
+
+You can mount your own config in the container thusly::
+
+   docker run -p 15353:15353 -v ./dns_exporter_example.yml:/home/nonroot/dns_exporter.yml tykling/dns_exporter:latest
+
 You can also checkout the sources from Github and install without pypi::
 
    git clone https://github.com/tykling/dns_exporter.git

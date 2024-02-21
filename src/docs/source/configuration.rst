@@ -37,6 +37,8 @@ Settings
 +-----------------------------+-----------------+------------------------------------------------------------+
 | ``protocol``                | ``udp``         | ``udp``, ``tcp``, ``udptcp``, ``dot``, ``doh``, or ``doq`` |
 +-----------------------------+-----------------+------------------------------------------------------------+
+| ``proxy``                   | ``none``        | Proxy URL, protocols: ``SOCKS4``, ``SOCKS5``, ``HTTP``.    |
++-----------------------------+-----------------+------------------------------------------------------------+
 | ``query_class``             | ``IN``          | ``IN`` and ``CHAOS`` are supported.                        |
 +-----------------------------+-----------------+------------------------------------------------------------+
 | ``query_name``              | ``none``        | The name to use in the DNS query                           |
@@ -148,6 +150,21 @@ This setting decides which protocol to use. It must be one of:
 
 The default value is ``udp``.
 
+
+``proxy``
+~~~~~~~~~~~~
+This setting decides which proxy server to use, if any. The proxy must be provided including protocol, but port can be omitted if the default is fine. Hostname or IP can be used. Proxy protocol must be one of:
+
+``SOCKS4``
+   SOCKS4 proxy URL, for example ``socks4://example.com:1080`` - defaults to port ``1080``.
+
+``SOCKS5``
+   SOCKS5 proxy URL, for example ``socks5://example.com:1080`` - defaults to port ``1080``.
+
+``HTTP``
+   HTTP proxy URL, for example ``http://example.com:8080`` - defaults to port ``8080``.
+
+.. Note:: Using a proxy server will affect DNS lookup measurements. When using a proxy the timing metrics are measuring both the time the actual DNS lookup takes as well as the roundtrip latency to the proxy server. As always when dealing with metrics consider carefully what you are measuring.
 
 ``query_class``
 ~~~~~~~~~~~~~~~
