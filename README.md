@@ -14,13 +14,19 @@
 
 This means that for each scrape Prometheus speaks HTTP to the `dns_exporter` which then speaks DNS with the target DNS server and returns the resulting metrics over HTTP to Prometheus. `dns_exporter` supports doing DNS queries over plain port 53 `UDP` and `TCP`, as well as `DoT`, `DoH` and `DoQ`.
 
+# Installation
+Installing `dns_exporter` can be done from pypi. This is the recommended way to install:
+
+   pip install dns_exporter
+
+There is also a Docker image so you can get your container on:
+
+   docker run -p 15353:15353 tykling/dns_exporter:latest
+
 
 # Documentation
 The documentation is available on [ReadTheDocs](https://dns-exporter.readthedocs.io/latest/)
 
-
-# Versioning and Releases of dns_exporter
-Versioning, branching and tagging of `dns_exporter` is done based on https://semver.org/ and https://nvie.com/posts/a-successful-git-branching-model/
 
 # Fancy Repo Activity Graphics
 ![Alt](https://repobeats.axiom.co/api/embed/3c531c8db07c5982061d4c6e800238c7ddf8ab59.svg "Repobeats analytics image")
