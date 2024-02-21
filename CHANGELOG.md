@@ -12,8 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Unit tests for proxy code
 
 
-### Fixed
-- Proxy support for DoQ should work properly now
+### Changed
+- Proxy support for DoQ disabled, pending next dnspython release with https://github.com/rthalley/dnspython/pull/1060
 
 
 
