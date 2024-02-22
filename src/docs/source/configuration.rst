@@ -164,6 +164,8 @@ This setting decides which proxy server to use, if any. The proxy must be provid
 ``HTTP``
    HTTP proxy URL, for example ``http://example.com:8080`` - defaults to port ``8080``.
 
+Using a proxy server is currently supported for protocols ``udp``, ``tcp``, and ``doh``. Support for protocol ``doq`` is coming with the next release of dnspython (see `this issue <https://github.com/rthalley/dnspython/pull/1060>`_). Support for protocol ``dot`` is planned for a later release.
+
 .. Note:: Using a proxy server will affect DNS lookup measurements. When using a proxy the timing metrics are measuring both the time the actual DNS lookup takes as well as the roundtrip latency to the proxy server. As always when dealing with metrics consider carefully what you are measuring.
 
 ``query_class``

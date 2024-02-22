@@ -43,7 +43,14 @@ This would make Prometheus scrape the ``MX`` records for ``gmail.com`` and ``out
 ~~~~~~~~~~~~~~~~~~~
 .. Note::  These metrics are taken directly from the exporter, so they don't have the Prometheus added ``instance`` and ``job`` labels yet
 
-.. literalinclude:: ../../tests/prometheus/list_of_names/metrics.txt
+Metrics returned for target ``gmail.com``:
+
+.. literalinclude:: ../../tests/prometheus/list_of_names/gmail.com.txt
+
+
+Metrics returned for target ``outlook.com``:
+
+.. literalinclude:: ../../tests/prometheus/list_of_names/outlook.com.txt
 
 
 Monitoring a list of servers
@@ -77,4 +84,11 @@ Would make Prometheus scrape the ``MX`` records for ``gmail.com`` every 10 secon
 ~~~~~~~~~~~~~~~~~~~
 .. Note::  These metrics are taken directly from the exporter, so they don't have the Prometheus added ``instance`` and ``job`` labels yet
 
-.. literalinclude:: ../../tests/prometheus/list_of_servers/metrics.txt
+Metrics returned for target ``dns.google``:
+
+.. literalinclude:: ../../tests/prometheus/list_of_servers/dns.google.txt
+
+
+Metrics returned for target ``dns.quad9.net``:
+
+.. literalinclude:: ../../tests/prometheus/list_of_servers/dns.quad9.net.txt

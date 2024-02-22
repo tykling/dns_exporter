@@ -20,7 +20,7 @@ You can mount your own config in the container thusly::
 
    docker run -p 15353:15353 -v ./dns_exporter_example.yml:/home/nonroot/dns_exporter.yml tykling/dns_exporter:latest
 
-You can also checkout the sources from Github and install without pypi::
+You can also checkout the sources from Github and install directly::
 
    git clone https://github.com/tykling/dns_exporter.git
    pip install ./dns_exporter/

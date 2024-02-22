@@ -7,8 +7,9 @@ This section contains all the automatically extracted docstrings found in the co
    :maxdepth: 2
 
    exporter
-   config
-   metrics
    entrypoint
+   config
+   collector
+   metrics
    version
 
