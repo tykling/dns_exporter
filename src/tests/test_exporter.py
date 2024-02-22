@@ -40,7 +40,7 @@ def test_timeout(dns_exporter_main_no_config_no_debug):
             "server": "dns.google",
             "query_name": "example.com",
             "family": "ipv4",
-            "timeout": 0.001,
+            "timeout": 0.0001,
         },
     )
     assert r.status_code == 200, "non-200 returncode"
