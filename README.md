@@ -17,11 +17,11 @@ This means that for each scrape Prometheus speaks HTTP to the `dns_exporter` whi
 # Installation
 Installing `dns_exporter` can be done from pypi. This is the recommended way to install:
 
-   pip install dns_exporter
+`pip install dns_exporter`
 
 There is also a Docker image so you can get your container on:
 
-   docker run -p 15353:15353 tykling/dns_exporter:latest
+`docker run -p 15353:15353 tykling/dns_exporter:latest`
 
 
 # Documentation
