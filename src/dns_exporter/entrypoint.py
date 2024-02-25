@@ -2,12 +2,14 @@
 
 This module is mostly boilerplate code for command-line argument handling and logging.
 """
+from __future__ import annotations
+
 import argparse
 import logging
 import sys
 import warnings
 from http.server import HTTPServer
-from typing import Optional
+from pathlib import Path
 
 import yaml
 
@@ -21,7 +23,7 @@ logger = logging.getLogger(f"dns_exporter.{__name__}")
 def get_parser() -> argparse.ArgumentParser:
     """Create and return the argparse object."""
     parser = argparse.ArgumentParser(
-        description=f"dns_exporter version {DNSExporter.__version__}. See ReadTheDocs for more info."
+        description=f"dns_exporter version {DNSExporter.__version__}. See ReadTheDocs for more info.",
     )
 
     # optional arguments
@@ -70,7 +72,7 @@ def get_parser() -> argparse.ArgumentParser:
         action="store_const",
         dest="log-level",
         const="WARNING",
-        help="Quiet mode. No output at all if there is nothing to do, and no errors are encountered. Equal to setting --log-level=WARNING.",
+        help="Quiet mode. No output at all no errors are encountered. Equal to setting --log-level=WARNING.",
         default=argparse.SUPPRESS,
     )
     parser.add_argument(
@@ -85,7 +87,7 @@ def get_parser() -> argparse.ArgumentParser:
 
 
 def parse_args(
-    mockargs: Optional[list[str]] = None,
+    mockargs: list[str] | None = None,
 ) -> tuple[argparse.ArgumentParser, argparse.Namespace]:
     """Create an argparse monster and parse mockargs or sys.argv[1:]."""
     parser = get_parser()
@@ -93,7 +95,7 @@ def parse_args(
     return parser, args
 
 
-def main(mockargs: Optional[list[str]] = None) -> None:
+def main(mockargs: list[str] | None = None) -> None:
     """Read config and start exporter."""
     # suppress warnings at runtime
     if not sys.warnoptions:
@@ -104,13 +106,11 @@ def main(mockargs: Optional[list[str]] = None) -> None:
 
     # handle version check
     if hasattr(args, "version"):
-        print(f"dns_exporter version {DNSExporter.__version__}")
+        print(f"dns_exporter version {DNSExporter.__version__}")  # noqa: T201
         sys.exit(0)
 
     # configure the log format and level
-    console_logformat = (
-        "%(asctime)s %(levelname)s %(name)s.%(funcName)s():%(lineno)i:  %(message)s"
-    )
+    console_logformat = "%(asctime)s %(levelname)s %(name)s.%(funcName)s():%(lineno)i:  %(message)s"
     level = getattr(args, "log-level")
     logging.basicConfig(
         level=level,
@@ -122,16 +122,16 @@ def main(mockargs: Optional[list[str]] = None) -> None:
     rootlogger = logging.getLogger("")
     rootlogger.setLevel(level)
     logger.info(
-        f"dns_exporter v{DNSExporter.__version__} starting up - logging at level {level}"
+        f"dns_exporter v{DNSExporter.__version__} starting up - logging at level {level}",
     )
 
     if hasattr(args, "config-file"):
-        with open(getattr(args, "config-file"), "r") as f:
+        with Path(getattr(args, "config-file")).open() as f:
             try:
                 configfile = yaml.load(f, Loader=yaml.SafeLoader)
             except Exception:
                 logger.exception(
-                    f"Unable to parse YAML config file {getattr(args, 'config-file')} - bailing out."
+                    f"Unable to parse YAML config file {getattr(args, 'config-file')} - bailing out.",
                 )
                 sys.exit(1)
         if (
@@ -142,40 +142,38 @@ def main(mockargs: Optional[list[str]] = None) -> None:
         ):
             # configfile is empty, missing "modules" key, or modules is empty or not a dict
             logger.error(
-                f"Invalid config file {getattr(args, 'config-file')} - yaml was valid but no modules found"
+                f"Invalid config file {getattr(args, 'config-file')} - yaml was valid but no modules found",
             )
             sys.exit(1)
-        logger.debug(
-            f"Read {len(configfile['modules'])} modules from config file {getattr(args, 'config-file')}: {list(configfile['modules'].keys())}"
-        )
+        logger.debug(f"Read {len(configfile['modules'])} modules from config file {getattr(args, 'config-file')}:")
+        logger.debug(list(configfile["modules"].keys()))
     else:
         # there is no config file
         configfile = {"modules": {}}
         logger.debug(
-            "No -c / --config-file found so a config file will not be used. No modules loaded."
+            "No -c / --config-file found so a config file will not be used. No modules loaded.",
         )
 
     # configure DNSExporter handler and start HTTPServer
     handler = DNSExporter
-    if configfile["modules"]:
-        if not handler.configure(
-            modules={k: ConfigDict(**v) for k, v in configfile["modules"].items()}  # type: ignore
-        ):
-            logger.error(
-                "An error occurred while configuring dns_exporter. Bailing out."
-            )
-            sys.exit(1)
+    if configfile["modules"] and not handler.configure(
+        modules={k: ConfigDict(**v) for k, v in configfile["modules"].items()},  # type: ignore[misc]
+    ):
+        logger.error(
+            "An error occurred while configuring dns_exporter. Bailing out.",
+        )
+        sys.exit(1)
     logger.debug(
-        f"Ready to serve requests. Starting listener on {args.listen_ip} port {args.port}..."
+        f"Ready to serve requests. Starting listener on {args.listen_ip} port {args.port}...",
     )
     try:
         HTTPServer((args.listen_ip, args.port), handler).serve_forever()
     except OSError:
-        logger.error(
-            f"Unable to start listener, maybe port {args.port} is in use? bailing out"
+        logger.exception(
+            f"Unable to start listener, maybe port {args.port} is in use? bailing out",
         )
         sys.exit(1)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()

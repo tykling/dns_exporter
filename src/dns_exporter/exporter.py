@@ -1,9 +1,8 @@
 """``dns_exporter.exporter`` contains the DNSExporter class.
 
-
 The config.py module contains configuration related stuff, metrics.py
-contains the metric definitions, and this exporter.py module contains
-the rest of the code.
+contains the metric definitions, collector.py has the Collector and
+and this exporter.py module contains most of the rest of the code.
 
     - Repository: https://github.com/tykling/dns_exporter
     - Pypi: https://pypi.org/project/dns-exporter/
@@ -11,15 +10,18 @@ the rest of the code.
 
 Made with love by Thomas Steen Rasmussen/Tykling, 2023.
 """
+# mypy: disable-error-code="literal-required"
+
+from __future__ import annotations
+
 import ipaddress
 import logging
 import random
 import socket
-import typing as t
 import urllib.parse
 from dataclasses import asdict
 from ipaddress import IPv4Address, IPv6Address
-from typing import Union
+from typing import TYPE_CHECKING, Literal
 
 import dns.edns
 import dns.exception
@@ -29,15 +31,17 @@ import dns.query
 import dns.rcode
 import dns.rdatatype
 import dns.resolver
-import socks  # type: ignore
+import socks  # type: ignore[import]
 from prometheus_client import CollectorRegistry, MetricsHandler, exposition
-from prometheus_client.registry import RestrictedRegistry
 
 from dns_exporter.collector import DNSCollector, FailCollector
 from dns_exporter.config import Config, ConfigDict, RFValidator, RRValidator
 from dns_exporter.exceptions import ConfigError
 from dns_exporter.metrics import dnsexp_http_requests_total, dnsexp_http_responses_total
 from dns_exporter.version import __version__
+
+if TYPE_CHECKING:  # pragma: no cover
+    from prometheus_client.registry import RestrictedRegistry
 
 logger = logging.getLogger(f"dns_exporter.{__name__}")
 
@@ -51,7 +55,7 @@ INDEX = """<!DOCTYPE html>
 <p>Visit <a href="/config?server=dns.google&protocol=doh&query_name=example.com">/config?server=dns.google&protocol=doh&query_name=example.com</a> to see the final scrape config without doing a DNS query.</p>
 <p>Visit <a href="/metrics">/metrics</a> to see metrics for the dns_exporter itself.</p>
 </body>
-</html>"""
+</html>"""  # noqa: E501
 
 
 class DNSExporter(MetricsHandler):
@@ -63,13 +67,212 @@ class DNSExporter(MetricsHandler):
     The configure() classmethod can optionally be called to load modules before use.
 
     Attributes:
+    ----------
         modules: A dict of dns_exporter.config.Config instances to be used in scrape requests.
+
     """
 
     __version__ = __version__
 
     # the modules key is populated by configure() before the class is initialised
-    modules: dict[str, Config] = {}
+    modules: dict[str, Config] | None = None
+
+    @classmethod
+    def prepare_config_rrvalidators(
+        cls,
+        config: ConfigDict,
+    ) -> ConfigDict:
+        """Parse and create RRValidator objects for the config."""
+        tmp: ConfigDict = {}
+
+        answer: Literal["validate_answer_rrs"] = "validate_answer_rrs"
+        authority: Literal["validate_authority_rrs"] = "validate_authority_rrs"
+        additional: Literal["validate_additional_rrs"] = "validate_additional_rrs"
+        try:
+            # create RRValidator objects
+            for validator in [answer, authority, additional]:
+                if validator in config:
+                    if isinstance(config[validator], dict):
+                        tmp[validator] = RRValidator.create(**config[validator])
+                    elif isinstance(config[validator], RRValidator):
+                        tmp[validator] = config[validator]
+                    else:
+                        # unsupported type
+                        raise TypeError(validator)  # noqa: TRY301
+        except TypeError as e:
+            logger.exception("Unable to create RRValidator object")
+            raise ConfigError("invalid_request_config") from e
+        return tmp
+
+    @classmethod
+    def prepare_config_rfvalidator(
+        cls,
+        config: ConfigDict,
+    ) -> ConfigDict:
+        """Parse and create RFValidator object for the config."""
+        tmp: ConfigDict = {}
+        try:
+            # create RFValidator
+            if "validate_response_flags" in config:
+                if isinstance(config["validate_response_flags"], dict):
+                    tmp["validate_response_flags"] = RFValidator.create(**config["validate_response_flags"])
+                elif isinstance(config["validate_response_flags"], RFValidator):
+                    tmp["validate_response_flags"] = config["validate_response_flags"]
+                else:
+                    # unsupported type
+                    raise TypeError("validate_response_flags")  # noqa: TRY301
+        except TypeError as e:
+            logger.exception("Unable to create validator object")
+            raise ConfigError("invalid_request_config") from e
+        return tmp
+
+    @classmethod
+    def prepare_config_ip(
+        cls,
+        config: ConfigDict,
+    ) -> ConfigDict:
+        """Parse IP address if needed."""
+        tmp: ConfigDict = {}
+        key = "ip"
+        if config.get(key):
+            if isinstance(config["ip"], (IPv4Address, IPv6Address)):
+                # use as-is
+                tmp[key] = config[key]
+            elif isinstance(config[key], str):
+                # make an ip object
+                try:
+                    tmp[key] = ipaddress.ip_address(config[key])
+                except ValueError as e:
+                    logger.exception(f"Unable to parse IP address {config[key]}")
+                    raise ConfigError("invalid_request_ip") from e
+            else:
+                # unsupported type
+                raise TypeError(key)
+        return tmp
+
+    @classmethod
+    def prepare_config_integers(
+        cls,
+        config: ConfigDict,
+    ) -> ConfigDict:
+        """Parse and create integer objects for the config."""
+        tmp: ConfigDict = {}
+        edns_bufsize: Literal["edns_bufsize"] = "edns_bufsize"
+        edns_pad: Literal["edns_pad"] = "edns_pad"
+        try:
+            for key in [edns_bufsize, edns_pad]:
+                if key in config:
+                    if isinstance(config[key], str):
+                        tmp[key] = int(config[key])
+                    elif isinstance(config[key], int):
+                        # use as-is
+                        tmp[key] = config[key]
+                    else:
+                        # unsupported type
+                        raise TypeError(key)  # noqa: TRY301
+        except (ValueError, TypeError) as e:
+            logger.exception(f"Unable to validate integer for key {key}")
+            raise ConfigError("invalid_request_config") from e
+        return tmp
+
+    @classmethod
+    def prepare_config_floats(
+        cls,
+        config: ConfigDict,
+    ) -> ConfigDict:
+        """Parse and create float objects for the config."""
+        tmp: ConfigDict = {}
+        # use literals for TypedDict keys to make mypy happy
+        timeout: Literal["timeout"] = "timeout"
+        try:
+            for key in [timeout]:
+                if key in config:
+                    if isinstance(config[key], str):
+                        tmp[key] = float(config[key])
+                    elif isinstance(config[key], float):
+                        # use as-is
+                        tmp[key] = config[key]
+                    else:
+                        # unsupported type
+                        raise TypeError(key)  # noqa: TRY301
+        except (ValueError, TypeError) as e:
+            logger.exception(f"Unable to validate float for key {key}")
+            raise ConfigError("invalid_request_config") from e
+        return tmp
+
+    @classmethod
+    def prepare_config_server(
+        cls,
+        config: ConfigDict,
+    ) -> ConfigDict:
+        """Parse server into a SplitResult and return it."""
+        tmp: ConfigDict = {}
+        key: Literal["server"] = "server"
+        try:
+            if config.get(key):
+                server = config[key]
+                if isinstance(server, str):
+                    # parse server into a SplitResult
+                    tmp[key] = cls.parse_server(
+                        server=server,
+                        protocol=config.get("protocol", "udp"),
+                    )
+                elif isinstance(server, urllib.parse.SplitResult):
+                    # use as-is
+                    tmp[key] = server
+                else:
+                    # unsupported type
+                    raise TypeError(key)  # noqa: TRY301
+        except TypeError as e:
+            logger.exception("Unable to parse server")
+            raise ConfigError("invalid_request_server") from e
+        return tmp
+
+    @classmethod
+    def prepare_config_proxy(
+        cls,
+        config: ConfigDict,
+    ) -> ConfigDict:
+        """Parse proxy into a SplitResult and return it."""
+        tmp: ConfigDict = {}
+        key: Literal["proxy"] = "proxy"
+        try:
+            if config.get(key):
+                proxy = config[key]
+                if isinstance(proxy, str):
+                    if "://" not in proxy:
+                        logger.error("No scheme in proxy")
+                        raise ConfigError("invalid_request_proxy")
+
+                    # parse proxy into a SplitResult
+                    splitresult = urllib.parse.urlsplit(proxy)
+                    if not splitresult.scheme or splitresult.scheme.upper() not in socks.PROXY_TYPES:
+                        logger.error(f"Invalid proxy scheme {splitresult}")
+                        raise ConfigError("invalid_request_proxy")
+
+                    # make port explicit
+                    if splitresult.port is None:
+                        # SOCKS4 and SOCKS5 default to port 1080
+                        port = 8080 if splitresult.scheme == "http" else 1080
+                        splitresult = splitresult._replace(
+                            netloc=f"{splitresult.netloc}:{port}",
+                        )
+
+                    # keep only scheme and netloc
+                    tmp[key] = urllib.parse.urlsplit(
+                        splitresult.scheme + "://" + splitresult.netloc,
+                    )
+                    logger.debug(f"Using proxy {splitresult.geturl()!s}")
+                elif isinstance(proxy, urllib.parse.SplitResult):
+                    # use as-is
+                    tmp[key] = proxy
+                else:
+                    # unsupported type
+                    raise TypeError(key)  # noqa: TRY301
+        except TypeError as e:
+            logger.exception("Unable to parse proxy")
+            raise ConfigError("invalid_request_proxy") from e
+        return tmp
 
     @classmethod
     def prepare_config(cls, config: ConfigDict) -> ConfigDict:
@@ -80,130 +283,33 @@ class DNSExporter(MetricsHandler):
           - During each scrape request
 
         Args:
+        ----
             config: A ConfigDict instance
 
         Returns:
+        -------
             A ConfigDict instance
 
         Raises:
+        ------
             ConfigError: If any issues are found with the ConfigDict
+
         """
-        try:
-            # create RRValidator objects
-            for validator in [
-                "validate_answer_rrs",
-                "validate_authority_rrs",
-                "validate_additional_rrs",
-            ]:
-                if validator in config.keys():
-                    if isinstance(config[validator], dict):  # type: ignore
-                        config[validator] = RRValidator.create(**config[validator])  # type: ignore
-                    elif isinstance(config[validator], RRValidator):  # type: ignore
-                        pass
-                    else:
-                        # unsupported type
-                        raise TypeError(f"{validator} has invalid type")
-            # create RFValidator
-            if "validate_response_flags" in config.keys():
-                if isinstance(config["validate_response_flags"], dict):
-                    config["validate_response_flags"] = RFValidator.create(
-                        **config["validate_response_flags"]
-                    )
-                elif isinstance(config["validate_response_flags"], RFValidator):
-                    pass
-                else:
-                    # unsupported type
-                    raise TypeError("validate_response_flags has invalid type")
-        except TypeError:
-            logger.exception("Unable to create validator object")
-            raise ConfigError("invalid_request_config")
-
-        # create IP objects
-        if (
-            "ip" in config.keys()
-            and config["ip"]
-            and not isinstance(config["ip"], (IPv4Address, IPv6Address))
-        ):
-            # make an ip object
-            try:
-                config["ip"] = ipaddress.ip_address(config["ip"])
-            except ValueError:
-                logger.exception(f"Unable to parse IP address {config['ip']}")
-                raise ConfigError("invalid_request_ip")
-
-        # validate type of integers edns_bufsize and edns_pad
-        for key in ["edns_bufsize", "edns_pad"]:
-            if (
-                key in config.keys()
-                and config[key]  # type: ignore
-                and not isinstance(config[key], int)  # type: ignore
-            ):
-                try:
-                    config[key] = int(config[key])  # type: ignore
-                except ValueError:
-                    logger.exception(
-                        f"Unable to parse integer for key {key}: {config[key]}"  # type: ignore
-                    )
-                    raise ConfigError("invalid_request_config")
-
-        # validate floats
-        for key in ["timeout"]:
-            if (
-                key in config.keys()
-                and config[key]  # type: ignore
-                and not isinstance(config[key], float)  # type: ignore
-            ):
-                try:
-                    config[key] = float(config[key])  # type: ignore
-                except ValueError:
-                    logger.exception("Invalid float")
-                    raise ConfigError("invalid_request_config")
-
-        # parse server?
-        if (
-            "server" in config.keys()
-            and config["server"]
-            and not isinstance(config["server"], urllib.parse.SplitResult)
-            and "protocol" in config.keys()
-        ):
-            # parse server into a SplitResult
-            config["server"] = cls.parse_server(
-                server=config["server"], protocol=config["protocol"]
-            )
-
-        # parse proxy?
-        if (
-            "proxy" in config.keys()
-            and config["proxy"]
-            and not isinstance(config["proxy"], urllib.parse.SplitResult)
-        ):
-            if "://" not in config["proxy"]:
-                logger.error("No scheme in proxy")
-                raise ConfigError("invalid_request_proxy")
-
-            # parse proxy into a SplitResult
-            splitresult = urllib.parse.urlsplit(config["proxy"])
-            if (
-                not splitresult.scheme
-                or splitresult.scheme.upper() not in socks.PROXY_TYPES.keys()
-            ):
-                logger.error(f"Invalid proxy scheme {splitresult}")
-                raise ConfigError("invalid_request_proxy")
-
-            # make port explicit
-            if splitresult.port is None:
-                # SOCKS4 and SOCKS5 default to port 1080
-                port = 8080 if splitresult.scheme == "http" else 1080
-                splitresult = splitresult._replace(
-                    netloc=f"{splitresult.netloc}:{port}"
-                )
-
-            # keep only scheme and netloc
-            config["proxy"] = urllib.parse.urlsplit(
-                splitresult.scheme + "://" + splitresult.netloc
-            )
-            logger.debug(f"Using proxy {str(splitresult.geturl())}")
-
+        # parse and create RRValidator objects
+        config.update(cls.prepare_config_rrvalidators(config))
+        # parse and create RFValidator object
+        config.update(cls.prepare_config_rfvalidator(config))
+        # parse and create IP object
+        config.update(cls.prepare_config_ip(config))
+        # validate integer keys
+        config.update(cls.prepare_config_integers(config))
+        # validate float keys
+        config.update(cls.prepare_config_floats(config))
+        # parse server
+        config.update(cls.prepare_config_server(config))
+        # parse proxy
+        config.update(cls.prepare_config_proxy(config))
+        # all done
         return config
 
     def validate_config(self) -> None:
@@ -226,11 +332,11 @@ class DNSExporter(MetricsHandler):
     def build_final_config(self, qs: dict[str, str]) -> None:
         """Construct the final effective scrape config from defaults and values from the querystring."""
         # first get the defaults
-        config = ConfigDict(**asdict(Config.create(name="defaults")))  # type: ignore
+        config = ConfigDict(**asdict(Config.create(name="defaults")))  # type: ignore[misc]
 
         # if a module is specified in the querystring apply it first
         if "module" in qs:
-            if qs["module"] not in self.modules:
+            if self.modules is None or qs["module"] not in self.modules:
                 raise ConfigError("invalid_request_module")
             config.update(asdict(self.modules[qs["module"]]))
             del qs["module"]
@@ -247,11 +353,11 @@ class DNSExporter(MetricsHandler):
         # create the config object
         try:
             self.config = Config.create(**config)
-        except TypeError:
+        except TypeError as e:
             logger.exception(
-                "Exception while creating config - invalid field specified?"
+                "Exception while creating config - invalid field specified?",
             )
-            raise ConfigError("invalid_request_config")
+            raise ConfigError("invalid_request_config") from e
 
         # validate config
         self.validate_config()
@@ -261,7 +367,7 @@ class DNSExporter(MetricsHandler):
     @classmethod
     def configure(
         cls,
-        modules: dict[str, ConfigDict] = {},
+        modules: dict[str, ConfigDict] | None = None,
     ) -> bool:
         """Validate and create Config objects.
 
@@ -272,16 +378,23 @@ class DNSExporter(MetricsHandler):
         failure can still be used in cls.modules.
 
         Args:
+        ----
             modules: A dict of names and corresponding ConfigDict objects.
 
         Returns:
+        -------
             bool: True if all ConfigDict objects was validated and loaded OK, False
                 if an error was encountered.
+
         """
-        prepared: t.Optional[ConfigDict]
+        prepared: ConfigDict | None
+        if modules is None:
+            modules = {}
+        if cls.modules is None:
+            cls.modules = {}
         for name, config in modules.items():
             try:
-                prepared = cls.prepare_config(ConfigDict(**config))  # type: ignore
+                prepared = cls.prepare_config(ConfigDict(**config))  # type: ignore[misc]
             except ConfigError:
                 logger.exception(f"There was an issue while preparing config {name}")
                 return False
@@ -292,12 +405,12 @@ class DNSExporter(MetricsHandler):
                 return False
             except ConfigError:
                 logger.exception(
-                    f"Invalid value found while building config {prepared}"
+                    f"Invalid value found while building config {prepared}",
                 )
                 return False
 
         logger.info(
-            f"{len(modules)} module(s) loaded OK, total modules: {len(cls.modules)}."
+            f"{len(modules)} module(s) loaded OK, total modules: {len(cls.modules)}.",
         )
         return True
 
@@ -328,8 +441,8 @@ class DNSExporter(MetricsHandler):
             # use the default DoH path
             splitresult = urllib.parse.urlsplit(
                 urllib.parse.urlunsplit(
-                    splitresult._replace(path="/dns-query", scheme="https")
-                )
+                    splitresult._replace(path="/dns-query", scheme="https"),
+                ),
             )
         # is there an explicit port in the configured server url? use default if not.
         if splitresult.port is None:
@@ -343,11 +456,11 @@ class DNSExporter(MetricsHandler):
                 # DoH
                 port = 443
             logger.debug(
-                f"No explicit port in configured server, using default for protocol {protocol}: {port}"
+                f"No explicit port in configured server, using default for protocol {protocol}: {port}",
             )
             splitresult = splitresult._replace(netloc=f"{splitresult.netloc}:{port}")
         # return the parsed server
-        logger.debug(f"Using server {str(splitresult.geturl())}")
+        logger.debug(f"Using server {splitresult.geturl()!s}")
         return splitresult
 
     def validate_server_ip(self) -> None:
@@ -357,7 +470,6 @@ class DNSExporter(MetricsHandler):
             logger.error("No server found in config")
             raise ConfigError("invalid_request_server")
 
-        assert isinstance(self.config.server, urllib.parse.SplitResult)  # mypy
         # is there already an IP in the config?
         if self.config.ip:
             logger.debug(f"checking ip {self.config.ip} of type {type(self.config.ip)}")
@@ -391,37 +503,32 @@ class DNSExporter(MetricsHandler):
             method = f"resolved from {self.config.server.hostname}"
 
         logger.debug(
-            f"Using server IP {self.config.ip} ({method}) for the DNS server connection"
+            f"Using server IP {self.config.ip} ({method}) for the DNS server connection",
         )
 
     @staticmethod
-    def check_ip_family(ip: Union[IPv4Address, IPv6Address], family: str) -> bool:
+    def check_ip_family(ip: IPv4Address | IPv6Address, family: str) -> bool:
         """Make sure the IP matches the address family."""
-        if ip.version == 4 and family == "ipv4":
-            return True
-        elif ip.version == 6 and family == "ipv6":
+        if ip.version == 4 and family == "ipv4" or ip.version == 6 and family == "ipv6":  # noqa: PLR2004
             return True
         return False
 
     def resolve_ip_getaddrinfo(self, hostname: str, family: str) -> str:
         """Resolve the IP of a DNS server hostname."""
         logger.debug(
-            f"resolve_ip_getaddrinfo() called with hostname {hostname} and family {family}"
+            f"resolve_ip_getaddrinfo() called with hostname {hostname} and family {family}",
         )
         try:
-            # use v4?
             if family == "ipv4":
                 logger.debug(f"doing getaddrinfo for hostname {hostname} for ipv4")
                 result = socket.getaddrinfo(hostname, 0, family=socket.AF_INET)
-                return str(random.choice(result)[4][0])
-            # ok so use v6
-            else:
-                logger.debug(f"doing getaddrinfo for hostname {hostname} for ipv6")
-                result = socket.getaddrinfo(hostname, 0, family=socket.AF_INET6)
-                return str(random.choice(result)[4][0])
-        except socket.gaierror:
-            logger.error("Unable to resolve server")
-            raise ConfigError("invalid_request_server")
+                return str(random.choice(result)[4][0])  # noqa: S311
+            logger.debug(f"doing getaddrinfo for hostname {hostname} for ipv6")
+            result = socket.getaddrinfo(hostname, 0, family=socket.AF_INET6)
+            return str(random.choice(result)[4][0])  # noqa: S311
+        except socket.gaierror as e:
+            logger.exception("Unable to resolve server")
+            raise ConfigError("invalid_request_server") from e
 
     def parse_querystring(self) -> tuple[urllib.parse.SplitResult, dict[str, str]]:
         """Parse the incoming url and then the querystring."""
@@ -434,118 +541,118 @@ class DNSExporter(MetricsHandler):
         qs: dict[str, str] = {k: v[0] for k, v in parsed_qs.items()}
         return url, qs
 
-    def do_GET(self) -> None:
+    def handle_query_request(self) -> None:
+        """Handle incoming HTTP GET requests to /query or /config."""
+        logger.debug(
+            f"Got {self.url.path} request from client {self.client_address}",
+        )
+        logger.debug(
+            "Initialising CollectorRegistry dnsexp_registry and fail_registry",
+        )
+        dnsexp_registry = CollectorRegistry()
+        self.fail_registry = CollectorRegistry()
+
+        # build and validate configuration for this scrape from defaults, config file and request querystring
+        try:
+            self.build_final_config(qs=self.qs)
+        except ConfigError as E:
+            self.handle_failure(self.fail_registry, str(E))
+            # something is wrong with the config, send error response and bail out
+            self.send_metric_response(registry=self.fail_registry, query=self.qs)
+            return
+
+        # if this is a config check return now
+        if self.url.path == "/config":
+            logger.debug("returning config")
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(self.config.json().encode("utf-8"))
+            return
+
+        # config is ready for action, begin the labels dict
+        labels: dict[str, str] = {
+            "server": str(self.config.server.geturl()),  # type: ignore[union-attr]
+            "ip": str(self.config.ip),
+            "port": str(self.config.server.port),  # type: ignore[union-attr]
+            "protocol": str(self.config.protocol),
+            "family": str(self.config.family),
+            "proxy": str(self.config.proxy.geturl()) if self.config.proxy else "none",
+            "query_name": str(self.config.query_name),
+            "query_type": str(self.config.query_type),
+        }
+
+        # prepare query
+        qname = dns.name.from_text(str(self.config.query_name))
+        q = dns.message.make_query(
+            qname=qname,
+            rdtype=str(self.config.query_type),
+            rdclass=self.config.query_class,
+        )
+
+        # use EDNS?
+        if self.config.edns:
+            # use edns
+            ednsargs: dict[
+                str,
+                str | int | bool | list[dns.edns.GenericOption],
+            ] = {"options": []}
+            # use the DO bit?
+            if self.config.edns_do:
+                ednsargs["ednsflags"] = dns.flags.DO
+            # use nsid?
+            if self.config.edns_nsid:
+                ednsargs["options"].append(  # type: ignore[union-attr]
+                    dns.edns.GenericOption(dns.edns.NSID, ""),
+                )
+            # set bufsize/payload?
+            if self.config.edns_bufsize:
+                # dnspython calls bufsize "payload"
+                ednsargs["payload"] = int(self.config.edns_bufsize)
+            # set edns padding?
+            if self.config.edns_pad:
+                ednsargs["options"].append(  # type: ignore[union-attr]
+                    dns.edns.GenericOption(
+                        dns.edns.PADDING,
+                        bytes(int(self.config.edns_pad)),
+                    ),
+                )
+            # enable edns with the chosen options
+            q.use_edns(edns=0, **ednsargs)  # type: ignore[arg-type]
+            logger.debug(f"using edns options {ednsargs}")
+        else:
+            # do not use edns
+            q.use_edns(edns=False)
+            logger.debug("not using edns")
+
+        # set RD flag?
+        if self.config.recursion_desired:
+            q.flags |= dns.flags.RD
+
+        # register the DNSCollector in dnsexp_registry
+        dns_collector = DNSCollector(config=self.config, query=q, labels=labels)
+        dnsexp_registry.register(dns_collector)
+        # send the response (which triggers the collect)
+        logger.debug("Returning DNS query metrics")
+        self.send_metric_response(registry=dnsexp_registry, query=self.qs)
+
+    def do_GET(self) -> None:  # noqa: N802
         """Handle incoming HTTP GET requests."""
         # parse the scrape request url and querystring
         self.url, self.qs = self.parse_querystring()
         logger.debug(
-            f"Got HTTP request for {self.url.geturl()} - parsed qs is {self.qs}"
+            f"Got HTTP request for {self.url.geturl()} - parsed qs is {self.qs}",
         )
         # increase the persistent http request metric
         dnsexp_http_requests_total.labels(path=self.url.path).inc()
 
         # /query is for doing a DNS query, it returns metrics about just that one dns query
-        if self.url.path == "/query" or self.url.path == "/config":
-            logger.debug(
-                f"Got {self.url.path} request from client {self.client_address}"
-            )
-            logger.debug(
-                "Initialising CollectorRegistry dnsexp_registry and fail_registry"
-            )
-            dnsexp_registry = CollectorRegistry()
-            self.fail_registry = CollectorRegistry()
-
-            # build and validate configuration for this scrape from defaults, config file and request querystring
-            try:
-                self.build_final_config(qs=self.qs)
-            except ConfigError as E:
-                self.handle_failure(self.fail_registry, str(E))
-                # something is wrong with the config, send error response and bail out
-                self.send_metric_response(registry=self.fail_registry, query=self.qs)
-                return
-
-            # if this is a config check return now
-            if self.url.path == "/config":
-                logger.debug("returning config")
-                self.send_response(200)
-                self.end_headers()
-                self.wfile.write(self.config.json().encode("utf-8"))
-                return
-
-            # config is ready for action, begin the labels dict
-            assert isinstance(self.config.server, urllib.parse.SplitResult)  # mypy
-            labels: dict[str, str] = {
-                "server": str(self.config.server.geturl()),
-                "ip": str(self.config.ip),
-                "port": str(self.config.server.port),
-                "protocol": str(self.config.protocol),
-                "family": str(self.config.family),
-                "proxy": str(self.config.proxy.geturl())
-                if self.config.proxy
-                else "none",
-                "query_name": str(self.config.query_name),
-                "query_type": str(self.config.query_type),
-            }
-
-            # prepare query
-            qname = dns.name.from_text(str(self.config.query_name))
-            q = dns.message.make_query(
-                qname=qname,
-                rdtype=str(self.config.query_type),
-                rdclass=self.config.query_class,
-            )
-
-            # use EDNS?
-            if self.config.edns:
-                # use edns
-                ednsargs: dict[
-                    str, Union[str, int, bool, list[dns.edns.GenericOption]]
-                ] = {"options": []}
-                assert isinstance(ednsargs["options"], list)
-                # use the DO bit?
-                if self.config.edns_do:
-                    ednsargs["ednsflags"] = dns.flags.DO
-                # use nsid?
-                if self.config.edns_nsid:
-                    ednsargs["options"].append(
-                        dns.edns.GenericOption(dns.edns.NSID, "")
-                    )
-                # set bufsize/payload?
-                if self.config.edns_bufsize:
-                    # dnspython calls bufsize "payload"
-                    ednsargs["payload"] = int(self.config.edns_bufsize)
-                # set edns padding?
-                if self.config.edns_pad:
-                    ednsargs["options"].append(
-                        dns.edns.GenericOption(
-                            dns.edns.PADDING, bytes(int(self.config.edns_pad))
-                        )
-                    )
-                # enable edns with the chosen options
-                q.use_edns(edns=0, **ednsargs)  # type: ignore
-                logger.debug(f"using edns options {ednsargs}")
-            else:
-                # do not use edns
-                q.use_edns(edns=False)
-                logger.debug("not using edns")
-
-            # set RD flag?
-            if self.config.recursion_desired:
-                q.flags |= dns.flags.RD
-
-            # register the DNSCollector in dnsexp_registry
-            dns_collector = DNSCollector(config=self.config, query=q, labels=labels)
-            dnsexp_registry.register(dns_collector)
-            # send the response (which triggers the collect)
-            logger.debug("Returning DNS query metrics")
-            self.send_metric_response(registry=dnsexp_registry, query=self.qs)
-            return
+        if self.url.path in ["/query", "/config"]:
+            self.handle_query_request()
 
         # this endpoint exposes metrics about the exporter itself and the python process
         elif self.url.path == "/metrics":
             self.send_metric_response(registry=self.registry, query=self.qs)
             logger.debug("Returning exporter metrics for request to /metrics")
-            return
 
         # the root just returns a bit of informational html
         elif self.url.path == "/":
@@ -560,26 +667,26 @@ class DNSExporter(MetricsHandler):
         else:
             self.send_response(404)
             self.end_headers()
-            self.wfile.write("404 not found".encode("utf-8"))
+            self.wfile.write(b"404 not found")
             dnsexp_http_responses_total.labels(
-                path=self.url.path, response_code=404
+                path=self.url.path,
+                response_code=404,
             ).inc()
             logger.debug(f"Unknown endpoint '{self.url.path}' returning 404")
-            return None
 
     def send_metric_response(
         self,
-        registry: Union[CollectorRegistry, RestrictedRegistry],
+        registry: CollectorRegistry | RestrictedRegistry,
         query: dict[str, str],
     ) -> None:
         """Bake and send output from the provided registry and querystring."""
         # Bake output
-        status, headers, output = exposition._bake_output(  # type: ignore
-            registry,
-            self.headers.get("Accept"),
-            self.headers.get("Accept-Encoding"),
-            query,
-            False,
+        status, headers, output = exposition._bake_output(  # type: ignore[no-untyped-call]  # noqa: SLF001
+            registry=registry,
+            accept_header=self.headers.get("Accept"),
+            accept_encoding_header=self.headers.get("Accept-Encoding"),
+            params=query,
+            disable_compression=False,
         )
 
         # Return output
@@ -589,4 +696,3 @@ class DNSExporter(MetricsHandler):
         self.end_headers()
         self.wfile.write(output)
         dnsexp_http_responses_total.labels(path=self.url.path, response_code=200).inc()
-        return None

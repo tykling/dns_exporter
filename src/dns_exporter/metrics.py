@@ -3,7 +3,7 @@
 All metrics exposed by ``dns_exporter`` are prefixed with ``dnsexp_`` (apart from ``up``
 and the built-in Python metrics).
 """
-from typing import Optional
+from __future__ import annotations
 
 from prometheus_client.core import (
     Counter,
@@ -94,7 +94,7 @@ def get_dns_qtime_metric() -> GaugeMetricFamily:
     )
 
 
-def get_dns_success_metric(value: Optional[int] = None) -> GaugeMetricFamily:
+def get_dns_success_metric(value: int | None = None) -> GaugeMetricFamily:
     """``dnsexp_dns_query_success`` is a Gauge set to 1 when a DNS query is successful, or 0 otherwise.
 
     A DNS query is considered failed in the following cases:
@@ -118,9 +118,11 @@ def get_dns_ttl_metric() -> GaugeMetricFamily:
 
     This metric will often be set multiple times during a scrape, whenever a DNS query results in multiple
     RRs in the answer/authority/additional sections. For example, if a DNS query results in a response with
-    2 ``ANSWER``, 0 ``AUTHORITY`` and 4 ``ADDITIONAL`` then this metric will be set 6 times (with different labels).
+    2 ``ANSWER``, 0 ``AUTHORITY`` and 4 ``ADDITIONAL`` then this metric will be set 6 times (with different
+    labels).
 
-    This Gauge has the following labels, they are the same as ``dns_exporter.metrics.dnsexp_dns_query_time_seconds`` plus a few more:
+    This Gauge has the following labels, they are the same as ``dns_exporter.metrics.dnsexp_dns_query_time_seconds``
+    plus a few more:
 
         - ``server``
         - ``ip``
@@ -145,8 +147,8 @@ def get_dns_ttl_metric() -> GaugeMetricFamily:
     return GaugeMetricFamily(
         name="dnsexp_dns_response_rr_ttl_seconds",
         documentation="DNS response RR TTL in seconds.",
-        labels=QTIME_LABELS
-        + [
+        labels=[
+            *QTIME_LABELS,
             "rr_section",  # answer, authority or additional
             "rr_name",
             "rr_type",
@@ -158,14 +160,15 @@ def get_dns_ttl_metric() -> GaugeMetricFamily:
 def get_dns_failure_metric() -> CounterMetricFamily:
     """``dnsexp_failures_total`` is the per-scrape Counter keeping track of the reason a scrape failed.
 
-    A scrape (or the resulting DNS query) can fail for many reasons, including configuration issues, server issues, timeout, network issues, bad response, or failed response validation.
+    A scrape (or the resulting DNS query) can fail for many reasons, including configuration issues, server issues,
+    timeout, network issues, bad response, or failed response validation.
 
     This metric has just one label:
         - ``reason``: The reason for the failure.
     """
     return CounterMetricFamily(
         name="dnsexp_failures_total",
-        documentation="The total number of scrape failures by failure reason. This counter is increased every time a scrape is initiated and a valid response (considering validation rules) is not received.",
+        documentation="The total number of scrape failures by failure reason. This counter is increased every time a scrape is initiated and a valid response (considering validation rules) is not received.",  # noqa: E501
         labels=["reason"],
     )
 
@@ -174,39 +177,45 @@ def get_dns_failure_metric() -> CounterMetricFamily:
 # exporter internal/persitent metrics (served under /metrics)
 
 dnsexp_build_version = Info(
-    name="dnsexp_build_version", documentation="The version of dns_exporter"
+    name="dnsexp_build_version",
+    documentation="The version of dns_exporter",
 )
 """``dnsexp_build_version`` is a persistent Info metric which contains the version of ``dns_exporter``.
 
-The version is taken from the installed Python package if possible, and from _version.py written by ``setuptools_scm`` if the package is not installed, like when running from a Git checkout.
+The version is taken from the installed Python package if possible, and from _version.py written by ``setuptools_scm``
+if the package is not installed, like when running from a Git checkout.
 """
 dnsexp_build_version.info({"version": __version__})
 
 dnsexp_http_requests_total = Counter(
     name="dnsexp_http_requests_total",
-    documentation="The total number of HTTP requests received by this exporter since start. This counter is increased every time any HTTP request is received by the dns_exporter.",
+    documentation="The total number of HTTP requests received by this exporter since start. This counter is increased every time any HTTP request is received by the dns_exporter.",  # noqa: E501
     labelnames=["path"],
 )
-"""``dnsexp_http_requests_total`` is a persistent Counter keeping track of the total number of HTTP requests received by the exporter since start.
+"""``dnsexp_http_requests_total`` is a persistent Counter keeping track of the total number of HTTP requests received
+by the exporter since start.
 
-This metric has a single label, ``path`` which is set to the request path, usually ``/query`` (for making DNS queries) or ``/metrics`` (for getting the internal exporter metrics.
+This metric has a single label, ``path`` which is set to the request path, usually ``/query`` (for making DNS queries)
+or ``/metrics`` (for getting the internal exporter metrics.
 """
 
 dnsexp_http_responses_total = Counter(
     name="dnsexp_http_responses_total",
-    documentation="The total number of HTTP responses sent by this exporter since start. This counter is increased every time an HTTP response is sent from the dns_exporter.",
+    documentation="The total number of HTTP responses sent by this exporter since start. This counter is increased every time an HTTP response is sent from the dns_exporter.",  # noqa: E501
     labelnames=["path", "response_code"],
 )
-"""``dnsexp_http_responses_total`` is a persistent Counter keeping track of the total number of HTTP responses sent by the exporter since start.
+"""``dnsexp_http_responses_total`` is a Counter keeping track of the total number of HTTP responses sent by
+the exporter since start.
 
 This metric has two labels:
-    - ``path`` is set to the request path, usually ``/query`` (for making DNS queries) or ``/metrics`` (for getting the internal exporter metrics).
+    - ``path`` is set to the request path, usually ``/query`` (for making DNS queries) or
+    ``/metrics`` (for getting the internal exporter metrics).
     - ``response_code`` is set to the HTTP response code, usually 200.
 """
 
 dnsexp_dns_queries_total = Counter(
     name="dnsexp_dns_queries_total",
-    documentation="The total number of DNS queries sent by this exporter since start. This counter is increased every time the dns_exporter sends out a DNS query.",
+    documentation="The total number of DNS queries sent by this exporter since start. This counter is increased every time the dns_exporter sends out a DNS query.",  # noqa: E501
 )
 """``dnsexp_dns_queries_total`` is the Counter keeping track of how many DNS queries this exporter sends out.
 
@@ -215,10 +224,11 @@ This metric has no labels.
 
 dnsexp_dns_responsetime_seconds = Histogram(
     name="dnsexp_dns_responsetime_seconds",
-    documentation="DNS query response timing histogram. This histogram is updated every time the dns_exporter receives a query response.",
+    documentation="DNS query response timing histogram. This histogram is updated every time the dns_exporter receives a query response.",  # noqa: E501
     labelnames=QTIME_LABELS,
 )
-"""``dnsexp_dns_responsetime_seconds`` is the Histogram keeping track of how many DNS responses this exporter received since start and how long the query took.
+"""``dnsexp_dns_responsetime_seconds`` is the Histogram keeping track of how many DNS responses this exporter
+received since start and how long the query took.
 
     Each DNS query duration is observed in this histogram with the following labels to identify it:
 
@@ -243,7 +253,7 @@ dnsexp_dns_responsetime_seconds = Histogram(
 
 dnsexp_scrape_failures_total = Counter(
     name="dnsexp_scrape_failures_total",
-    documentation="The total number of scrapes failed by failure reason. This counter is increased every time the dns_exporter receives a scrape request which fails for some reason, including response validation logic.",
+    documentation="The total number of scrapes failed by failure reason. This counter is increased every time the dns_exporter receives a scrape request which fails for some reason, including response validation logic.",  # noqa: E501
     labelnames=["reason"],
 )
 """``dnsexp_scrape_failures_total`` is the Counter keeping track of how many scrape requests failed for some reason.

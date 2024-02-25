@@ -196,7 +196,7 @@ modules:  # this is the only key currently read from the config
         - "RA"
         - "RD"
 
-  fail_auth:
+  fail_not_auth:
     validate_response_flags:
       fail_if_all_absent:
         - "AA"
@@ -221,4 +221,7 @@ modules:  # this is the only key currently read from the config
     validate_answer_rrs:
       fail_if_none_matches_regexp:
         - ".*[a-m].root-servers.net.*"
+
+  socks1080:
+    proxy: "socks5://127.0.0.1:1080"
 ...

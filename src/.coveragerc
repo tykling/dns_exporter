@@ -1,0 +1,8 @@
+[run]
+omit =
+    tests/*
+    conftest.py
+dynamic_context = test_function
+
+[html]
+show_contexts = True

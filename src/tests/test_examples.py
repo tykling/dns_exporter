@@ -1,4 +1,3 @@
-# type: ignore
 """tests for example configuration snippets."""
 import shutil
 import time
@@ -16,44 +15,46 @@ if prom is None:
 
 
 @pytest.mark.parametrize(
-    "prometheus_server", ["list_of_servers/prometheus.yml"], indirect=True
+    "prometheus_server",
+    ["list_of_servers/prometheus.yml"],
+    indirect=True,
 )
 @pytest.mark.parametrize(
-    "dns_exporter_param_config", ["list_of_servers/dns_exporter.yml"], indirect=True
+    "dns_exporter_param_config",
+    ["list_of_servers/dns_exporter.yml"],
+    indirect=True,
 )
 def test_list_of_servers(prometheus_server, dns_exporter_param_config):
     """Test the list_of_servers snippets from the docs."""
     for _ in range(15):
         r = requests.get(
-            'http://127.0.0.1:9092/api/v1/query?query=sum(dnsexp_failures_total{job="dnsexp_doh_gmail_mx"})'
+            'http://127.0.0.1:9092/api/v1/query?query=sum(dnsexp_failures_total{job="dnsexp_doh_gmail_mx"})',
         )
-        if (
-            len(r.json()["data"]["result"]) > 0
-            and r.json()["data"]["result"][0]["value"][1] == "0"
-        ):
+        if len(r.json()["data"]["result"]) > 0 and r.json()["data"]["result"][0]["value"][1] == "0":
             break
         time.sleep(1)
     else:
-        assert False, "expected result not found in prom"
+        pytest.fail("expected result not found in prom")
 
 
 @pytest.mark.parametrize(
-    "prometheus_server", ["list_of_names/prometheus.yml"], indirect=True
+    "prometheus_server",
+    ["list_of_names/prometheus.yml"],
+    indirect=True,
 )
 @pytest.mark.parametrize(
-    "dns_exporter_param_config", ["list_of_names/dns_exporter.yml"], indirect=True
+    "dns_exporter_param_config",
+    ["list_of_names/dns_exporter.yml"],
+    indirect=True,
 )
 def test_list_of_names(caplog, prometheus_server, dns_exporter_param_config):
     """Test the list_of_names snippets from the docs."""
     for _ in range(15):
         r = requests.get(
-            'http://127.0.0.1:9092/api/v1/query?query=sum(dnsexp_failures_total{job="dnsexp_quad9_mx"})'
+            'http://127.0.0.1:9092/api/v1/query?query=sum(dnsexp_failures_total{job="dnsexp_quad9_mx"})',
         )
-        if (
-            len(r.json()["data"]["result"]) > 0
-            and r.json()["data"]["result"][0]["value"][1] == "0"
-        ):
+        if len(r.json()["data"]["result"]) > 0 and r.json()["data"]["result"][0]["value"][1] == "0":
             break
         time.sleep(1)
     else:
-        assert False, "expected result not found in prom"
+        pytest.fail("expected result not found in prom")

@@ -10,11 +10,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Unit tests for proxy code
+- Unit tests for new code introduced to make ruff happy
 
 
 ### Changed
+- Replace black, flake8, isort, pydocstyle with ruff
+- Some refactoring to reduce complexity and ease testing
+- Much linting
+- Move coverage.py config to .coveragerc to make showing measurement contexts in coverage html work
 - Proxy support for DoQ disabled, pending next dnspython release with https://github.com/rthalley/dnspython/pull/1060
 
+### Fixed
+- Fixed a bug which made `fail_if_all_match_regexp` validation succeed on the first matching RR (not considering further RRs).
 
 
 ## [v1.0.0-beta5] - 2024-02-20
