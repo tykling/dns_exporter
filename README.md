@@ -1,9 +1,9 @@
 [![Run Tox CI](https://github.com/tykling/dns_exporter/actions/workflows/tox.yml/badge.svg?branch=main)](https://github.com/tykling/dns_exporter/actions/workflows/tox.yml)
-[![codecov](https://codecov.io/gh/tykling/dns_exporter/graph/badge.svg?token=OKP40B9H10)](https://codecov.io/gh/tykling/dns_exporter)
 [![Documentation Status](https://readthedocs.org/projects/dns-exporter/badge/?version=latest)](https://dns-exporter.readthedocs.io/latest/)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![codecov](https://codecov.io/gh/tykling/dns_exporter/graph/badge.svg?token=OKP40B9H10)](https://codecov.io/gh/tykling/dns_exporter)
 [![PyPI version](https://badge.fury.io/py/dns-exporter.svg)](https://pypi.org/project/dns-exporter/)
 [![Docker Image Version (latest semver)](https://img.shields.io/docker/v/tykling/dns_exporter)](https://hub.docker.com/r/tykling/dns_exporter)
-
 
 # dns_exporter
 `dns_exporter` is a [multi-target](https://prometheus.io/docs/guides/multi-target-exporter/) [Prometheus](https://prometheus.io/) exporter with an exclusive focus on DNS monitoring. It is built on the excellent libraries [dnspython](https://github.com/rthalley/dnspython) and [the Prometheus Python client library](https://github.com/prometheus/client_python).
