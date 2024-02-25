@@ -211,22 +211,23 @@ class DNSCollector(Collector):
     def yield_ttl_metrics(self, response: Message) -> Iterator[GaugeMetricFamily]:
         """Register TTL of response RRs and yield ttl metric."""
         ttl = get_dns_ttl_metric()
-        for section in ["answer", "authority", "additional"]:
-            logger.debug(f"processing section {section}")
-            rrsets = getattr(response, section)
-            for rrset in rrsets:
-                logger.debug(f"processing rrset {rrset}...")
-                for rr in rrset:
-                    logger.debug(f"processing rr {rr}")
-                    self.labels.update(
-                        {
-                            "rr_section": section,
-                            "rr_name": str(rrset.name),
-                            "rr_type": dns.rdatatype.to_text(rr.rdtype),
-                            "rr_value": rr.to_text()[:255],
-                        },
-                    )
-                    ttl.add_metric(list(self.labels.values()), rrset.ttl)
+        if self.config.collect_ttl:
+            for section in ["answer", "authority", "additional"]:
+                logger.debug(f"processing section {section}")
+                rrsets = getattr(response, section)
+                for rrset in rrsets:
+                    logger.debug(f"processing rrset {rrset}...")
+                    for rr in rrset:
+                        logger.debug(f"processing rr {rr}")
+                        self.labels.update(
+                            {
+                                "rr_section": section,
+                                "rr_name": str(rrset.name),
+                                "rr_type": dns.rdatatype.to_text(rr.rdtype),
+                                "rr_value": rr.to_text()[:255],
+                            },
+                        )
+                        ttl.add_metric(list(self.labels.values()), rrset.ttl)
         # yield all the ttl metrics
         logger.debug("yielding ttl metrics")
         yield ttl

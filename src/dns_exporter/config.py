@@ -176,6 +176,10 @@ class Config:
     """str: The name of this config. It is mostly included in the class for convenience."""
 
     # required
+    collect_ttl: bool
+    """bool: Set this bool to ``True`` to enable collection of per-RR TTL metrics for the DNS query, ``False`` to not
+    collect per-RR TTL metrics. Default is ``True``"""
+
     edns: bool
     """bool: Set this bool to ``True`` to enable ``EDNS0`` for the DNS query, ``False`` to not use ``EDNS0``.
     Default is ``True``"""
@@ -252,7 +256,7 @@ class Config:
 
     def validate_bools(self) -> None:
         """Validate bools."""
-        for key in ["edns", "edns_do", "edns_nsid", "recursion_desired"]:
+        for key in ["collect_ttl", "edns", "edns_do", "edns_nsid", "recursion_desired"]:
             # validate bools
             if not isinstance(getattr(self, key), bool):
                 logger.error("Not a bool")
@@ -342,6 +346,7 @@ class Config:
         cls: type[Config],
         *,
         name: str,
+        collect_ttl: bool = True,
         edns: bool = True,
         edns_do: bool = False,
         edns_nsid: bool = True,
@@ -365,6 +370,9 @@ class Config:
     ) -> Config:
         """Return an instance of the Config class with values from the provided parameters overriding the defaults."""
         logger.debug(f"creating config {name}...")
+        if isinstance(collect_ttl, str):
+            collect_ttl = collect_ttl.lower() != "false"
+
         if isinstance(edns, str):
             edns = edns.lower() != "false"
 
@@ -374,8 +382,8 @@ class Config:
         if isinstance(recursion_desired, str):
             recursion_desired = recursion_desired.lower() != "false"
 
+        # immutable defaults
         if valid_rcodes is None:
-            # default to just NOERROR
             valid_rcodes = ["NOERROR"]
 
         if validate_answer_rrs is None:
@@ -392,6 +400,7 @@ class Config:
 
         return cls(
             name=name,
+            collect_ttl=collect_ttl,
             edns=edns,
             edns_do=edns_do,
             edns_nsid=edns_nsid,
@@ -435,6 +444,7 @@ class ConfigDict(t.TypedDict, total=False):
     ``dns_exporter.config.Config`` object does.
     """
 
+    collect_ttl: bool
     edns: bool
     edns_do: bool
     edns_nsid: bool

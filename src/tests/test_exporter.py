@@ -276,14 +276,14 @@ def test_internal_metrics(dns_exporter_example_config, caplog):
     assert f'dnsexp_build_version_info{{version="{__version__}"}} 1.0' in r.text
     assert "Returning exporter metrics for request to /metrics" in caplog.text
     for metric in """dnsexp_http_requests_total{path="/notfound"} 1.0
-dnsexp_http_requests_total{path="/query"} 49.0
+dnsexp_http_requests_total{path="/query"} 51.0
 dnsexp_http_requests_total{path="/config"} 2.0
 dnsexp_http_requests_total{path="/"} 1.0
 dnsexp_http_requests_total{path="/metrics"} 1.0
 dnsexp_http_responses_total{path="/notfound",response_code="404"} 1.0
-dnsexp_http_responses_total{path="/query",response_code="200"} 49.0
+dnsexp_http_responses_total{path="/query",response_code="200"} 51.0
 dnsexp_http_responses_total{path="/",response_code="200"} 1.0
-dnsexp_dns_queries_total 36.0
+dnsexp_dns_queries_total 38.0
 dnsexp_dns_responsetime_seconds_bucket{additional="0",answer="1",authority="0",family="ipv4",flags="QR RA RD",ip="8.8.4.4",le="0.005",nsid="no_nsid",opcode="QUERY",port="53",protocol="udp",proxy="none",query_name="example.com",query_type="A",rcode="NOERROR",server="udp://dns.google:53",transport="UDP"}
 dnsexp_scrape_failures_total{reason="timeout"} 1.0
 dnsexp_scrape_failures_total{reason="invalid_response_flags"} 6.0
@@ -962,3 +962,34 @@ def test_proxy_module(dns_exporter_example_config, proxy_server):
     )
     assert 'proxy="socks5://127.0.0.1:1080"' in r.text
     assert 'server="udp://dns.google:53"' in r.text
+
+
+def test_ttl(dns_exporter_example_config, caplog):
+    """Test collecting ttl metrics."""
+    caplog.clear()
+    caplog.set_level(logging.DEBUG)
+    r = requests.get(
+        "http://127.0.0.1:25353/query",
+        params={
+            "server": "dns.google",
+            "query_name": "anycast.censurfridns.dk",
+            "family": "ipv4",
+        },
+    )
+    assert 'rr_value="91.239.100.100"' in r.text
+
+
+def test_no_ttl(dns_exporter_no_main_no_config, caplog):
+    """Test not collecting ttl metrics."""
+    caplog.clear()
+    caplog.set_level(logging.DEBUG)
+    r = requests.get(
+        "http://127.0.0.1:45353/query",
+        params={
+            "server": "dns.google",
+            "query_name": "anycast.censurfridns.dk",
+            "family": "ipv4",
+            "collect_ttl": False,
+        },
+    )
+    assert 'rr_value="91.239.100.100"' not in r.text

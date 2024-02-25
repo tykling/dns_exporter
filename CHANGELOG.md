@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Unit tests for proxy code
 - Unit tests for new code introduced to make ruff happy
-
+- New `collect_ttl` setting to control collection of per-RR TTL metrics. Default is true.
 
 ### Changed
 - Replace black, flake8, isort, pydocstyle with ruff
