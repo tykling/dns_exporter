@@ -87,7 +87,6 @@ jobs:
           buildkitd-flags: "--debug"
 
       - name: Log in to Docker Hub
-        if: github.event_name != 'pull_request'
         uses: docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -104,6 +103,8 @@ jobs:
           set: |
             *.tags=
             *.platform=${{ matrix.platform }}
+            *.attest=type=sbom
+            *.attest=type=provenance,mode=max
             *.output=type=image,"name=${{ env.REGISTRY_IMAGE }}",push-by-digest=true,name-canonical=true,push=true
 
       - name: Export digest
@@ -122,7 +123,6 @@ jobs:
 
   merge:
     runs-on: ubuntu-22.04
-    if: github.event_name != 'pull_request'
     needs:
       - build
     steps:
