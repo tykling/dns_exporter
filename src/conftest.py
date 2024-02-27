@@ -173,10 +173,19 @@ def prometheus_server(request, tmp_path_factory, tmpdir_factory):
 
 @pytest.fixture()
 def mock_collect_httpx_connecterror(mocker):
-    """Monkeypatch DNSCollector.get_dns_respose() to raise httpx.ConnectError."""
+    """Monkeypatch DNSCollector.get_dns_response() to raise httpx.ConnectError."""
     mocker.patch(
         "dns_exporter.collector.DNSCollector.get_dns_response",
         side_effect=httpx.ConnectError("mocked"),
+    )
+
+
+@pytest.fixture()
+def mock_collect_zerodivisionerror(mocker):
+    """Monkeypatch DNSCollector.get_dns_response() to raise ZeroDivisionError (something not explicitly handled)."""
+    mocker.patch(
+        "dns_exporter.collector.DNSCollector.get_dns_response",
+        side_effect=ZeroDivisionError("mocked"),
     )
 
 

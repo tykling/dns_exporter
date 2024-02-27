@@ -240,6 +240,15 @@ class Config:
     valid_rcodes: list[str]
     """list[str]: A list of acceptable rcodes when validating the DNS response. Default is ``["NOERROR"]``."""
 
+    verify_certificate: bool
+    """bool: Set this bool to ``True`` to verify the certificate of the DNS server, set it to ``False`` to disable
+    certificate verification. When enabled the default system CA can be overridden with the verify_certificate_path
+    setting. Certificate validation is ignored for unencrypted protocols. Default is ``True``"""
+
+    verify_certificate_path: str
+    """bool: Set this to the path of a CA dir or CA file to override the default system CA when verifying certificates
+    of encrypted DNS servers. Leave empty to use the default system CA path. Default is an empty string."""
+
     # optional settings (but required in final config)
 
     ip: IPv4Address | IPv6Address | None = field(
@@ -256,10 +265,10 @@ class Config:
 
     def validate_bools(self) -> None:
         """Validate bools."""
-        for key in ["collect_ttl", "edns", "edns_do", "edns_nsid", "recursion_desired"]:
+        for key in ["collect_ttl", "edns", "edns_do", "edns_nsid", "recursion_desired", "verify_certificate"]:
             # validate bools
             if not isinstance(getattr(self, key), bool):
-                logger.error("Not a bool")
+                logger.error(f"Not a bool: {key}")
                 raise ConfigError("invalid_request_config")
 
     def validate_integers(self) -> None:
@@ -364,24 +373,14 @@ class Config:
         validate_additional_rrs: RRValidator | None = None,
         validate_response_flags: RFValidator | None = None,
         valid_rcodes: list[str] | None = None,
+        verify_certificate: bool = True,
+        verify_certificate_path: str = "",
         ip: IPv4Address | IPv6Address | None = None,
         server: urllib.parse.SplitResult | None = None,
         query_name: str | None = None,
     ) -> Config:
         """Return an instance of the Config class with values from the provided parameters overriding the defaults."""
         logger.debug(f"creating config {name}...")
-        if isinstance(collect_ttl, str):
-            collect_ttl = collect_ttl.lower() != "false"
-
-        if isinstance(edns, str):
-            edns = edns.lower() != "false"
-
-        if isinstance(edns_do, str):
-            edns_do = edns_do.lower() != "false"
-
-        if isinstance(recursion_desired, str):
-            recursion_desired = recursion_desired.lower() != "false"
-
         # immutable defaults
         if valid_rcodes is None:
             valid_rcodes = ["NOERROR"]
@@ -418,6 +417,8 @@ class Config:
             validate_additional_rrs=validate_additional_rrs,
             validate_response_flags=validate_response_flags,
             valid_rcodes=list(valid_rcodes),
+            verify_certificate=verify_certificate,
+            verify_certificate_path=verify_certificate_path,
             # fields with no defaults below here
             ip=ip,
             server=server,
@@ -461,6 +462,8 @@ class ConfigDict(t.TypedDict, total=False):
     validate_additional_rrs: RRValidator
     validate_response_flags: RFValidator
     valid_rcodes: list[str]
+    verify_certificate: bool
+    verify_certificate_path: str
     ip: IPv4Address | IPv6Address | None
     server: urllib.parse.SplitResult | None
     query_name: str | None

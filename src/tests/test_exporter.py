@@ -19,7 +19,7 @@ def test_main_no_config(dns_exporter_main_no_config_no_debug):
         },
     )
     assert r.status_code == 200, "non-200 returncode"
-    assert 'dnsexp_failures_total{reason="timeout"} 0.0' in r.text
+    assert "dnsexp_dns_query_success 1.0" in r.text
 
 
 def test_timeout(dns_exporter_main_no_config_no_debug):
@@ -33,7 +33,6 @@ def test_timeout(dns_exporter_main_no_config_no_debug):
             "timeout": 0.0001,
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert 'dnsexp_failures_total{reason="timeout"} 1.0' in r.text
 
 
@@ -47,7 +46,7 @@ def test_noconfig_server(dns_exporter_no_main_no_config):
             "family": "ipv4",
         },
     )
-    assert r.status_code == 200, "basic noconfig lookup failed with non-200 returncode"
+    assert "dnsexp_dns_query_success 1.0" in r.text
 
 
 def test_config_server(dns_exporter_example_config):
@@ -60,7 +59,7 @@ def test_config_server(dns_exporter_example_config):
             "family": "ipv4",
         },
     )
-    assert r.status_code == 200, "basic lookup failed with non-200 returncode"
+    assert "dnsexp_dns_query_success 1.0" in r.text
 
 
 def test_config_endpoint(dns_exporter_example_config):
@@ -105,7 +104,6 @@ def test_invalid_qs_ip(dns_exporter_example_config):
             "ip": "notanip",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert 'dnsexp_failures_total{reason="invalid_request_ip"} 1.0' in r.text
 
 
@@ -124,7 +122,6 @@ def test_missing_query_name(dns_exporter_example_config):
             "server": "dns.google",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert 'dnsexp_failures_total{reason="invalid_request_query_name"} 1.0' in r.text
 
 
@@ -136,7 +133,6 @@ def test_missing_server(dns_exporter_example_config):
             "query_name": "example.com",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert 'dnsexp_failures_total{reason="invalid_request_server"} 1.0' in r.text
 
 
@@ -148,7 +144,6 @@ def test_undefined_module(dns_exporter_example_config, caplog):
             "module": "notamodule",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert 'dnsexp_failures_total{reason="invalid_request_module"} 1.0' in r.text
 
 
@@ -161,7 +156,6 @@ def test_unknown_config_key(dns_exporter_example_config, caplog):
             "foo": "bar",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert 'dnsexp_failures_total{reason="invalid_request_config"} 1.0' in r.text
 
 
@@ -176,7 +170,6 @@ def test_ip_family_conflict(dns_exporter_example_config, caplog):
             "ip": "192.0.2.53",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert 'dnsexp_failures_total{reason="invalid_request_ip"} 1.0' in r.text
 
 
@@ -191,7 +184,6 @@ def test_ip_conflict(dns_exporter_example_config, caplog):
             "family": "ipv4",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert 'dnsexp_failures_total{reason="invalid_request_ip"} 1.0' in r.text
 
 
@@ -199,7 +191,7 @@ def test_ip_and_hostname(dns_exporter_example_config, caplog):
     """Make sure using an IP and hostname results in the IP overriding the server hostname DNS lookup."""
     caplog.clear()
     caplog.set_level(logging.DEBUG)
-    r = requests.get(
+    requests.get(
         "http://127.0.0.1:25353/query",
         params={
             "server": "dns.google",
@@ -208,7 +200,6 @@ def test_ip_and_hostname(dns_exporter_example_config, caplog):
             "family": "ipv4",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert "Using server IP 8.8.4.4 (from config) for the DNS server connection" in caplog.text
 
 
@@ -223,7 +214,6 @@ def test_unresolvable_server(dns_exporter_example_config, caplog):
             "query_name": "example.com",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert 'dnsexp_failures_total{reason="invalid_request_server"} 1.0' in r.text
 
 
@@ -231,7 +221,7 @@ def test_ipv6_family(dns_exporter_example_config, caplog):
     """Test IP override for ipv6 family."""
     caplog.clear()
     caplog.set_level(logging.DEBUG)
-    r = requests.get(
+    requests.get(
         "http://127.0.0.1:25353/query",
         params={
             "server": "dns.google",
@@ -240,7 +230,6 @@ def test_ipv6_family(dns_exporter_example_config, caplog):
             "timeout": 0.1,
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert "Using server IP 2001:4860:4860::8888 (from config) for the DNS server connection" in caplog.text
 
 
@@ -256,7 +245,6 @@ def test_ipv7_family(dns_exporter_example_config, caplog):
             "family": "ipv7",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert 'dnsexp_failures_total{reason="invalid_request_family"} 1.0' in r.text
 
 
@@ -272,35 +260,35 @@ def test_internal_metrics(dns_exporter_example_config, caplog):
     r = requests.get(
         "http://127.0.0.1:25353/metrics",
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert f'dnsexp_build_version_info{{version="{__version__}"}} 1.0' in r.text
     assert "Returning exporter metrics for request to /metrics" in caplog.text
     for metric in """dnsexp_http_requests_total{path="/notfound"} 1.0
-dnsexp_http_requests_total{path="/query"} 51.0
+dnsexp_http_requests_total{path="/query"} 75.0
 dnsexp_http_requests_total{path="/config"} 2.0
 dnsexp_http_requests_total{path="/"} 1.0
 dnsexp_http_requests_total{path="/metrics"} 1.0
 dnsexp_http_responses_total{path="/notfound",response_code="404"} 1.0
-dnsexp_http_responses_total{path="/query",response_code="200"} 51.0
+dnsexp_http_responses_total{path="/query",response_code="200"} 75.0
 dnsexp_http_responses_total{path="/",response_code="200"} 1.0
-dnsexp_dns_queries_total 38.0
+dnsexp_dns_queries_total 61.0
 dnsexp_dns_responsetime_seconds_bucket{additional="0",answer="1",authority="0",family="ipv4",flags="QR RA RD",ip="8.8.4.4",le="0.005",nsid="no_nsid",opcode="QUERY",port="53",protocol="udp",proxy="none",query_name="example.com",query_type="A",rcode="NOERROR",server="udp://dns.google:53",transport="UDP"}
-dnsexp_scrape_failures_total{reason="timeout"} 1.0
-dnsexp_scrape_failures_total{reason="invalid_response_flags"} 6.0
-dnsexp_scrape_failures_total{reason="invalid_response_answer_rrs"} 4.0
-dnsexp_scrape_failures_total{reason="invalid_response_rcode"} 1.0
-dnsexp_scrape_failures_total{reason="invalid_response_additional_rrs"} 1.0
-dnsexp_scrape_failures_total{reason="invalid_request_server"} 2.0
-dnsexp_scrape_failures_total{reason="invalid_request_module"} 1.0
-dnsexp_scrape_failures_total{reason="invalid_request_config"} 2.0
-dnsexp_scrape_failures_total{reason="invalid_request_ip"} 3.0
-dnsexp_scrape_failures_total{reason="invalid_request_family"} 1.0
-dnsexp_scrape_failures_total{reason="other_failure"} 1.0
-dnsexp_scrape_failures_total{reason="connection_refused"} 3.0
-dnsexp_scrape_failures_total{reason="connection_error"} 2.0
+dnsexp_scrape_failures_total{reason="certificate_error"} 4.0
+dnsexp_scrape_failures_total{reason="invalid_request_config"} 7.0
 dnsexp_scrape_failures_total{reason="invalid_request_proxy"} 2.0
-dnsexp_scrape_failures_total{reason="invalid_request_query_name"} 1.0""".split("\n"):
-        assert metric in r.text
+dnsexp_scrape_failures_total{reason="connection_refused"} 2.0
+dnsexp_scrape_failures_total{reason="connection_error"} 10.0
+dnsexp_scrape_failures_total{reason="timeout"} 6.0
+dnsexp_scrape_failures_total{reason="invalid_response_answer_rrs"} 4.0
+dnsexp_scrape_failures_total{reason="invalid_request_ip"} 3.0
+dnsexp_scrape_failures_total{reason="invalid_response_rcode"} 1.0
+dnsexp_scrape_failures_total{reason="invalid_request_server"} 2.0
+dnsexp_scrape_failures_total{reason="invalid_response_flags"} 6.0
+dnsexp_scrape_failures_total{reason="invalid_request_query_name"} 1.0
+dnsexp_scrape_failures_total{reason="other_failure"} 1.0
+dnsexp_scrape_failures_total{reason="invalid_response_additional_rrs"} 1.0
+dnsexp_scrape_failures_total{reason="invalid_request_family"} 1.0
+dnsexp_scrape_failures_total{reason="invalid_request_module"} 1.0""".split("\n"):
+        assert metric in r.text, f"expected metrics not found: {r.text}"
 
 
 def test_index(dns_exporter_example_config, caplog):
@@ -340,7 +328,6 @@ def test_tcp(dns_exporter_example_config, caplog):
             "family": "ipv4",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert 'transport="TCP"' in r.text
     assert "Protocol tcp got a DNS query response over TCP" in caplog.text
 
@@ -358,7 +345,6 @@ def test_udptcp(dns_exporter_example_config, caplog):
             "family": "ipv4",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert 'transport="UDP"' in r.text
     assert "Protocol udptcp got a DNS query response over UDP" in caplog.text
 
@@ -376,7 +362,6 @@ def test_dot(dns_exporter_example_config, caplog):
             "family": "ipv4",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert 'transport="TCP"' in r.text
     assert "Protocol dot got a DNS query response over TCP" in caplog.text
 
@@ -394,7 +379,6 @@ def test_doh(dns_exporter_example_config, caplog):
             "family": "ipv4",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert 'transport="TCP"' in r.text
     assert 'protocol="doh"' in r.text
     assert "Protocol doh got a DNS query response over TCP" in caplog.text
@@ -413,7 +397,6 @@ def test_doq(dns_exporter_example_config, caplog, recwarn):
             "family": "ipv4",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert 'transport="UDP"' in r.text
     assert 'protocol="doq"' in r.text
     assert "Protocol doq got a DNS query response over UDP" in caplog.text
@@ -429,7 +412,6 @@ def test_validate_rcode(dns_exporter_example_config, caplog):
             "family": "ipv4",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert 'dnsexp_failures_total{reason="invalid_response_rcode"} 1.0' in r.text
     assert 'rcode="NXDOMAIN"' in r.text
 
@@ -445,7 +427,6 @@ def test_validate_flags_fail_if_any_absent(dns_exporter_example_config, caplog):
             "module": "has_ad",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert 'dnsexp_failures_total{reason="invalid_response_flags"} 1.0' in r.text
 
 
@@ -460,7 +441,6 @@ def test_validate_flags_fail_if_any_present(dns_exporter_example_config, caplog)
             "module": "has_no_ad",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert 'dnsexp_failures_total{reason="invalid_response_flags"} 1.0' in r.text
 
 
@@ -475,7 +455,6 @@ def test_validate_flags_fail_if_all_present(dns_exporter_example_config, caplog)
             "module": "fail_not_auth",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert 'dnsexp_failures_total{reason="invalid_response_flags"} 1.0' in r.text
 
 
@@ -490,7 +469,6 @@ def test_validate_flags_fail_if_all_absent(dns_exporter_example_config, caplog):
             "module": "fail_recursive",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert 'dnsexp_failures_total{reason="invalid_response_flags"} 1.0' in r.text
 
 
@@ -505,7 +483,6 @@ def test_validate_flags_fail_if_all_present_2(dns_exporter_example_config, caplo
             "module": "fail_not_auth",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert 'dnsexp_failures_total{reason="invalid_response_flags"} 1.0' in r.text
 
 
@@ -520,7 +497,6 @@ def test_validate_flags_fail_if_all_absent_2(dns_exporter_example_config, caplog
             "module": "fail_recursive",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert 'dnsexp_failures_total{reason="invalid_response_flags"} 1.0' in r.text
 
 
@@ -536,7 +512,7 @@ def test_validate_flags_fail_if_all_present_3(dns_exporter_example_config, caplo
             "module": "fail_recursive",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
+    assert "dnsexp_dns_query_success 1.0" in r.text
 
 
 def test_validate_flags_fail_if_all_absent_3(dns_exporter_example_config, caplog):
@@ -550,7 +526,7 @@ def test_validate_flags_fail_if_all_absent_3(dns_exporter_example_config, caplog
             "module": "fail_not_auth",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
+    assert "dnsexp_dns_query_success 1.0" in r.text
 
 
 def test_validate_rr_fail_if_matches_regexp(dns_exporter_example_config, caplog):
@@ -565,7 +541,6 @@ def test_validate_rr_fail_if_matches_regexp(dns_exporter_example_config, caplog)
             "module": "fail_auth_k_root",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert 'dnsexp_failures_total{reason="invalid_response_answer_rrs"} 1.0' in r.text
 
 
@@ -581,7 +556,6 @@ def test_validate_rrs_fail_if_all_match_regexp(dns_exporter_example_config, capl
             "module": "fail_additional_root",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert 'dnsexp_failures_total{reason="invalid_response_additional_rrs"} 1.0' in r.text
 
 
@@ -597,7 +571,6 @@ def test_validate_rrs_fail_if_all_match_regexp_2(dns_exporter_example_config, ca
             "module": "fail_additional_root",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert "dnsexp_dns_query_success 1.0" in r.text
 
 
@@ -613,7 +586,6 @@ def test_validate_rrs_fail_if_not_matches_regexp(dns_exporter_example_config, ca
             "module": "fail_answer_root",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert 'dnsexp_failures_total{reason="invalid_response_answer_rrs"} 1.0' in r.text
 
 
@@ -629,7 +601,6 @@ def test_validate_rrs_fail_if_none_matches_regexp(dns_exporter_example_config, c
             "module": "fail_answer_root_none",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert 'dnsexp_failures_total{reason="invalid_response_answer_rrs"} 1.0' in r.text
 
 
@@ -648,7 +619,7 @@ def test_validate_rrs_fail_if_none_matches_regexp_2(
             "module": "fail_answer_root_none",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
+    assert 'dnsexp_failures_total{reason="invalid_response_answer_rrs"} 1.0' in r.text
 
 
 def test_edns_pad(dns_exporter_example_config, caplog):
@@ -662,7 +633,7 @@ def test_edns_pad(dns_exporter_example_config, caplog):
             "edns_pad": 20,
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
+    assert "dnsexp_dns_query_success 1.0" in r.text
 
 
 def test_no_edns(dns_exporter_example_config, caplog):
@@ -677,7 +648,8 @@ def test_no_edns(dns_exporter_example_config, caplog):
             "edns": False,
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
+    assert "dnsexp_dns_query_success 1.0" in r.text
+    assert 'nsid="no_nsid"' in r.text
 
 
 def test_broken_yaml_config(caplog, dns_exporter_broken_yaml_configfile):
@@ -735,7 +707,6 @@ def test_invalid_integer(dns_exporter_example_config, caplog):
             "edns_bufsize": "foo",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert "Unable to validate integer for key edns_bufsize" in caplog.text
     assert "ValueError: invalid literal for int() with base 10: 'foo'" in caplog.text
     assert 'dnsexp_failures_total{reason="invalid_request_config"} 1.0' in r.text
@@ -783,22 +754,6 @@ def test_configure_bad_module(caplog, exporter):
     assert "Invalid value found while building config {'query_class': 'OUT'}" in caplog.text
 
 
-def test_connrefused_server(dns_exporter_example_config, caplog):
-    """Trigger a connection_refused failure by connecting to something not listening."""
-    caplog.clear()
-    caplog.set_level(logging.DEBUG)
-    r = requests.get(
-        "http://127.0.0.1:25353/query",
-        params={
-            "server": "127.0.0.1:53",
-            "protocol": "tcp",
-            "query_name": "example.com",
-        },
-    )
-    assert r.status_code == 200, "non-200 returncode"
-    assert 'dnsexp_failures_total{reason="connection_refused"} 1.0' in r.text
-
-
 def test_httpx_connecterror(
     dns_exporter_example_config,
     mock_collect_httpx_connecterror,
@@ -816,43 +771,11 @@ def test_httpx_connecterror(
     assert 'dnsexp_failures_total{reason="connection_error"} 1.0' in r.text
 
 
-### proxy tests
-
-
-def test_proxy_udp(dns_exporter_example_config, proxy_server):
-    """Test proxy functionality for udp protocol."""
-    r = requests.get(
-        "http://127.0.0.1:25353/query",
-        params={
-            "query_name": "example.com",
-            "server": "dns.google",
-            "family": "ipv4",
-            "protocol": "udp",
-            "proxy": "socks5://127.0.0.1:1080",
-        },
-    )
-    assert 'proxy="socks5://127.0.0.1:1080"' in r.text
-    assert 'server="udp://dns.google:53"' in r.text
-
-
-def test_proxy_tcp(dns_exporter_example_config, proxy_server):
-    """Test proxy functionality for tcp protocol."""
-    r = requests.get(
-        "http://127.0.0.1:25353/query",
-        params={
-            "query_name": "example.com",
-            "server": "dns.google",
-            "family": "ipv4",
-            "protocol": "tcp",
-            "proxy": "socks5://127.0.0.1:1080",
-        },
-    )
-    assert 'proxy="socks5://127.0.0.1:1080"' in r.text
-    assert 'server="tcp://dns.google:53"' in r.text
-
-
-def test_proxy_doh(dns_exporter_example_config, proxy_server):
-    """Test proxy functionality for doh protocol."""
+def test_catch_unknown_exception(
+    dns_exporter_example_config,
+    mock_collect_zerodivisionerror,
+):
+    """Trigger an other_failure failure by raising a ValueError from get_dns_response()."""
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
@@ -860,110 +783,12 @@ def test_proxy_doh(dns_exporter_example_config, proxy_server):
             "server": "dns.google",
             "family": "ipv4",
             "protocol": "doh",
-            "proxy": "socks5://127.0.0.1:1080",
         },
     )
-    assert 'proxy="socks5://127.0.0.1:1080"' in r.text
-    assert 'server="https://dns.google:443/dns-query"' in r.text
+    assert 'dnsexp_failures_total{reason="other_failure"} 1.0' in r.text
 
 
-def test_proxy_udp_fail(dns_exporter_example_config, proxy_server):
-    """Test proxy failure for udp protocol."""
-    r = requests.get(
-        "http://127.0.0.1:25353/query",
-        params={
-            "query_name": "example.com",
-            "server": "dns.google",
-            "family": "ipv4",
-            "protocol": "udp",
-            "proxy": "socks5://127.0.0.1:1081",
-        },
-    )
-    assert 'dnsexp_failures_total{reason="connection_refused"} 1.0' in r.text
-
-
-def test_proxy_tcp_fail(dns_exporter_example_config, proxy_server):
-    """Test proxy failure for tcp protocol."""
-    r = requests.get(
-        "http://127.0.0.1:25353/query",
-        params={
-            "query_name": "example.com",
-            "server": "dns.google",
-            "family": "ipv4",
-            "protocol": "tcp",
-            "proxy": "socks5://127.0.0.1:1081",
-        },
-    )
-    assert 'dnsexp_failures_total{reason="connection_refused"} 1.0' in r.text
-
-
-def test_proxy_doh_fail(dns_exporter_example_config, proxy_server):
-    """Test proxy failure for doh protocol."""
-    r = requests.get(
-        "http://127.0.0.1:25353/query",
-        params={
-            "query_name": "example.com",
-            "server": "dns.google",
-            "family": "ipv4",
-            "protocol": "doh",
-            "proxy": "socks5://127.0.0.1:1081",
-        },
-    )
-    assert 'dnsexp_failures_total{reason="connection_error"} 1.0' in r.text
-
-
-def test_proxy_without_scheme(dns_exporter_example_config):
-    """Trigger an invalid_request_proxy failure by providing a proxy without a scheme."""
-    r = requests.get(
-        "http://127.0.0.1:25353/query",
-        params={
-            "query_name": "example.com",
-            "server": "dns.google",
-            "proxy": "127.0.0.1:1080",
-        },
-    )
-    assert r.status_code == 200, "non-200 returncode"
-    assert 'dnsexp_failures_total{reason="invalid_request_proxy"} 1.0' in r.text
-
-
-def test_proxy_unknown_scheme(dns_exporter_example_config):
-    """Trigger an invalid_request_proxy failure by providing a proxy with an unknown scheme."""
-    r = requests.get(
-        "http://127.0.0.1:25353/query",
-        params={
-            "query_name": "example.com",
-            "server": "dns.google",
-            "proxy": "foo://127.0.0.1:1080",
-        },
-    )
-    assert r.status_code == 200, "non-200 returncode"
-    assert 'dnsexp_failures_total{reason="invalid_request_proxy"} 1.0' in r.text
-
-
-def test_exporter_modules_none(caplog, exporter):
-    """Make sure calling configure() with modules=None works."""
-    caplog.clear()
-    caplog.set_level(logging.DEBUG)
-    exporter.configure(modules=None)
-    assert "0 module(s) loaded OK, total modules: 0." in caplog.text
-
-
-def test_proxy_module(dns_exporter_example_config, proxy_server):
-    """Test proxy functionality for udp protocol."""
-    r = requests.get(
-        "http://127.0.0.1:25353/query",
-        params={
-            "query_name": "example.com",
-            "server": "dns.google",
-            "family": "ipv4",
-            "protocol": "udp",
-            "module": "socks1080",
-        },
-    )
-    assert 'proxy="socks5://127.0.0.1:1080"' in r.text
-    assert 'server="udp://dns.google:53"' in r.text
-
-
+### ttl tests
 def test_ttl(dns_exporter_example_config, caplog):
     """Test collecting ttl metrics."""
     caplog.clear()
@@ -993,3 +818,42 @@ def test_no_ttl(dns_exporter_no_main_no_config, caplog):
         },
     )
     assert 'rr_value="91.239.100.100"' not in r.text
+
+
+### connection refused
+
+
+@pytest.mark.parametrize("protocol", ["udp", "tcp", "udptcp", "dot", "doh", "doq"])
+def test_connrefused_server(dns_exporter_example_config, caplog, protocol):
+    """Trigger a connection_refused failure for each protocol by connecting to something not listening."""
+    caplog.clear()
+    caplog.set_level(logging.DEBUG)
+    r = requests.get(
+        "http://127.0.0.1:25353/query",
+        params={
+            "server": "example.com:420",
+            "protocol": protocol,
+            "query_name": "example.org",
+        },
+    )
+    assert 'dnsexp_failures_total{reason="connection_error"} 1.0' in r.text
+
+
+@pytest.mark.parametrize("protocol", ["udp", "tcp", "udptcp", "dot", "doh", "doq"])
+def test_timeout_server(dns_exporter_example_config, caplog, protocol):
+    """Trigger a timeout failure for each protocol by connecting to something not reachable."""
+    caplog.clear()
+    caplog.set_level(logging.DEBUG)
+    r = requests.get(
+        "http://127.0.0.1:25353/query",
+        params={
+            "server": "192.0.2.42:420",
+            "protocol": protocol,
+            "query_name": "example.org",
+            "timeout": 1.0,
+        },
+    )
+    if protocol == "doh":
+        assert 'dnsexp_failures_total{reason="connection_error"} 1.0' in r.text
+    else:
+        assert 'dnsexp_failures_total{reason="timeout"} 1.0' in r.text

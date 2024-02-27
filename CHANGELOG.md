@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Unit tests for proxy code
 - Unit tests for new code introduced to make ruff happy
 - New `collect_ttl` setting to control collection of per-RR TTL metrics. Default is true.
+- New `verify_certificate` bool setting to control validation of certificates on encrypted protocols. Default is true.
+- New `verify_certificate_path` str setting to override the system CA when validating certificates on encrypted protocols. Leave empty to use the default system CA. Default is an empty string.
 
 ### Changed
 - Replace black, flake8, isort, pydocstyle with ruff
@@ -19,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Much linting
 - Move coverage.py config to .coveragerc to make showing measurement contexts in coverage html work
 - Proxy support for DoQ disabled, pending next dnspython release with https://github.com/rthalley/dnspython/pull/1060
+- Improve unit tests
 
 ### Fixed
 - Fixed a bug which made `fail_if_all_match_regexp` validation succeed on the first matching RR (not considering further RRs).

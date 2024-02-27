@@ -7,9 +7,8 @@ from dns_exporter.config import Config, ConfigDict, ConfigError
 
 def test_nonbool_bool(exporter):
     """Test a bool which is not a bool."""
-    prepared = exporter.prepare_config(ConfigDict(edns_do=42))
     with pytest.raises(ConfigError):
-        Config.create(name="test", **prepared)
+        exporter.prepare_config(ConfigDict(edns_do=42))
 
 
 def test_negative_int(exporter):
@@ -147,3 +146,11 @@ def test_int_proxy(exporter, caplog):
     """Test when proxy is set to a wrong type."""
     with pytest.raises(ConfigError):
         exporter.prepare_config(ConfigDict(proxy=42))
+
+
+def test_wrongtype_bool(exporter):
+    """Test a bool of wrong type."""
+    prepared = exporter.prepare_config(ConfigDict(edns_do=True))
+    prepared["edns_do"] = 42
+    with pytest.raises(ConfigError):
+        Config.create(name="test", **prepared)

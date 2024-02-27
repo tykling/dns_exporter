@@ -201,6 +201,37 @@ class DNSExporter(MetricsHandler):
         return tmp
 
     @classmethod
+    def prepare_config_bools(
+        cls,
+        config: ConfigDict,
+    ) -> ConfigDict:
+        """Parse and create bool objects for the config."""
+        tmp: ConfigDict = {}
+        # use literals for TypedDict keys to make mypy happy
+        collect_ttl: Literal["collect_ttl"] = "collect_ttl"
+        edns: Literal["edns"] = "edns"
+        edns_do: Literal["edns_do"] = "edns_do"
+        recursion_desired: Literal["recursion_desired"] = "recursion_desired"
+        verify_certificate: Literal["verify_certificate"] = "verify_certificate"
+        try:
+            for key in [collect_ttl, edns, edns_do, recursion_desired, verify_certificate]:
+                if key not in config:
+                    continue
+                if isinstance(config[key], str):
+                    # evaluate string as true if it feels truthy
+                    tmp[key] = config[key].lower() in ("true", "t", "yes", "y")
+                elif isinstance(config[key], bool):
+                    # use as-is
+                    tmp[key] = config[key]
+                else:
+                    # unsupported type
+                    raise TypeError(key)  # noqa: TRY301
+        except (ValueError, TypeError) as e:
+            logger.exception(f"Unable to validate bool for key {key}")
+            raise ConfigError("invalid_request_config") from e
+        return tmp
+
+    @classmethod
     def prepare_config_server(
         cls,
         config: ConfigDict,
@@ -305,6 +336,8 @@ class DNSExporter(MetricsHandler):
         config.update(cls.prepare_config_integers(config))
         # validate float keys
         config.update(cls.prepare_config_floats(config))
+        # validate bool keys
+        config.update(cls.prepare_config_bools(config))
         # parse server
         config.update(cls.prepare_config_server(config))
         # parse proxy

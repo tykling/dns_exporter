@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import re
 import socket
+import ssl
 import time
 from typing import TYPE_CHECKING
 
@@ -22,7 +23,7 @@ import socks  # type: ignore[import]
 from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
 from prometheus_client.registry import Collector
 
-from dns_exporter.exceptions import ValidationError
+from dns_exporter.exceptions import UnknownFailureReasonError, ValidationError
 from dns_exporter.metrics import (
     FAILURE_REASONS,
     dnsexp_dns_queries_total,
@@ -109,6 +110,7 @@ class DNSCollector(Collector):
             assert isinstance(self.config.server.port, int)
 
         r = None
+        transport = "NONE"
         # mark the start time and do the request
         start = time.time()
         try:
@@ -131,48 +133,90 @@ class DNSCollector(Collector):
             yield from self.yield_failure_reason_metric(
                 failure_reason="connection_refused",
             )
-        except httpx.ConnectError:
-            # there was an error while establishing the connection
-            yield from self.yield_failure_reason_metric(
-                failure_reason="connection_error",
+        except httpx.ConnectError as e:
+            # raised by doh on both certificate errors and other connection issues
+            reason = "certificate_error" if "CERTIFICATE_VERIFY_FAILED" in str(e) else "connection_error"
+            logger.debug(f"Protocol {self.config.protocol} raised exception, returning {reason}", exc_info=True)
+            yield from self.yield_failure_reason_metric(failure_reason=reason)
+        except ssl.SSLCertVerificationError:
+            # raised by dot on certificate verification error
+            logger.debug(
+                f"Protocol {self.config.protocol} raised ssl.SSLCertVerificationError, returning certificate_error",
+                exc_info=True,
             )
-        except Exception:
-            logger.exception(
+            yield from self.yield_failure_reason_metric(
+                failure_reason="certificate_error",
+            )
+        except ValueError:
+            # raised by dot when ca path is not found
+            logger.debug(
+                f"Protocol {self.config.protocol} raised ValueError, is verify_certificate_path wrong?", exc_info=True
+            )
+            yield from self.yield_failure_reason_metric(
+                failure_reason="invalid_request_config",
+            )
+        except OSError as e:
+            # raised by doh when ca path is not found, and raised by multiple protocols on connection refused
+            reason = (
+                "invalid_request_config"
+                if "Could not find a suitable TLS CA certificate bundle, invalid path" in str(e)
+                else "connection_error"
+            )
+            logger.debug(f"Protocol {self.config.protocol} raised OSError, returning {reason}", exc_info=True)
+            yield from self.yield_failure_reason_metric(
+                failure_reason=reason,
+            )
+        except dns.quic._common.UnexpectedEOF:  # noqa: SLF001
+            # raised by doq when an invalid CA path is passed
+            logger.debug(
+                "Protocol doq raised dns.quic._common.UnexpectedEOF - is verify_certificate_path wrong?", exc_info=True
+            )
+            yield from self.yield_failure_reason_metric(
+                failure_reason="invalid_request_config",
+            )
+        except Exception:  # noqa: BLE001
+            logger.debug(
                 f"""Caught an unknown exception while looking up qname {self.config.query_name} using server
                 {self.config.server.geturl()} and proxy {self.config.proxy.geturl() if self.config.proxy else 'none'}
                 - exception details follow, returning other_failure""",
+                exc_info=True,
             )
             yield from self.yield_failure_reason_metric(failure_reason="other_failure")
+
         # clock it
         qtime = time.time() - start
+        # parse response (if any) and yield metrics
+        yield from self.handle_response(response=r, transport=transport, qtime=qtime)
 
-        if r is None:
-            logger.debug("Returning DNS query metrics - no response received :(")
-            yield get_dns_qtime_metric()
-            yield get_dns_ttl_metric()
-            yield get_dns_success_metric(value=0)
+    def handle_response(
+        self, response: Message | None, transport: str, qtime: float
+    ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
+        """Do response processing and yield metrics."""
+        if response is None:
+            logger.debug("No DNS response received :( returning failure metrics...")
+            yield from (get_dns_qtime_metric(), get_dns_ttl_metric(), get_dns_success_metric(value=0))
             return None
 
         # convert response flags to sorted text
-        flags = dns.flags.to_text(r.flags).split(" ")
+        flags = dns.flags.to_text(response.flags).split(" ")
         flags.sort()
 
         # update labels with data from the response
         self.labels.update(
             {
                 "transport": transport,
-                "opcode": dns.opcode.to_text(r.opcode()),
-                "rcode": dns.rcode.to_text(r.rcode()),
+                "opcode": dns.opcode.to_text(response.opcode()),
+                "rcode": dns.rcode.to_text(response.rcode()),
                 "flags": " ".join(flags),
-                "answer": str(sum([len(rrset) for rrset in r.answer])),
-                "authority": str(len(r.authority)),
-                "additional": str(len(r.additional)),
+                "answer": str(sum([len(rrset) for rrset in response.answer])),
+                "authority": str(len(response.authority)),
+                "additional": str(len(response.additional)),
                 "nsid": "no_nsid",
             },
         )
 
         # does the answer have nsid?
-        self.handle_response_options(response=r)
+        self.handle_response_options(response=response)
 
         # labels complete, yield timing metric
         qtime_metric = get_dns_qtime_metric()
@@ -182,12 +226,12 @@ class DNSCollector(Collector):
         # update internal exporter metric
         dnsexp_dns_responsetime_seconds.labels(**self.labels).observe(qtime)
 
-        yield from self.yield_ttl_metrics(response=r)
+        yield from self.yield_ttl_metrics(response=response)
 
         # validate response and yield remaining metrics
         logger.debug("Validating response and yielding remaining metrics")
         try:
-            self.validate_response(response=r)
+            self.validate_response(response=response)
             yield from self.yield_failure_reason_metric(failure_reason="")
             yield get_dns_success_metric(1)
         except ValidationError as E:
@@ -249,6 +293,17 @@ class DNSCollector(Collector):
         # the transport protocol, TCP or UDP
         transport: str = "TCP"
         proxy = self.config.proxy.geturl() if self.config.proxy else "is not active"
+        # verify certificate?
+        verify: bool | str
+        if self.config.verify_certificate_path and self.config.verify_certificate:
+            # verify with custom CA path
+            verify = self.config.verify_certificate_path
+        elif self.config.verify_certificate:
+            # verify with default system CA
+            verify = True
+        else:
+            # do not verify
+            verify = False
         logger.debug(
             f"Doing DNS query {query.question} with server {server.geturl()} (using IP {ip}) and proxy {proxy}",
         )
@@ -291,9 +346,10 @@ class DNSCollector(Collector):
                 q=query,
                 where=str(ip),
                 port=port,
-                server_hostname=server.hostname,
+                server_hostname=server.hostname if verify else None,
                 timeout=timeout,
                 one_rr_per_rrset=True,
+                verify=verify,
             )
 
         elif protocol == "doh":
@@ -306,6 +362,7 @@ class DNSCollector(Collector):
                 port=port,
                 timeout=timeout,
                 one_rr_per_rrset=True,
+                verify=verify,
             )
 
         elif protocol == "doq":
@@ -317,6 +374,7 @@ class DNSCollector(Collector):
                 server_hostname=server.hostname,
                 timeout=timeout,
                 one_rr_per_rrset=True,
+                verify=verify,
             )
             transport = "UDP"
         return r, transport
@@ -470,18 +528,19 @@ class DNSCollector(Collector):
         # check response rr validation
         self.validate_response_rrs(response=response)
 
-        # all validation ok
-
     @staticmethod
     def yield_failure_reason_metric(
         failure_reason: str,
     ) -> Iterator[CounterMetricFamily]:
         """This method is used to maintain failure metrics.
 
-        If an empty string is passed as failure_reason (meaning success) the failure counters will not be increased.
+        If an empty string is passed as failure_reason (meaning success) the failure counters will not be incremented.
         """
         if failure_reason:
-            # also increase the global failure counter
+            if failure_reason not in FAILURE_REASONS:
+                # unknown failure_reason, this is a bug
+                raise UnknownFailureReasonError(failure_reason)
+            # increase the global failure counter
             dnsexp_scrape_failures_total.labels(reason=failure_reason).inc()
         # get the failure metric
         fail = get_dns_failure_metric()

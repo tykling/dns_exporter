@@ -11,3 +11,11 @@ class ValidationError(Exception):
     def __init__(self, validator: str, reason: str) -> None:
         """Take validator and reason as arguments and raise the exception."""
         super().__init__(f"Response validator {validator} failed with reason {reason}", reason)
+
+
+class UnknownFailureReasonError(RuntimeError):
+    """Exception raised if an unknown failure reason is used (this is always a bug)."""
+
+    def __init__(self, failure_reason: str) -> None:
+        """Raise with failure reason."""
+        super().__init__(f"Unknown failure_reason {failure_reason} - please file a bug!")
