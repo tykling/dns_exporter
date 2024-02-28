@@ -12,6 +12,7 @@ from prometheus_client.core import (
     Histogram,
     Info,
 )
+from prometheus_client.utils import INF
 
 from dns_exporter.version import __version__
 
@@ -227,6 +228,32 @@ dnsexp_dns_responsetime_seconds = Histogram(
     name="dnsexp_dns_responsetime_seconds",
     documentation="DNS query response timing histogram. This histogram is updated every time the dns_exporter receives a query response.",  # noqa: E501
     labelnames=QTIME_LABELS,
+    buckets=(
+        1.0,
+        2.0,
+        4.0,
+        8.0,
+        16.0,
+        32.0,
+        64.0,
+        128.0,
+        256.0,  # 4 minutes
+        512.0,  # 8 minutes
+        1024.0,  # 17 minutes
+        2048.0,  # 34 minutes
+        4096.0,  # 1 hour 8 minutes
+        8192.0,  # 2 hours 16 minutes
+        16384.0,  # 4.5 hours
+        32768.0,  # 9.1 hours
+        65536.0,  # 18.2 hours
+        131072.0,  # 36.4 hours
+        262144.0,  # 72.8 hours
+        524288.0,  # 6 days
+        1048576.0,  # 12 days
+        2097152.0,  # 24 days
+        4194304.0,  # 48 days
+        INF,
+    ),
 )
 """``dnsexp_dns_responsetime_seconds`` is the Histogram keeping track of how many DNS responses this exporter
 received since start and how long the query took.
