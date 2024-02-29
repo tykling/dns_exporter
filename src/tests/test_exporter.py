@@ -263,12 +263,12 @@ def test_internal_metrics(dns_exporter_example_config, caplog):
     assert f'dnsexp_build_version_info{{version="{__version__}"}} 1.0' in r.text
     assert "Returning exporter metrics for request to /metrics" in caplog.text
     for metric in """dnsexp_http_requests_total{path="/notfound"} 1.0
-dnsexp_http_requests_total{path="/query"} 75.0
+dnsexp_http_requests_total{path="/query"} 74.0
 dnsexp_http_requests_total{path="/config"} 2.0
 dnsexp_http_requests_total{path="/"} 1.0
 dnsexp_http_requests_total{path="/metrics"} 1.0
 dnsexp_http_responses_total{path="/notfound",response_code="404"} 1.0
-dnsexp_http_responses_total{path="/query",response_code="200"} 75.0
+dnsexp_http_responses_total{path="/query",response_code="200"} 74.0
 dnsexp_http_responses_total{path="/",response_code="200"} 1.0
 dnsexp_dns_queries_total 61.0
 dnsexp_dns_responsetime_seconds_bucket{additional="0",answer="1",authority="0",family="ipv4",flags="QR RA RD",ip="8.8.4.4",le="2.0",nsid="no_nsid",opcode="QUERY",port="53",protocol="udp",proxy="none",query_name="example.com",query_type="A",rcode="NOERROR",server="udp://dns.google:53",transport="UDP"}
@@ -276,7 +276,7 @@ dnsexp_scrape_failures_total{reason="certificate_error"} 4.0
 dnsexp_scrape_failures_total{reason="invalid_request_config"} 7.0
 dnsexp_scrape_failures_total{reason="invalid_request_proxy"} 2.0
 dnsexp_scrape_failures_total{reason="connection_refused"} 2.0
-dnsexp_scrape_failures_total{reason="connection_error"} 10.0
+dnsexp_scrape_failures_total{reason="connection_error"} 9.0
 dnsexp_scrape_failures_total{reason="timeout"} 6.0
 dnsexp_scrape_failures_total{reason="invalid_response_answer_rrs"} 4.0
 dnsexp_scrape_failures_total{reason="invalid_request_ip"} 3.0
@@ -397,9 +397,9 @@ def test_doq(dns_exporter_example_config, caplog, recwarn):
             "family": "ipv4",
         },
     )
-    assert 'transport="UDP"' in r.text
+    assert 'transport="QUIC"' in r.text
     assert 'protocol="doq"' in r.text
-    assert "Protocol doq got a DNS query response over UDP" in caplog.text
+    assert "Protocol doq got a DNS query response over QUIC" in caplog.text
 
 
 def test_validate_rcode(dns_exporter_example_config, caplog):
@@ -754,23 +754,6 @@ def test_configure_bad_module(caplog, exporter):
     assert "Invalid value found while building config {'query_class': 'OUT'}" in caplog.text
 
 
-def test_httpx_connecterror(
-    dns_exporter_example_config,
-    mock_collect_httpx_connecterror,
-):
-    """Trigger a connection_error failure by DoH connecting to something not listening."""
-    r = requests.get(
-        "http://127.0.0.1:25353/query",
-        params={
-            "query_name": "example.com",
-            "server": "dns.google",
-            "family": "ipv4",
-            "protocol": "doh",
-        },
-    )
-    assert 'dnsexp_failures_total{reason="connection_error"} 1.0' in r.text
-
-
 def test_catch_unknown_exception(
     dns_exporter_example_config,
     mock_collect_zerodivisionerror,
@@ -837,6 +820,10 @@ def test_connrefused_server(dns_exporter_example_config, caplog, protocol):
         },
     )
     assert 'dnsexp_failures_total{reason="connection_error"} 1.0' in r.text
+    if protocol == "doh":
+        assert "Protocol doh raised exception, returning connection_error" in caplog.text
+    else:
+        assert f"Protocol {protocol} got OSError" in caplog.text
 
 
 @pytest.mark.parametrize("protocol", ["udp", "tcp", "udptcp", "dot", "doh", "doq"])

@@ -199,7 +199,7 @@ def test_cert_verify_invalid_path_doh(dns_exporter_example_config, caplog):
     )
     assert r.status_code == 200, "non-200 returncode"
     assert 'dnsexp_failures_total{reason="invalid_request_config"} 1.0' in r.text
-    assert "Protocol doh raised OSError, returning invalid_request_config" in caplog.text
+    assert "Protocol doh raised exception, returning failure reason invalid_request_config" in caplog.text
 
 
 def test_cert_verify_invalid_path_dot(dns_exporter_example_config, caplog):

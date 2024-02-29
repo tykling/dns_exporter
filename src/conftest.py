@@ -6,7 +6,6 @@ from http.server import HTTPServer
 from pathlib import Path
 from threading import Thread
 
-import httpx
 import pytest
 import yaml
 from dns_exporter.entrypoint import main
@@ -169,15 +168,6 @@ def prometheus_server(request, tmp_path_factory, tmpdir_factory):
     proc.terminate()
     proc.communicate()
     print("Teardown finished!")
-
-
-@pytest.fixture()
-def mock_collect_httpx_connecterror(mocker):
-    """Monkeypatch DNSCollector.get_dns_response() to raise httpx.ConnectError."""
-    mocker.patch(
-        "dns_exporter.collector.DNSCollector.get_dns_response",
-        side_effect=httpx.ConnectError("mocked"),
-    )
 
 
 @pytest.fixture()

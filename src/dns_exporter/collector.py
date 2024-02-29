@@ -23,7 +23,7 @@ import socks  # type: ignore[import]
 from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
 from prometheus_client.registry import Collector
 
-from dns_exporter.exceptions import UnknownFailureReasonError, ValidationError
+from dns_exporter.exceptions import ProtocolSpecificError, UnknownFailureReasonError, ValidationError
 from dns_exporter.metrics import (
     FAILURE_REASONS,
     dnsexp_dns_queries_total,
@@ -133,47 +133,19 @@ class DNSCollector(Collector):
             yield from self.yield_failure_reason_metric(
                 failure_reason="connection_refused",
             )
-        except httpx.ConnectError as e:
-            # raised by doh on both certificate errors and other connection issues
-            reason = "certificate_error" if "CERTIFICATE_VERIFY_FAILED" in str(e) else "connection_error"
-            logger.debug(f"Protocol {self.config.protocol} raised exception, returning {reason}", exc_info=True)
-            yield from self.yield_failure_reason_metric(failure_reason=reason)
-        except ssl.SSLCertVerificationError:
-            # raised by dot on certificate verification error
+        except OSError as e:
+            # raised by multiple protocols on ICMP unreach
+            logger.debug(f"Protocol {self.config.protocol} got OSError '{e}', exception follows", exc_info=True)
+            yield from self.yield_failure_reason_metric(
+                failure_reason="connection_error",
+            )
+        except ProtocolSpecificError as e:
+            # a protocol specific exception was raised, log and re-raise
             logger.debug(
-                f"Protocol {self.config.protocol} raised ssl.SSLCertVerificationError, returning certificate_error",
+                f"Protocol {self.config.protocol} raised exception, returning failure reason {e}",
                 exc_info=True,
             )
-            yield from self.yield_failure_reason_metric(
-                failure_reason="certificate_error",
-            )
-        except ValueError:
-            # raised by dot when ca path is not found
-            logger.debug(
-                f"Protocol {self.config.protocol} raised ValueError, is verify_certificate_path wrong?", exc_info=True
-            )
-            yield from self.yield_failure_reason_metric(
-                failure_reason="invalid_request_config",
-            )
-        except OSError as e:
-            # raised by doh when ca path is not found, and raised by multiple protocols on connection refused
-            reason = (
-                "invalid_request_config"
-                if "Could not find a suitable TLS CA certificate bundle, invalid path" in str(e)
-                else "connection_error"
-            )
-            logger.debug(f"Protocol {self.config.protocol} raised OSError, returning {reason}", exc_info=True)
-            yield from self.yield_failure_reason_metric(
-                failure_reason=reason,
-            )
-        except dns.quic._common.UnexpectedEOF:  # noqa: SLF001
-            # raised by doq when an invalid CA path is passed
-            logger.debug(
-                "Protocol doq raised dns.quic._common.UnexpectedEOF - is verify_certificate_path wrong?", exc_info=True
-            )
-            yield from self.yield_failure_reason_metric(
-                failure_reason="invalid_request_config",
-            )
+            yield from self.yield_failure_reason_metric(failure_reason=str(e))
         except Exception:  # noqa: BLE001
             logger.debug(
                 f"""Caught an unknown exception while looking up qname {self.config.query_name} using server
@@ -290,9 +262,13 @@ class DNSCollector(Collector):
         dnsexp_dns_queries_total.inc()
         # return None on unsupported protocol
         r = None
-        # the transport protocol, TCP or UDP
-        transport: str = "TCP"
+
+        # the transport protocol, TCP or UDP or QUIC
+        transport: str = "NONE"
+
+        # get proxy string for logging
         proxy = self.config.proxy.geturl() if self.config.proxy else "is not active"
+
         # verify certificate?
         verify: bool | str
         if self.config.verify_certificate_path and self.config.verify_certificate:
@@ -310,74 +286,178 @@ class DNSCollector(Collector):
 
         if protocol == "udp":
             # plain UDP lookup, nothing fancy here
-            r = dns.query.udp(
-                q=query,
-                where=str(ip),
+            r = self.get_dns_response_udp(
+                query=query,
+                ip=str(ip),
                 port=port,
                 timeout=timeout,
-                one_rr_per_rrset=True,
             )
             transport = "UDP"
 
         elif protocol == "tcp":
             # plain TCP lookup, nothing fancy here
-            r = dns.query.tcp(
-                q=query,
-                where=str(ip),
+            r = self.get_dns_response_udp(
+                query=query,
+                ip=str(ip),
                 port=port,
                 timeout=timeout,
-                one_rr_per_rrset=True,
             )
+            transport = "TCP"
 
         elif protocol == "udptcp":
             # plain UDP lookup with fallback to TCP lookup
-            r, tcp = dns.query.udp_with_fallback(
-                q=query,
-                where=str(ip),
+            r, transport = self.get_dns_response_udptcp(
+                query=query,
+                ip=str(ip),
                 port=port,
                 timeout=timeout,
-                one_rr_per_rrset=True,
             )
-            transport = "TCP" if tcp else "UDP"
 
         elif protocol == "dot":
+            r = self.get_dns_response_dot(
+                query=query,
+                ip=str(ip),
+                port=port,
+                timeout=timeout,
+                server=server,
+                verify=verify,
+            )
+            transport = "TCP"
+
+        elif protocol == "doh":
+            r = self.get_dns_response_doh(
+                query=query,
+                ip=str(ip),
+                port=port,
+                timeout=timeout,
+                server=server,
+                verify=verify,
+            )
+            transport = "TCP"
+
+        elif protocol == "doq":
+            r = self.get_dns_response_doq(
+                query=query,
+                ip=str(ip),
+                port=port,
+                timeout=timeout,
+                server=server,
+                verify=verify,
+            )
+            transport = "QUIC"
+
+        return r, transport
+
+    def get_dns_response_udp(self, query: Message, ip: str, port: int, timeout: float) -> Message | None:
+        """Perform a DNS query with the udp protocol."""
+        return dns.query.udp(
+            q=query,
+            where=ip,
+            port=port,
+            timeout=timeout,
+            one_rr_per_rrset=True,
+        )
+
+    def get_dns_response_tcp(self, query: Message, ip: str, port: int, timeout: float) -> Message | None:
+        """Perform a DNS query with the tcp protocol."""
+        return dns.query.tcp(
+            q=query,
+            where=ip,
+            port=port,
+            timeout=timeout,
+            one_rr_per_rrset=True,
+        )
+
+    def get_dns_response_udptcp(self, query: Message, ip: str, port: int, timeout: float) -> tuple[Message | None, str]:
+        """Perform a DNS query with the udptcp protocol (with fallback to TCP)."""
+        r, tcp = dns.query.udp_with_fallback(
+            q=query,
+            where=ip,
+            port=port,
+            timeout=timeout,
+            one_rr_per_rrset=True,
+        )
+        return r, "TCP" if tcp else "UDP"
+
+    def get_dns_response_dot(  # noqa: PLR0913
+        self, query: Message, ip: str, port: int, timeout: float, server: urllib.parse.SplitResult, verify: str | bool
+    ) -> Message | None:
+        """Perform a DNS query with the dot protocol and catch protocol specific exceptions."""
+        try:
             # DoT query, use the ip for where= and set tls hostname with server_hostname=
-            r = dns.query.tls(
+            return dns.query.tls(
                 q=query,
-                where=str(ip),
+                where=ip,
                 port=port,
                 server_hostname=server.hostname if verify else None,
                 timeout=timeout,
-                one_rr_per_rrset=True,
                 verify=verify,
+                one_rr_per_rrset=True,
             )
+        except ssl.SSLCertVerificationError as e:
+            # raised by dot on certificate verification error
+            logger.debug(
+                "Protocol dot raised ssl.SSLCertVerificationError, returning certificate_error",
+            )
+            raise ProtocolSpecificError("certificate_error") from e
+        except ValueError as e:
+            # raised by dot when ca path is not found
+            logger.debug("Protocol dot raised ValueError, is verify_certificate_path wrong?")
+            raise ProtocolSpecificError("invalid_request_config") from e
 
-        elif protocol == "doh":
+    def get_dns_response_doh(  # noqa: PLR0913
+        self, query: Message, ip: str, port: int, timeout: float, server: urllib.parse.SplitResult, verify: str | bool
+    ) -> Message | None:
+        """Perform a DNS query with the doh protocol and catch protocol specific exceptions."""
+        try:
             # DoH query, use the url for where= and use bootstrap_address= for the ip
             url = f"https://{server.hostname}{server.path}"
-            r = dns.query.https(
+            return dns.query.https(
                 q=query,
                 where=url,
-                bootstrap_address=str(ip),
+                bootstrap_address=ip,
                 port=port,
                 timeout=timeout,
-                one_rr_per_rrset=True,
                 verify=verify,
+                one_rr_per_rrset=True,
             )
+        except httpx.ConnectError as e:
+            # raised by doh on both certificate errors and other connection issues
+            reason = "certificate_error" if "CERTIFICATE_VERIFY_FAILED" in str(e) else "connection_error"
+            logger.debug(f"Protocol doh raised exception, returning {reason}")
+            raise ProtocolSpecificError(reason) from e
+        except OSError as e:
+            # raised by doh when ca path is not found
+            if "Could not find a suitable TLS CA certificate bundle, invalid path" in str(e):
+                logger.debug("Protocol doh unable to find CA path, returning invalid_request_config")
+                raise ProtocolSpecificError("invalid_request_config") from e
+            # also raised by multiple protocols on connection refused
+            # so re-raise to handle in calling method
+            raise
 
-        elif protocol == "doq":
+    def get_dns_response_doq(  # noqa: PLR0913
+        self, query: Message, ip: str, port: int, timeout: float, server: urllib.parse.SplitResult, verify: str | bool
+    ) -> Message | None:
+        """Perform a DNS query with the doh protocol and catch protocol specific exceptions."""
+        try:
             # DoQ query, use the IP for where= and use server_hostname for the hostname
-            r = dns.query.quic(
+            return dns.query.quic(
                 q=query,
-                where=str(ip),
+                where=ip,
                 port=port,
                 server_hostname=server.hostname,
                 timeout=timeout,
-                one_rr_per_rrset=True,
                 verify=verify,
+                one_rr_per_rrset=True,
             )
-            transport = "UDP"
-        return r, transport
+        except dns.quic._common.UnexpectedEOF as e:  # noqa: SLF001
+            # raised by doq when an invalid CA path is passed,
+            # and a bunch of other error cases
+            logger.debug(
+                "Protocol doq raised dns.quic._common.UnexpectedEOF - is verify_certificate_path wrong?",
+                exc_info=True,
+            )
+            raise ProtocolSpecificError("invalid_request_config") from e
 
     def validate_response_rcode(self, response: Message) -> None:
         """Validate response RCODE."""

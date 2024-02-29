@@ -19,3 +19,7 @@ class UnknownFailureReasonError(RuntimeError):
     def __init__(self, failure_reason: str) -> None:
         """Raise with failure reason."""
         super().__init__(f"Unknown failure_reason {failure_reason} - please file a bug!")
+
+
+class ProtocolSpecificError(Exception):
+    """Exception class used when DNS lookup fails with a protocol specific exception."""
