@@ -317,7 +317,7 @@ class Config:
             # proxy support doesn't work for DoT for now
             # https://github.com/tykling/dns_exporter/issues/76
             # and doesn't work for DoQ until next dnspython release
-            # https://github.com/rthalley/dnspython/issues/1059
+            # https://github.com/tykling/dns_exporter/issues/96
             logger.error(f"proxy not valid for protocol {self.protocol}")
             raise ConfigError(
                 "invalid_request_config",
@@ -349,6 +349,11 @@ class Config:
 
         # validate proxy
         self.validate_proxy()
+
+        # validate verify_certificate_path
+        if self.verify_certificate_path and self.protocol == "doq":
+            logger.error("Custom CA path for DoQ is disabled pending https://github.com/tykling/dns_exporter/issues/95")
+            raise ConfigError("invalid_request_config")
 
     @classmethod
     def create(  # noqa: PLR0913

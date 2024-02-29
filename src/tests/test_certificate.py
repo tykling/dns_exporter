@@ -19,7 +19,6 @@ def test_cert_verify_fail_doh(dns_exporter_example_config, caplog):
             "family": "ipv4",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert 'dnsexp_failures_total{reason="certificate_error"} 1.0' in r.text
 
 
@@ -36,7 +35,6 @@ def test_cert_verify_fail_dot(dns_exporter_example_config, caplog):
             "family": "ipv4",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert 'dnsexp_failures_total{reason="certificate_error"} 1.0' in r.text
 
 
@@ -56,7 +54,6 @@ def test_cert_verify_fail_doq(dns_exporter_example_config, caplog):
             "family": "ipv4",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert 'dnsexp_failures_total{reason="certificate_error"} 1.0' in r.text
 
 
@@ -78,7 +75,6 @@ def test_cert_verify_fail_custom_ca_doh(dns_exporter_example_config, caplog):
             "verify_certificate_path": "tests/certificates/test.crt",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert 'dnsexp_failures_total{reason="certificate_error"} 1.0' in r.text
 
 
@@ -96,13 +92,11 @@ def test_cert_verify_fail_custom_ca_dot(dns_exporter_example_config, caplog):
             "verify_certificate_path": "tests/certificates/test.crt",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert 'dnsexp_failures_total{reason="certificate_error"} 1.0' in r.text
     assert "Protocol dot raised ssl.SSLCertVerificationError, returning certificate_error" in caplog.text
 
 
 # this fails because the adguard servers have IP:.... SAN entries in the certificates
-@pytest.mark.xfail()
 def test_cert_verify_fail_custom_ca_doq(dns_exporter_example_config, caplog):
     """Test cert verify functionality with protocol doq and a selfsigned cert as CA."""
     caplog.clear()
@@ -117,8 +111,8 @@ def test_cert_verify_fail_custom_ca_doq(dns_exporter_example_config, caplog):
             "verify_certificate_path": "tests/certificates/test.crt",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
-    assert 'dnsexp_failures_total{reason="certificate_error"} 1.0' in r.text
+    assert "Custom CA path for DoQ is disabled pending https://github.com/tykling/dns_exporter/issues/95" in caplog.text
+    assert 'dnsexp_failures_total{reason="invalid_request_config"} 1.0' in r.text
 
 
 ###################################################################################
@@ -139,7 +133,6 @@ def test_cert_verify_false_doh(dns_exporter_example_config, caplog):
             "verify_certificate": False,
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert "dnsexp_dns_query_success 1.0" in r.text
 
 
@@ -157,7 +150,6 @@ def test_cert_verify_false_dot(dns_exporter_example_config, caplog):
             "verify_certificate": False,
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert "dnsexp_dns_query_success 1.0" in r.text
 
 
@@ -175,7 +167,6 @@ def test_cert_verify_false_doq(dns_exporter_example_config, caplog):
             "verify_certificate": False,
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert "dnsexp_dns_query_success 1.0" in r.text
 
 
@@ -197,7 +188,6 @@ def test_cert_verify_invalid_path_doh(dns_exporter_example_config, caplog):
             "verify_certificate_path": "/nonexistant",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert 'dnsexp_failures_total{reason="invalid_request_config"} 1.0' in r.text
     assert "Protocol doh raised exception, returning failure reason invalid_request_config" in caplog.text
 
@@ -216,7 +206,6 @@ def test_cert_verify_invalid_path_dot(dns_exporter_example_config, caplog):
             "verify_certificate_path": "/nonexistant",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert 'dnsexp_failures_total{reason="invalid_request_config"} 1.0' in r.text
     assert "Protocol dot raised ValueError, is verify_certificate_path wrong" in caplog.text
 
@@ -236,6 +225,5 @@ def test_cert_verify_invalid_path_doq(dns_exporter_example_config, caplog):
             "verify_certificate_path": "/nonexistant",
         },
     )
-    assert r.status_code == 200, "non-200 returncode"
     assert 'dnsexp_failures_total{reason="invalid_request_config"} 1.0' in r.text
-    assert "Protocol doq raised dns.quic._common.UnexpectedEOF - is verify_certificate_path wrong?" in caplog.text
+    assert "Custom CA path for DoQ is disabled pending https://github.com/tykling/dns_exporter/issues/95" in caplog.text

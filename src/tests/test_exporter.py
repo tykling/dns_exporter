@@ -270,7 +270,7 @@ dnsexp_http_requests_total{path="/metrics"} 1.0
 dnsexp_http_responses_total{path="/notfound",response_code="404"} 1.0
 dnsexp_http_responses_total{path="/query",response_code="200"} 74.0
 dnsexp_http_responses_total{path="/",response_code="200"} 1.0
-dnsexp_dns_queries_total 61.0
+dnsexp_dns_queries_total 59.0
 dnsexp_dns_responsetime_seconds_bucket{additional="0",answer="1",authority="0",family="ipv4",flags="QR RA RD",ip="8.8.4.4",le="2.0",nsid="no_nsid",opcode="QUERY",port="53",protocol="udp",proxy="none",query_name="example.com",query_type="A",rcode="NOERROR",server="udp://dns.google:53",transport="UDP"}
 dnsexp_scrape_failures_total{reason="certificate_error"} 4.0
 dnsexp_scrape_failures_total{reason="invalid_request_config"} 7.0
