@@ -165,7 +165,7 @@ class DNSCollector(Collector):
 
         # did we get a response?
         if r is None:
-            logger.debug(f"No DNS response received :( returning metrics, failure reason is '{reason}'...")
+            logger.info(f"No DNS response received from server {self.config.server} :( returning metrics, failure reason is '{reason}'...")
             yield from (get_dns_qtime_metric(), get_dns_ttl_metric(), get_dns_success_metric(value=0))
             return None
 
