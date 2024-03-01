@@ -263,14 +263,14 @@ def test_internal_metrics(dns_exporter_example_config, caplog):
     assert f'dnsexp_build_version_info{{version="{__version__}"}} 1.0' in r.text
     assert "Returning exporter metrics for request to /metrics" in caplog.text
     for metric in """dnsexp_http_requests_total{path="/notfound"} 1.0
-dnsexp_http_requests_total{path="/query"} 74.0
+dnsexp_http_requests_total{path="/query"} 75.0
 dnsexp_http_requests_total{path="/config"} 2.0
 dnsexp_http_requests_total{path="/"} 1.0
 dnsexp_http_requests_total{path="/metrics"} 1.0
 dnsexp_http_responses_total{path="/notfound",response_code="404"} 1.0
-dnsexp_http_responses_total{path="/query",response_code="200"} 74.0
+dnsexp_http_responses_total{path="/query",response_code="200"} 75.0
 dnsexp_http_responses_total{path="/",response_code="200"} 1.0
-dnsexp_dns_queries_total 59.0
+dnsexp_dns_queries_total 60.0
 dnsexp_dns_responsetime_seconds_bucket{additional="0",answer="1",authority="0",family="ipv4",flags="QR RA RD",ip="8.8.4.4",le="2.0",nsid="no_nsid",opcode="QUERY",port="53",protocol="udp",proxy="none",query_name="example.com",query_type="A",rcode="NOERROR",server="udp://dns.google:53",transport="UDP"}
 dnsexp_scrape_failures_total{reason="certificate_error"} 4.0
 dnsexp_scrape_failures_total{reason="invalid_request_config"} 7.0
@@ -849,3 +849,19 @@ def test_timeout_server(dns_exporter_example_config, caplog, protocol):
             raise AssertionError
     else:
         assert 'dnsexp_failures_total{reason="timeout"} 1.0' in r.text
+
+
+def test_collect_ttl_value_length(dns_exporter_example_config, caplog):
+    """Test the collect_ttl_value_length setting."""
+    caplog.clear()
+    caplog.set_level(logging.DEBUG)
+    r = requests.get(
+        "http://127.0.0.1:25353/query",
+        params={
+            "server": "dns.quad9.net",
+            "query_name": "dns.google",
+            "family": "ipv4",
+            "collect_ttl_rr_value_length": 3,
+        },
+    )
+    assert 'rr_value="8.8"' in r.text

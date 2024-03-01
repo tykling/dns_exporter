@@ -1,4 +1,4 @@
-"""``dns_exporter.collector contains the DNSCollector custom Collector class used by the DNSExporter during scrapes."""
+"""``dns_exporter.collector`` contains the DNSCollector class used by the DNSExporter during scrapes."""
 
 from __future__ import annotations
 
@@ -247,7 +247,7 @@ class DNSCollector(Collector):
                                 "rr_section": section,
                                 "rr_name": str(rrset.name),
                                 "rr_type": dns.rdatatype.to_text(rr.rdtype),
-                                "rr_value": rr.to_text()[:255],
+                                "rr_value": rr.to_text()[: self.config.collect_ttl_rr_value_length],
                             },
                         )
                         ttl.add_metric(list(self.labels.values()), rrset.ttl)

@@ -180,6 +180,9 @@ class Config:
     """bool: Set this bool to ``True`` to enable collection of per-RR TTL metrics for the DNS query, ``False`` to not
     collect per-RR TTL metrics. Default is ``True``"""
 
+    collect_ttl_rr_value_length: int
+    """int: Limits the length of the ``rr_value`` label when collecing per-RR TTL metrics. Default is ``255``"""
+
     edns: bool
     """bool: Set this bool to ``True`` to enable ``EDNS0`` for the DNS query, ``False`` to not use ``EDNS0``.
     Default is ``True``"""
@@ -273,7 +276,7 @@ class Config:
 
     def validate_integers(self) -> None:
         """Validate integers."""
-        for key in ["edns_bufsize", "edns_pad"]:
+        for key in ["collect_ttl_rr_value_length", "edns_bufsize", "edns_pad"]:
             if not getattr(self, key) >= 0:
                 logger.error("Invalid integer")
                 raise ConfigError("invalid_request_config")
@@ -361,6 +364,7 @@ class Config:
         *,
         name: str,
         collect_ttl: bool = True,
+        collect_ttl_rr_value_length: int = 255,
         edns: bool = True,
         edns_do: bool = False,
         edns_nsid: bool = True,
@@ -405,6 +409,7 @@ class Config:
         return cls(
             name=name,
             collect_ttl=collect_ttl,
+            collect_ttl_rr_value_length=collect_ttl_rr_value_length,
             edns=edns,
             edns_do=edns_do,
             edns_nsid=edns_nsid,
@@ -451,6 +456,7 @@ class ConfigDict(t.TypedDict, total=False):
     """
 
     collect_ttl: bool
+    collect_ttl_rr_value_length: bool
     edns: bool
     edns_do: bool
     edns_nsid: bool

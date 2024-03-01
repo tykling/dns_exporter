@@ -211,8 +211,10 @@ the exporter since start.
 
 This metric has two labels:
     - ``path`` is set to the request path, usually ``/query`` (for making DNS queries) or
-    ``/metrics`` (for getting the internal exporter metrics).
+      ``/metrics`` (for getting the internal exporter metrics).
     - ``response_code`` is set to the HTTP response code, usually 200.
+
+During normal operation the exporter will never return non-200 response codes.
 """
 
 dnsexp_dns_queries_total = Counter(

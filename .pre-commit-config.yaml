@@ -17,4 +17,10 @@ repos:
     rev: "v1.30.0"
     hooks:
       - id: "yamllint"
+  - repo: "https://github.com/thclark/pre-commit-sphinx"
+    rev: "0.0.1"
+    hooks:
+      - id: "build-docs"
+        args: ['--cache-dir', 'src/docs/_build/doctrees', '--html-dir', 'src/docs/_build/html', '--source-dir', 'src/docs/source']
+        language_version: "python3"
 ...

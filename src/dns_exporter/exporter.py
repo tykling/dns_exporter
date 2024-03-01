@@ -67,7 +67,7 @@ class DNSExporter(MetricsHandler):
     The configure() classmethod can optionally be called to load modules before use.
 
     Attributes:
-    ----------
+    -----------
         modules: A dict of dns_exporter.config.Config instances to be used in scrape requests.
 
     """
@@ -157,10 +157,11 @@ class DNSExporter(MetricsHandler):
     ) -> ConfigDict:
         """Parse and create integer objects for the config."""
         tmp: ConfigDict = {}
+        collect_ttl_rr_value_length: Literal["collect_ttl_rr_value_length"] = "collect_ttl_rr_value_length"
         edns_bufsize: Literal["edns_bufsize"] = "edns_bufsize"
         edns_pad: Literal["edns_pad"] = "edns_pad"
         try:
-            for key in [edns_bufsize, edns_pad]:
+            for key in [edns_bufsize, edns_pad, collect_ttl_rr_value_length]:
                 if key in config:
                     if isinstance(config[key], str):
                         tmp[key] = int(config[key])
@@ -314,15 +315,15 @@ class DNSExporter(MetricsHandler):
           - During each scrape request
 
         Args:
-        ----
+        -----
             config: A ConfigDict instance
 
         Returns:
-        -------
+        --------
             A ConfigDict instance
 
         Raises:
-        ------
+        -------
             ConfigError: If any issues are found with the ConfigDict
 
         """
@@ -411,14 +412,13 @@ class DNSExporter(MetricsHandler):
         failure can still be used in cls.modules.
 
         Args:
-        ----
+        -----
             modules: A dict of names and corresponding ConfigDict objects.
 
         Returns:
-        -------
+        --------
             bool: True if all ConfigDict objects was validated and loaded OK, False
-                if an error was encountered.
-
+                  if an error was encountered.
         """
         prepared: ConfigDict | None
         if modules is None:

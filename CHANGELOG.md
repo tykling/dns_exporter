@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improve unit tests
 - Polish dockerhub action a bit (thanks @dallemon!)
 - Re-add custom histogram buckets for metric `dnsexp_dns_responsetime_sedonds` from 1 second doubling until 4194304 seconds (48 days).
+- Build docs in `pre-commit` to avoid breaking them
 
 ### Fixed
 - Fixed a bug which made `fail_if_all_match_regexp` validation succeed on the first matching RR (not considering further RRs).

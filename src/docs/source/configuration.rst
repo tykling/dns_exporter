@@ -16,51 +16,60 @@ Settings
 --------
 ``dns_exporter`` comes with the following settings and defaults. All scrapes are based on these defaults plus whatever is changed in that specific scrape job:
 
-+-----------------------------+-----------------+------------------------------------------------------------+
-| Config Key                  | Default         | Notes                                                      |
-+=============================+=================+============================================================+
-| ``module``                  | ``none``        | A module from the config file.                             |
-+-----------------------------+-----------------+------------------------------------------------------------+
-| ``edns``                    | ``true``        | Enables EDNS0                                              |
-+-----------------------------+-----------------+------------------------------------------------------------+
-| ``edns_do``                 | ``false``       | Enables the DO flag                                        |
-+-----------------------------+-----------------+------------------------------------------------------------+
-| ``edns_nsid``               | ``true``        | Enable EDNS NSID option                                    |
-+-----------------------------+-----------------+------------------------------------------------------------+
-| ``edns_bufsize``            | ``1232``        | Sets the EDNS0 bufsize                                     |
-+-----------------------------+-----------------+------------------------------------------------------------+
-| ``edns_pad``                | ``0``           | Set EDNS0 padding size                                     |
-+-----------------------------+-----------------+------------------------------------------------------------+
-| ``family``                  | ``ipv6``        | Must be set to ``ipv6`` or ``ipv4``                        |
-+-----------------------------+-----------------+------------------------------------------------------------+
-| ``ip``                      | ``none``        | Override server hostname DNS lookup                        |
-+-----------------------------+-----------------+------------------------------------------------------------+
-| ``protocol``                | ``udp``         | ``udp``, ``tcp``, ``udptcp``, ``dot``, ``doh``, or ``doq`` |
-+-----------------------------+-----------------+------------------------------------------------------------+
-| ``proxy``                   | ``none``        | Proxy URL, protocols: ``SOCKS4``, ``SOCKS5``, ``HTTP``.    |
-+-----------------------------+-----------------+------------------------------------------------------------+
-| ``query_class``             | ``IN``          | ``IN`` and ``CHAOS`` are supported.                        |
-+-----------------------------+-----------------+------------------------------------------------------------+
-| ``query_name``              | ``none``        | The name to use in the DNS query                           |
-+-----------------------------+-----------------+------------------------------------------------------------+
-| ``query_type``              | ``A``           | ``A``, ``AAAA``, ``MX``, ``TXT`` etc. or use ``TYPEnn``    |
-+-----------------------------+-----------------+------------------------------------------------------------+
-| ``recursion_desired``       | ``true``        | Sets the ``RD`` flag in the query.                         |
-+-----------------------------+-----------------+------------------------------------------------------------+
-| ``server``                  | ``none``        | The DNS server to use                                      |
-+-----------------------------+-----------------+------------------------------------------------------------+
-| ``timeout``                 | ``5.0``         | Query timeout in seconds.                                  |
-+-----------------------------+-----------------+------------------------------------------------------------+
-| ``validate_answer_rrs``     | ``none``        | Can only be defined in modules in ``dns_exporter.yml``     |
-+-----------------------------+-----------------+------------------------------------------------------------+
-| ``validate_authority_rrs``  | ``none``        | Can only be defined in modules in ``dns_exporter.yml``     |
-+-----------------------------+-----------------+------------------------------------------------------------+
-| ``validate_additional_rrs`` | ``none``        | Can only be defined in modules in ``dns_exporter.yml``     |
-+-----------------------------+-----------------+------------------------------------------------------------+
-| ``validate_response_flags`` | ``none``        | Can only be defined in modules in ``dns_exporter.yml``     |
-+-----------------------------+-----------------+------------------------------------------------------------+
-| ``valid_rcodes``            | ``NOERROR``     | Comma seperated RCODEs to consider valid.                  |
-+-----------------------------+-----------------+------------------------------------------------------------+
++---------------------------------+-----------------+------------------------------------------------------------+
+| Config Key                      | Default         | Notes                                                      |
++=================================+=================+============================================================+
+| ``module``                      | No default      | A module from the config file.                             |
++---------------------------------+-----------------+------------------------------------------------------------+
+| ``collect_ttl``                 | ``true``        | Toggles collection of per-RR TTL metrics.                  |
++---------------------------------+-----------------+------------------------------------------------------------+
+| ``collect_ttl_rr_value_length`` | ``255``         | Limits the length of the ``rr_value`` label in TTL metrics |
++---------------------------------+-----------------+------------------------------------------------------------+
+| ``edns``                        | ``true``        | Enables EDNS0                                              |
++---------------------------------+-----------------+------------------------------------------------------------+
+| ``edns_do``                     | ``false``       | Enables the DO flag                                        |
++---------------------------------+-----------------+------------------------------------------------------------+
+| ``edns_nsid``                   | ``true``        | Enable EDNS NSID option                                    |
++---------------------------------+-----------------+------------------------------------------------------------+
+| ``edns_bufsize``                | ``1232``        | Sets the EDNS0 bufsize                                     |
++---------------------------------+-----------------+------------------------------------------------------------+
+| ``edns_pad``                    | ``0``           | Set EDNS0 padding size                                     |
++---------------------------------+-----------------+------------------------------------------------------------+
+| ``family``                      | ``ipv6``        | Must be set to ``ipv6`` or ``ipv4``                        |
++---------------------------------+-----------------+------------------------------------------------------------+
+| ``ip``                          | No default      | Override server hostname DNS lookup                        |
++---------------------------------+-----------------+------------------------------------------------------------+
+| ``protocol``                    | ``udp``         | ``udp``, ``tcp``, ``udptcp``, ``dot``, ``doh``, or ``doq`` |
++---------------------------------+-----------------+------------------------------------------------------------+
+| ``proxy``                       | No default      | Proxy URL, protocols: ``SOCKS4``, ``SOCKS5``, ``HTTP``.    |
++---------------------------------+-----------------+------------------------------------------------------------+
+| ``query_class``                 | ``IN``          | ``IN`` and ``CHAOS`` are supported.                        |
++---------------------------------+-----------------+------------------------------------------------------------+
+| ``query_name``                  | No default      | The name to use in the DNS query                           |
++---------------------------------+-----------------+------------------------------------------------------------+
+| ``query_type``                  | ``A``           | ``A``, ``AAAA``, ``MX``, ``TXT`` etc. or use ``TYPEnn``    |
++---------------------------------+-----------------+------------------------------------------------------------+
+| ``recursion_desired``           | ``true``        | Sets the ``RD`` flag in the query.                         |
++---------------------------------+-----------------+------------------------------------------------------------+
+| ``server``                      | No default      | The DNS server to use. Required!                           |
++---------------------------------+-----------------+------------------------------------------------------------+
+| ``timeout``                     | ``5.0``         | Query timeout in seconds.                                  |
++---------------------------------+-----------------+------------------------------------------------------------+
+| ``validate_answer_rrs``         | No default      | Can only be defined in modules in ``dns_exporter.yml``     |
++---------------------------------+-----------------+------------------------------------------------------------+
+| ``validate_authority_rrs``      | No default      | Can only be defined in modules in ``dns_exporter.yml``     |
++---------------------------------+-----------------+------------------------------------------------------------+
+| ``validate_additional_rrs``     | No default      | Can only be defined in modules in ``dns_exporter.yml``     |
++---------------------------------+-----------------+------------------------------------------------------------+
+| ``validate_response_flags``     | No default      | Can only be defined in modules in ``dns_exporter.yml``     |
++---------------------------------+-----------------+------------------------------------------------------------+
+| ``valid_rcodes``                | ``NOERROR``     | Comma seperated RCODEs to consider valid.                  |
++---------------------------------+-----------------+------------------------------------------------------------+
+| ``verify_certificate``          | ``true``        | Toggles certificate verification for encrypted protocols.  |
++---------------------------------+-----------------+------------------------------------------------------------+
+| ``verify_certificate_path``     | No default      | Path to custom CA file or dir to use instead of system CA. |
++---------------------------------+-----------------+------------------------------------------------------------+
+
 
 Each of these configuration keys can be set in modules in ``dns_exporter.yml``. With the exception of the ``validate_*`` settings all of these can also be changed in the ``params`` section of the scrape job, and as target labels in SD.
 
@@ -70,6 +79,20 @@ The following section describes each setting.
 ``module``
 ~~~~~~~~~~
 Setting ``module`` in the scrape querystring makes ``dns_exporter`` use the named module to change the default settings. Modules are read from the ``dns_exporter.yml`` when the exporter is started.
+
+
+``collect_ttl``
+~~~~~~~~~~~~~~~
+This bool toggles collection of per-RR TTL metrics from the response. The ``dnsexp_dns_response_rr_ttl_seconds`` metric includes the first a label with the value of each RR which in some cases can result in too high cardinality. If this is a problem in your usecase the per-RR TTL metrics can be disabled entirely with this setting.
+
+The default value is ``True``.
+
+
+``collect_ttl_rr_value_length``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+This int limits the number of bytes of the RR value to include in the ``rr_value`` label. If the length of the RR value exceeds ``collect_ttl_rr_value_length`` then the string will be cut to this number of bytes.
+
+The default value is ``255``.
 
 
 ``edns``
@@ -292,3 +315,17 @@ This setting has no default value.
 A comma seperated list of valid ``RCODE`` values. This setting defines the ``RCODE`` values to consider valid in the DNS response. The query is considered failed if the ``RCODE`` is not among the list in this setting.
 
 The default value is ``NOERROR``.
+
+
+``verify_certificate``
+~~~~~~~~~~~~~~~~~~~~~~
+This bool toggles certificate verification of servers when using encrypted protocols for DNS lookups.
+
+The default value is ``true``
+
+
+``verify_certificate_path``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Set this to an alternative CA file or dir to use that instead of the default system CA store when verifying DNS server certificates.
+
+The default is an empty string which makes ``dns_exporter`` use the default system CA store.
