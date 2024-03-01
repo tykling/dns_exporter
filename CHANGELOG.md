@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-- No changes yet
+### Changed
+- Minimum supported DNSPython version is nor 2.5.0
 
 
 ## [v1.0.0-beta6] - 2024-03-01
