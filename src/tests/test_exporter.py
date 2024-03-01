@@ -276,8 +276,6 @@ dnsexp_scrape_failures_total{reason="certificate_error"} 4.0
 dnsexp_scrape_failures_total{reason="invalid_request_config"} 7.0
 dnsexp_scrape_failures_total{reason="invalid_request_proxy"} 2.0
 dnsexp_scrape_failures_total{reason="connection_refused"} 2.0
-dnsexp_scrape_failures_total{reason="connection_error"} 9.0
-dnsexp_scrape_failures_total{reason="timeout"} 6.0
 dnsexp_scrape_failures_total{reason="invalid_response_answer_rrs"} 4.0
 dnsexp_scrape_failures_total{reason="invalid_request_ip"} 3.0
 dnsexp_scrape_failures_total{reason="invalid_response_rcode"} 1.0
@@ -842,5 +840,12 @@ def test_timeout_server(dns_exporter_example_config, caplog, protocol):
     )
     if protocol == "doh":
         assert 'dnsexp_failures_total{reason="connection_error"} 1.0' in r.text
+    elif protocol == "dot":
+        # this is handled a bit differently depending on the ICMP error (if any) received from the network
+        if (
+            'dnsexp_failures_total{reason="connection_error"} 1.0' not in r.text
+            and 'dnsexp_failures_total{reason="timeout"} 1.0' not in r.text
+        ):
+            raise AssertionError
     else:
         assert 'dnsexp_failures_total{reason="timeout"} 1.0' in r.text

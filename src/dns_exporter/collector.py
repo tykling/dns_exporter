@@ -127,17 +127,20 @@ class DNSCollector(Collector):
             )
         except dns.exception.Timeout:
             # configured timeout was reached before a response arrived
-            yield from self.yield_failure_reason_metric(failure_reason="timeout")
+            reason = "timeout"
+            yield from self.yield_failure_reason_metric(failure_reason=reason)
         except ConnectionRefusedError:
             # server actively refused the connection
+            reason = "connection_refused"
             yield from self.yield_failure_reason_metric(
-                failure_reason="connection_refused",
+                failure_reason=reason,
             )
         except OSError as e:
             # raised by multiple protocols on ICMP unreach
             logger.debug(f"Protocol {self.config.protocol} got OSError '{e}', exception follows", exc_info=True)
+            reason = "connection_error"
             yield from self.yield_failure_reason_metric(
-                failure_reason="connection_error",
+                failure_reason=reason,
             )
         except ProtocolSpecificError as e:
             # a protocol specific exception was raised, log and re-raise
@@ -145,7 +148,8 @@ class DNSCollector(Collector):
                 f"Protocol {self.config.protocol} raised exception, returning failure reason {e}",
                 exc_info=True,
             )
-            yield from self.yield_failure_reason_metric(failure_reason=str(e))
+            reason = str(e)
+            yield from self.yield_failure_reason_metric(failure_reason=reason)
         except Exception:  # noqa: BLE001
             logger.debug(
                 f"""Caught an unknown exception while looking up qname {self.config.query_name} using server
@@ -153,22 +157,25 @@ class DNSCollector(Collector):
                 - exception details follow, returning other_failure""",
                 exc_info=True,
             )
-            yield from self.yield_failure_reason_metric(failure_reason="other_failure")
+            reason = "other_failure"
+            yield from self.yield_failure_reason_metric(failure_reason=reason)
 
         # clock it
         qtime = time.time() - start
+
+        # did we get a response?
+        if r is None:
+            logger.debug(f"No DNS response received :( returning metrics, failure reason is '{reason}'...")
+            yield from (get_dns_qtime_metric(), get_dns_ttl_metric(), get_dns_success_metric(value=0))
+            return None
+
         # parse response (if any) and yield metrics
         yield from self.handle_response(response=r, transport=transport, qtime=qtime)
 
     def handle_response(
-        self, response: Message | None, transport: str, qtime: float
+        self, response: Message, transport: str, qtime: float
     ) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
         """Do response processing and yield metrics."""
-        if response is None:
-            logger.debug("No DNS response received :( returning failure metrics...")
-            yield from (get_dns_qtime_metric(), get_dns_ttl_metric(), get_dns_success_metric(value=0))
-            return None
-
         # convert response flags to sorted text
         flags = dns.flags.to_text(response.flags).split(" ")
         flags.sort()
@@ -296,7 +303,7 @@ class DNSCollector(Collector):
 
         elif protocol == "tcp":
             # plain TCP lookup, nothing fancy here
-            r = self.get_dns_response_udp(
+            r = self.get_dns_response_tcp(
                 query=query,
                 ip=str(ip),
                 port=port,
@@ -428,12 +435,8 @@ class DNSCollector(Collector):
             raise ProtocolSpecificError(reason) from e
         except OSError as e:
             # raised by doh when ca path is not found
-            if "Could not find a suitable TLS CA certificate bundle, invalid path" in str(e):
-                logger.debug("Protocol doh unable to find CA path, returning invalid_request_config")
-                raise ProtocolSpecificError("invalid_request_config") from e
-            # also raised by multiple protocols on connection refused
-            # so re-raise to handle in calling method
-            raise
+            logger.debug("Protocol doh unable to find CA path, returning invalid_request_config")
+            raise ProtocolSpecificError("invalid_request_config") from e
 
     def get_dns_response_doq(  # noqa: PLR0913
         self, query: Message, ip: str, port: int, timeout: float, server: urllib.parse.SplitResult, verify: str | bool
