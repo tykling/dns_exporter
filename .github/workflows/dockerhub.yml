@@ -16,6 +16,7 @@ env:
 jobs:
   prepare:
     runs-on: ubuntu-22.04
+    environment: "dockerhub-publish"
     outputs:
       matrix: ${{ steps.platforms.outputs.matrix }}
     steps:
