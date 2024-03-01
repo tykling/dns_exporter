@@ -15,7 +15,7 @@
 This means that for each scrape Prometheus speaks HTTP to the `dns_exporter` which then speaks DNS with the target DNS server and returns the resulting metrics over HTTP to Prometheus. `dns_exporter` supports doing DNS queries over plain port 53 `UDP` and `TCP`, as well as `DoT`, `DoH` and `DoQ`.
 
 # Installation
-Installing `dns_exporter` can be done from pypi. This is the recommended way to install:
+`dns_exporter` is not yet in any OS package managers but installing `dns_exporter` can be done from pypi. This is the recommended way to install for now:
 
 `pip install dns_exporter`
 
