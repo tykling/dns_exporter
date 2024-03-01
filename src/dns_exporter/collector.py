@@ -131,7 +131,7 @@ class DNSCollector(Collector):
             yield from self.yield_failure_reason_metric(failure_reason=reason)
         except ConnectionRefusedError:
             # server actively refused the connection
-            reason = "connection_refused"
+            reason = "connection_error"
             yield from self.yield_failure_reason_metric(
                 failure_reason=reason,
             )
@@ -151,7 +151,7 @@ class DNSCollector(Collector):
             reason = str(e)
             yield from self.yield_failure_reason_metric(failure_reason=reason)
         except Exception:  # noqa: BLE001
-            logger.debug(
+            logger.warning(
                 f"""Caught an unknown exception while looking up qname {self.config.query_name} using server
                 {self.config.server.geturl()} and proxy {self.config.proxy.geturl() if self.config.proxy else 'none'}
                 - exception details follow, returning other_failure""",

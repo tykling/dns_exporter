@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Minimum supported DNSPython version is nor 2.5.0
-
+- Log at level warning when encountering an unknown failure
+- Remove failure reason `connection_refused` and report it as `connection_error` along with the rest of socket related errors.
 
 ## [v1.0.0-beta6] - 2024-03-01
 

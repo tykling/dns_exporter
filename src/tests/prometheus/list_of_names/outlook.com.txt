@@ -19,7 +19,6 @@ dnsexp_failures_total{reason="invalid_request_query_name"} 0.0
 dnsexp_failures_total{reason="invalid_request_query_type"} 0.0
 dnsexp_failures_total{reason="invalid_request_query_class"} 0.0
 dnsexp_failures_total{reason="connection_error"} 0.0
-dnsexp_failures_total{reason="connection_refused"} 0.0
 dnsexp_failures_total{reason="timeout"} 0.0
 dnsexp_failures_total{reason="invalid_response_rcode"} 0.0
 dnsexp_failures_total{reason="invalid_response_flags"} 0.0

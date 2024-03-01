@@ -22,20 +22,6 @@ def test_main_no_config(dns_exporter_main_no_config_no_debug):
     assert "dnsexp_dns_query_success 1.0" in r.text
 
 
-def test_timeout(dns_exporter_main_no_config_no_debug):
-    """Trigger a timeout error."""
-    r = requests.get(
-        "http://127.0.0.1:35353/query",
-        params={
-            "server": "dns.google",
-            "query_name": "example.com",
-            "family": "ipv4",
-            "timeout": 0.0001,
-        },
-    )
-    assert 'dnsexp_failures_total{reason="timeout"} 1.0' in r.text
-
-
 def test_noconfig_server(dns_exporter_no_main_no_config):
     """Test basic lookup functionality on an instance with debug enabled and no modules loaded."""
     r = requests.get(
@@ -263,19 +249,18 @@ def test_internal_metrics(dns_exporter_example_config, caplog):
     assert f'dnsexp_build_version_info{{version="{__version__}"}} 1.0' in r.text
     assert "Returning exporter metrics for request to /metrics" in caplog.text
     for metric in """dnsexp_http_requests_total{path="/notfound"} 1.0
-dnsexp_http_requests_total{path="/query"} 75.0
+dnsexp_http_requests_total{path="/query"} 74.0
 dnsexp_http_requests_total{path="/config"} 2.0
 dnsexp_http_requests_total{path="/"} 1.0
 dnsexp_http_requests_total{path="/metrics"} 1.0
 dnsexp_http_responses_total{path="/notfound",response_code="404"} 1.0
-dnsexp_http_responses_total{path="/query",response_code="200"} 75.0
+dnsexp_http_responses_total{path="/query",response_code="200"} 74.0
 dnsexp_http_responses_total{path="/",response_code="200"} 1.0
-dnsexp_dns_queries_total 60.0
+dnsexp_dns_queries_total 59.0
 dnsexp_dns_responsetime_seconds_bucket{additional="0",answer="1",authority="0",family="ipv4",flags="QR RA RD",ip="8.8.4.4",le="2.0",nsid="no_nsid",opcode="QUERY",port="53",protocol="udp",proxy="none",query_name="example.com",query_type="A",rcode="NOERROR",server="udp://dns.google:53",transport="UDP"}
 dnsexp_scrape_failures_total{reason="certificate_error"} 4.0
 dnsexp_scrape_failures_total{reason="invalid_request_config"} 7.0
 dnsexp_scrape_failures_total{reason="invalid_request_proxy"} 2.0
-dnsexp_scrape_failures_total{reason="connection_refused"} 2.0
 dnsexp_scrape_failures_total{reason="invalid_response_answer_rrs"} 4.0
 dnsexp_scrape_failures_total{reason="invalid_request_ip"} 3.0
 dnsexp_scrape_failures_total{reason="invalid_response_rcode"} 1.0
@@ -805,23 +790,24 @@ def test_no_ttl(dns_exporter_no_main_no_config, caplog):
 
 
 @pytest.mark.parametrize("protocol", ["udp", "tcp", "udptcp", "dot", "doh", "doq"])
-def test_connrefused_server(dns_exporter_example_config, caplog, protocol):
-    """Trigger a connection_refused failure for each protocol by connecting to something not listening."""
+def test_connection_error_server(dns_exporter_example_config, caplog, protocol):
+    """Trigger a connection_error failure for each protocol by connecting to something not listening."""
     caplog.clear()
     caplog.set_level(logging.DEBUG)
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "server": "example.com:420",
+            "server": "192.0.2.0:420",
             "protocol": protocol,
             "query_name": "example.org",
         },
     )
-    assert 'dnsexp_failures_total{reason="connection_error"} 1.0' in r.text
-    if protocol == "doh":
-        assert "Protocol doh raised exception, returning connection_error" in caplog.text
-    else:
-        assert f"Protocol {protocol} got OSError" in caplog.text
+    # this is handled a bit differently depending on the ICMP error (if any) received from the network
+    if (
+        'dnsexp_failures_total{reason="connection_error"} 1.0' not in r.text
+        and 'dnsexp_failures_total{reason="timeout"} 1.0' not in r.text
+    ):
+        raise AssertionError(protocol)
 
 
 @pytest.mark.parametrize("protocol", ["udp", "tcp", "udptcp", "dot", "doh", "doq"])
@@ -835,18 +821,12 @@ def test_timeout_server(dns_exporter_example_config, caplog, protocol):
             "server": "192.0.2.42:420",
             "protocol": protocol,
             "query_name": "example.org",
-            "timeout": 1.0,
+            "timeout": 0.00001,
         },
     )
     if protocol == "doh":
+        # doh raises httpx.ConnectError
         assert 'dnsexp_failures_total{reason="connection_error"} 1.0' in r.text
-    elif protocol == "dot":
-        # this is handled a bit differently depending on the ICMP error (if any) received from the network
-        if (
-            'dnsexp_failures_total{reason="connection_error"} 1.0' not in r.text
-            and 'dnsexp_failures_total{reason="timeout"} 1.0' not in r.text
-        ):
-            raise AssertionError
     else:
         assert 'dnsexp_failures_total{reason="timeout"} 1.0' in r.text
 

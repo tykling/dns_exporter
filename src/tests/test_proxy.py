@@ -1,6 +1,7 @@
 """Unit tests for proxy functionality."""
 import logging
 
+import pytest
 import requests
 
 ###################################################################################
@@ -57,7 +58,8 @@ def test_proxy_doh(dns_exporter_example_config, proxy_server):
 ###################################################################################
 
 
-def test_proxy_udp_fail(dns_exporter_example_config, proxy_server):
+@pytest.mark.parametrize("protocol", ["udp", "tcp", "doh"])
+def test_proxy_fail(dns_exporter_example_config, proxy_server, protocol):
     """Test proxy failure for udp protocol."""
     r = requests.get(
         "http://127.0.0.1:25353/query",
@@ -65,37 +67,7 @@ def test_proxy_udp_fail(dns_exporter_example_config, proxy_server):
             "query_name": "example.com",
             "server": "dns.google",
             "family": "ipv4",
-            "protocol": "udp",
-            "proxy": "socks5://127.0.0.1:1081",
-        },
-    )
-    assert 'dnsexp_failures_total{reason="connection_refused"} 1.0' in r.text
-
-
-def test_proxy_tcp_fail(dns_exporter_example_config, proxy_server):
-    """Test proxy failure for tcp protocol."""
-    r = requests.get(
-        "http://127.0.0.1:25353/query",
-        params={
-            "query_name": "example.com",
-            "server": "dns.google",
-            "family": "ipv4",
-            "protocol": "tcp",
-            "proxy": "socks5://127.0.0.1:1081",
-        },
-    )
-    assert 'dnsexp_failures_total{reason="connection_refused"} 1.0' in r.text
-
-
-def test_proxy_doh_fail(dns_exporter_example_config, proxy_server):
-    """Test proxy failure for doh protocol."""
-    r = requests.get(
-        "http://127.0.0.1:25353/query",
-        params={
-            "query_name": "example.com",
-            "server": "dns.google",
-            "family": "ipv4",
-            "protocol": "doh",
+            "protocol": protocol,
             "proxy": "socks5://127.0.0.1:1081",
         },
     )
