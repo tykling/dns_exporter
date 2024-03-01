@@ -121,6 +121,9 @@ def main(mockargs: list[str] | None = None) -> None:
     # also configure the root logger
     rootlogger = logging.getLogger("")
     rootlogger.setLevel(level)
+    # httpx is noisy at INFO
+    if logger.isEnabledFor(logging.INFO):
+        logging.getLogger('httpx').setLevel(logging.WARNING)
     logger.info(
         f"dns_exporter v{DNSExporter.__version__} starting up - logging at level {level}",
     )
