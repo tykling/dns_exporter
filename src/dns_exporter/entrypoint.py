@@ -122,7 +122,7 @@ def main(mockargs: list[str] | None = None) -> None:
     rootlogger = logging.getLogger("")
     rootlogger.setLevel(level)
     # httpx is noisy at INFO
-    if level == logging.INFO:
+    if level == "INFO":
         # httpx is noisy at level info, cap to WARNING
         logging.getLogger("httpx").setLevel(logging.WARNING)
     logger.info(
