@@ -8,7 +8,7 @@ import argparse
 import logging
 import sys
 import warnings
-from http.server import HTTPServer
+from http.server import ThreadingHTTPServer
 from pathlib import Path
 
 import yaml
@@ -171,7 +171,7 @@ def main(mockargs: list[str] | None = None) -> None:
         f"Ready to serve requests. Starting listener on {args.listen_ip} port {args.port}...",
     )
     try:
-        HTTPServer((args.listen_ip, args.port), handler).serve_forever()
+        ThreadingHTTPServer((args.listen_ip, args.port), handler).serve_forever()
     except OSError:
         logger.exception(
             f"Unable to start listener, maybe port {args.port} is in use? bailing out",
