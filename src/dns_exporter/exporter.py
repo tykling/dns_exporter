@@ -467,16 +467,16 @@ class DNSExporter(MetricsHandler):
 
         Parse it with urllib.parse.urlsplit, add explicit port if needed, and return the result.
         """
+        # make sure we always have a scheme to help the parser
         if "://" not in server:
             server = f"{protocol}://{server}"
+        # parse the string
         splitresult = urllib.parse.urlsplit(server)
+        # make sure scheme is the dns_exporter internal protocol identifier (not https://)
+        splitresult = splitresult._replace(scheme=protocol)
         if protocol == "doh" and not splitresult.path:
             # use the default DoH path
-            splitresult = urllib.parse.urlsplit(
-                urllib.parse.urlunsplit(
-                    splitresult._replace(path="/dns-query", scheme="https"),
-                ),
-            )
+            splitresult = splitresult._replace(path="/dns-query")
         # is there an explicit port in the configured server url? use default if not.
         if splitresult.port is None:
             if protocol in ["udp", "tcp", "udptcp"]:

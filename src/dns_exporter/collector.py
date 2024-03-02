@@ -128,12 +128,13 @@ class DNSCollector(Collector):
         except dns.exception.Timeout:
             # configured timeout was reached before a response arrived
             reason = "timeout"
-            yield from self.yield_failure_reason_metric(failure_reason=reason)
+            yield from self.yield_failure_reason_metric(failure_reason=reason, config=self.config)
         except ConnectionRefusedError:
             # server actively refused the connection
             reason = "connection_error"
             yield from self.yield_failure_reason_metric(
                 failure_reason=reason,
+                config=self.config,
             )
         except OSError as e:
             # raised by multiple protocols on ICMP unreach
@@ -141,6 +142,7 @@ class DNSCollector(Collector):
             reason = "connection_error"
             yield from self.yield_failure_reason_metric(
                 failure_reason=reason,
+                config=self.config,
             )
         except ProtocolSpecificError as e:
             # a protocol specific exception was raised, log and re-raise
@@ -149,7 +151,7 @@ class DNSCollector(Collector):
                 exc_info=True,
             )
             reason = str(e)
-            yield from self.yield_failure_reason_metric(failure_reason=reason)
+            yield from self.yield_failure_reason_metric(failure_reason=reason, config=self.config)
         except Exception:  # noqa: BLE001
             logger.warning(
                 f"""Caught an unknown exception while looking up qname {self.config.query_name} using server
@@ -158,14 +160,16 @@ class DNSCollector(Collector):
                 exc_info=True,
             )
             reason = "other_failure"
-            yield from self.yield_failure_reason_metric(failure_reason=reason)
+            yield from self.yield_failure_reason_metric(failure_reason=reason, config=self.config)
 
         # clock it
         qtime = time.time() - start
 
         # did we get a response?
         if r is None:
-            logger.info(f"No DNS response received from server {self.config.server.geturl()} :( returning metrics, failure reason is '{reason}'...")
+            logger.warning(
+                f"No DNS response received from server {self.config.server.geturl()} - failure reason is '{reason}'..."
+            )
             yield from (get_dns_qtime_metric(), get_dns_ttl_metric(), get_dns_success_metric(value=0))
             return None
 
@@ -215,7 +219,7 @@ class DNSCollector(Collector):
             yield get_dns_success_metric(1)
         except ValidationError as E:
             logger.exception(f"Validation failed: {E.args[1]}")
-            yield from self.yield_failure_reason_metric(failure_reason=E.args[1])
+            yield from self.yield_failure_reason_metric(failure_reason=E.args[1], config=self.config)
             yield get_dns_success_metric(0)
 
     def handle_response_options(self, response: Message) -> None:
@@ -614,17 +618,28 @@ class DNSCollector(Collector):
     @staticmethod
     def yield_failure_reason_metric(
         failure_reason: str,
+        config: Config | None = None,
     ) -> Iterator[CounterMetricFamily]:
         """This method is used to maintain failure metrics.
 
         If an empty string is passed as failure_reason (meaning success) the failure counters will not be incremented.
         """
+        # get server and proxy (if any)
+        if config:
+            server = config.server.geturl() if config.server else "none"
+            proxy = config.proxy.geturl() if config.proxy else "none"
+        else:
+            server = "none"
+            proxy = "none"
+
+        # was there a failure?
         if failure_reason:
+            # is it a valid failure reason?
             if failure_reason not in FAILURE_REASONS:
                 # unknown failure_reason, this is a bug
                 raise UnknownFailureReasonError(failure_reason)
             # increase the global failure counter
-            dnsexp_scrape_failures_total.labels(reason=failure_reason).inc()
+            dnsexp_scrape_failures_total.labels(reason=failure_reason, server=server, proxy=proxy).inc()
         # get the failure metric
         fail = get_dns_failure_metric()
         # initialise all labels in the per-scrape metric,
@@ -632,9 +647,9 @@ class DNSCollector(Collector):
         for reason in FAILURE_REASONS:
             # set counter to 1 on match (custom collector - the metrics only exist during the scrape)
             if reason == failure_reason:
-                fail.add_metric([reason], 1)
+                fail.add_metric([reason, server, proxy], 1)
             else:
-                fail.add_metric([reason], 0)
+                fail.add_metric([reason, server, proxy], 0)
         yield fail
 
 

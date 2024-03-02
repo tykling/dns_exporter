@@ -52,7 +52,7 @@ def test_proxy_doh(dns_exporter_example_config, proxy_server):
         },
     )
     assert 'proxy="socks5://127.0.0.1:1080"' in r.text
-    assert 'server="https://dns.google:443/dns-query"' in r.text
+    assert 'server="doh://dns.google:443/dns-query"' in r.text
 
 
 ###################################################################################
@@ -71,7 +71,11 @@ def test_proxy_fail(dns_exporter_example_config, proxy_server, protocol):
             "proxy": "socks5://127.0.0.1:1081",
         },
     )
-    assert 'dnsexp_failures_total{reason="connection_error"} 1.0' in r.text
+    server = "doh://dns.google:443/dns-query" if protocol == "doh" else f"{protocol}://dns.google:53"
+    assert (
+        'dnsexp_failures_total{proxy="socks5://127.0.0.1:1081",reason="connection_error",server="%s"} 1.0' % server
+        in r.text
+    )
 
 
 ###################################################################################
@@ -88,7 +92,7 @@ def test_proxy_without_scheme(dns_exporter_example_config):
         },
     )
     assert r.status_code == 200, "non-200 returncode"
-    assert 'dnsexp_failures_total{reason="invalid_request_proxy"} 1.0' in r.text
+    assert 'dnsexp_failures_total{proxy="none",reason="invalid_request_proxy",server="none"} 1.0' in r.text
 
 
 def test_proxy_unknown_scheme(dns_exporter_example_config):
@@ -102,7 +106,7 @@ def test_proxy_unknown_scheme(dns_exporter_example_config):
         },
     )
     assert r.status_code == 200, "non-200 returncode"
-    assert 'dnsexp_failures_total{reason="invalid_request_proxy"} 1.0' in r.text
+    assert 'dnsexp_failures_total{proxy="none",reason="invalid_request_proxy",server="none"} 1.0' in r.text
 
 
 def test_exporter_modules_none(caplog, exporter):

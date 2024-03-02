@@ -28,6 +28,16 @@ if t.TYPE_CHECKING:  # pragma: no cover
 # get logger
 logger = logging.getLogger(f"dns_exporter.{__name__}")
 
+# the currently supported protocols in dns_exporter
+valid_protocols = [
+    "udp",
+    "tcp",
+    "udptcp",
+    "dot",
+    "doh",
+    "doq",
+]
+
 
 @dataclass
 class RRValidator:
@@ -283,14 +293,6 @@ class Config:
 
     def validate_protocol(self) -> None:
         """Validate protocol."""
-        valid_protocols = [
-            "udp",
-            "tcp",
-            "udptcp",
-            "dot",
-            "doh",
-            "doq",
-        ]
         if self.protocol not in valid_protocols:
             raise ConfigError(
                 "invalid_request_protocol",
