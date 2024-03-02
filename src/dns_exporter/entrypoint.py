@@ -72,7 +72,7 @@ def get_parser() -> argparse.ArgumentParser:
         action="store_const",
         dest="log-level",
         const="WARNING",
-        help="Quiet mode. No output at all no errors are encountered. Equal to setting --log-level=WARNING.",
+        help="Quiet mode. No output at all if no errors are encountered. Equal to setting --log-level=WARNING.",
         default=argparse.SUPPRESS,
     )
     parser.add_argument(
