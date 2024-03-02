@@ -13,5 +13,5 @@ def test_invalid_failure_reason(caplog):
     mock_conf = Conf()
     c = DNSCollector(mock_conf, 2, 3)
     with pytest.raises(Exception, match="Unknown failure_reason foo - please file a bug!") as e:
-        list(c.yield_failure_reason_metric(failure_reason="foo"))
+        list(c.increase_failure_reason_metric(failure_reason="foo"))
     assert str(e.value) == "Unknown failure_reason foo - please file a bug!"

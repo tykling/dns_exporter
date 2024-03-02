@@ -19,10 +19,7 @@ def test_cert_verify_fail_doh(dns_exporter_example_config, caplog):
             "family": "ipv4",
         },
     )
-    assert (
-        'dnsexp_failures_total{proxy="none",reason="certificate_error",server="doh://91.239.100.100:443/dns-query"} 1.0'
-        in r.text
-    )
+    assert "dnsexp_dns_query_success 0.0" in r.text
 
 
 def test_cert_verify_fail_dot(dns_exporter_example_config, caplog):
@@ -38,9 +35,7 @@ def test_cert_verify_fail_dot(dns_exporter_example_config, caplog):
             "family": "ipv4",
         },
     )
-    assert (
-        'dnsexp_failures_total{proxy="none",reason="certificate_error",server="dot://91.239.100.100:853"} 1.0' in r.text
-    )
+    assert "dnsexp_dns_query_success 0.0" in r.text
 
 
 # this fails because the adguard servers have IP:.... SAN entries in the certificates
@@ -59,9 +54,7 @@ def test_cert_verify_fail_doq(dns_exporter_example_config, caplog):
             "family": "ipv4",
         },
     )
-    assert (
-        'dnsexp_failures_total{proxy="none",reason="certificate_error",server="doq://94.140.14.140:853"} 1.0' in r.text
-    )
+    assert "dnsexp_dns_query_success 0.0" in r.text
 
 
 ###################################################################################
@@ -82,10 +75,7 @@ def test_cert_verify_fail_custom_ca_doh(dns_exporter_example_config, caplog):
             "verify_certificate_path": "tests/certificates/test.crt",
         },
     )
-    assert (
-        'dnsexp_failures_total{proxy="none",reason="certificate_error",server="doh://91.239.100.100:443/dns-query"} 1.0'
-        in r.text
-    )
+    assert "dnsexp_dns_query_success 0.0" in r.text
 
 
 def test_cert_verify_fail_custom_ca_dot(dns_exporter_example_config, caplog):
@@ -102,10 +92,8 @@ def test_cert_verify_fail_custom_ca_dot(dns_exporter_example_config, caplog):
             "verify_certificate_path": "tests/certificates/test.crt",
         },
     )
-    assert (
-        'dnsexp_failures_total{proxy="none",reason="certificate_error",server="dot://91.239.100.100:853"} 1.0' in r.text
-    )
     assert "Protocol dot raised ssl.SSLCertVerificationError, returning certificate_error" in caplog.text
+    assert "dnsexp_dns_query_success 0.0" in r.text
 
 
 # this fails because the adguard servers have IP:.... SAN entries in the certificates
@@ -124,7 +112,7 @@ def test_cert_verify_fail_custom_ca_doq(dns_exporter_example_config, caplog):
         },
     )
     assert "Custom CA path for DoQ is disabled pending https://github.com/tykling/dns_exporter/issues/95" in caplog.text
-    assert 'dnsexp_failures_total{proxy="none",reason="invalid_request_config",server="none"} 1.0' in r.text
+    assert "dnsexp_dns_query_success 0.0" in r.text
 
 
 ###################################################################################
@@ -200,11 +188,8 @@ def test_cert_verify_invalid_path_doh(dns_exporter_example_config, caplog):
             "verify_certificate_path": "/nonexistant",
         },
     )
-    assert (
-        'dnsexp_failures_total{proxy="none",reason="invalid_request_config",server="doh://91.239.100.100:443/dns-query"} 1.0'
-        in r.text
-    )
     assert "Protocol doh raised exception, returning failure reason invalid_request_config" in caplog.text
+    assert "dnsexp_dns_query_success 0.0" in r.text
 
 
 def test_cert_verify_invalid_path_dot(dns_exporter_example_config, caplog):
@@ -221,11 +206,8 @@ def test_cert_verify_invalid_path_dot(dns_exporter_example_config, caplog):
             "verify_certificate_path": "/nonexistant",
         },
     )
-    assert (
-        'dnsexp_failures_total{proxy="none",reason="invalid_request_config",server="dot://91.239.100.100:853"} 1.0'
-        in r.text
-    )
     assert "Protocol dot raised ValueError, is verify_certificate_path wrong" in caplog.text
+    assert "dnsexp_dns_query_success 0.0" in r.text
 
 
 @pytest.mark.filterwarnings("ignore:.*:pytest.PytestUnhandledThreadExceptionWarning")
@@ -243,5 +225,5 @@ def test_cert_verify_invalid_path_doq(dns_exporter_example_config, caplog):
             "verify_certificate_path": "/nonexistant",
         },
     )
-    assert 'dnsexp_failures_total{proxy="none",reason="invalid_request_config",server="none"} 1.0' in r.text
     assert "Custom CA path for DoQ is disabled pending https://github.com/tykling/dns_exporter/issues/95" in caplog.text
+    assert "dnsexp_dns_query_success 0.0" in r.text

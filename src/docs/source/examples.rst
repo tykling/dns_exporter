@@ -32,6 +32,7 @@ The scrape job needs to:
 * In ``params`` set ``module`` to the value ``quad9_mx``
 * In ``relabel_configs`` set the ``query_name`` scrape param to the target
 * Also in ``relabel_configs`` set the standard ``__address__`` and ``instance`` labels
+* Remember to also scrape the internal metrics under ``/metrics``
 
 .. literalinclude:: ../../tests/prometheus/list_of_names/prometheus.yml
 
@@ -73,6 +74,7 @@ The scrape job needs to:
 * In ``params`` set ``module`` to the value ``gmail_mx_v4``
 * In ``relabel_configs`` set the ``server`` scrape param to the target
 * Also in ``relabel_configs`` set the standard ``__address__`` and ``instance`` labels
+* Remember to also scrape the internal metrics under ``/metrics``
 
 With the ``dns_exporter`` running at ``dnsexp.example.com:15353``:
 

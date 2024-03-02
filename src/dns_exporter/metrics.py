@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from prometheus_client.core import (
     Counter,
-    CounterMetricFamily,
     GaugeMetricFamily,
     Histogram,
     Info,
@@ -158,25 +157,6 @@ def get_dns_ttl_metric() -> GaugeMetricFamily:
     )
 
 
-def get_dns_failure_metric() -> CounterMetricFamily:
-    """``dnsexp_failures_total`` is the per-scrape Counter keeping track of the reason a scrape failed.
-
-    A scrape (or the resulting DNS query) can fail for many reasons, including configuration issues, server issues,
-    timeout, network issues, bad response, or failed response validation.
-
-    This metric has three labels:
-        - ``reason``: The reason for the failure.
-        - ``server`` is set to the server URL.
-        - ``proxy`` is set to the proxy URL (or ``none``).
-
-    """
-    return CounterMetricFamily(
-        name="dnsexp_failures_total",
-        documentation="The total number of scrape failures by failure reason. This counter is increased every time a scrape is initiated and a valid response (considering validation rules) is not received.",  # noqa: E501
-        labels=["reason", "server", "proxy"],
-    )
-
-
 ########################################################
 # exporter internal/persitent metrics (served under /metrics)
 
@@ -285,7 +265,7 @@ received since start and how long the query took.
 
 dnsexp_scrape_failures_total = Counter(
     name="dnsexp_scrape_failures_total",
-    documentation="The total number of scrapes failed by failure reason. This counter is increased every time the dns_exporter receives a scrape request which fails for some reason, including response validation logic.",  # noqa: E501
+    documentation="The total number of scrapes failed by failure reason, server, and proxy (where applicable). This counter is increased every time the dns_exporter receives a scrape request which fails for some reason, including response validation logic.",  # noqa: E501
     labelnames=["reason", "server", "proxy"],
 )
 """``dnsexp_scrape_failures_total`` is the Counter keeping track of how many scrape requests failed for some reason.

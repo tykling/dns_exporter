@@ -51,61 +51,24 @@ If you want to use a config file you can use ``-c`` or ``--config-file``::
 
 Configuring Prometheus
 ----------------------
-To monitor a *list of DNS names* using a *specific DNS server* add a scrape job like this::
+``dns_exporter`` serves internal metrics (including details about failure reasons) under ``/metrics`` while the endpoint for doing DNS lookups is ``/query``. Make sure you always configure Prometheus to scrape the internal metrics (under ``/metrics``) in addition to any DNS scrape jobs you configure.
 
-   scrape_configs:
-     - name: "dnsexp_mx_check"
-       scheme: "http"
-       scrape_interval: "10s"
-       metrics_path: "/query"
-       params:
-         query_type:
-           - "MX"
-         server:
-           - "dns.google"
-       relabel_configs:
-         - source_labels: ["__address__"]
-           target_label: "__param_query_name"
-         - source_labels: ["__address__"]
-           target_label: "instance"
-         - target_label: "__address__"
-           replacement: "dnsexp.example.com:15353"
-       static_configs:
-         - targets:
-           - "gmail.com"
-           - "outlook.com"
-           - "protonmail.com"
+These examples use ``static_configs`` but any type of Prometheus Service Discovery can be used.
 
-This configuration will scrape the ``dns_exporter`` instance running at ``dnsexp.example.com:15353`` three times, each resulting in a DNS lookup. The DNS lookups will be done over ``UDP`` (the default ``protocol`` setting) using the server ``dns.google``. The DNS lookups will be for the type ``MX`` and for the ``gmail.com``, ``outlook.com``, and ``protonmail.com`` names.
+To monitor a *list of DNS names* using a *specific DNS server* add a scrape job like this:
 
-If instead you want to monitor *a specific DNS name* on a *list of DNS servers* use a config like this::
+.. literalinclude:: ../../tests/prometheus/list_of_names/prometheus.yml
 
-   scrape_configs:
-     - name: "dnsexp_soa_check"
-       scheme: "http"
-       scrape_interval: "10s"
-       metrics_path: "/query"
-       params:
-         query_type:
-           - "SOA"
-         query_name:
-           - "example.com"
-       relabel_configs:
-         - source_labels: ["__address__"]
-           target_label: "__param_server"
-         - source_labels: ["__address__"]
-           target_label: "instance"
-         - target_label: "__address__"
-           replacement: "dnsexp.example.com:15353"
-       static_configs:
-         - targets:
-           - "dns.google"
-           - "dns.quad9.net"
+This configuration will scrape the ``dns_exporter`` instance running at ``dnsexp.example.com:15353`` two times, resulting in two DNS lookups. The DNS lookups will be done over ``UDP`` (the default ``protocol`` setting) using the server ``dns.google``. The DNS lookups will be for the type ``MX`` and for the ``gmail.com`` and ``outlook.com`` names.
+
+If instead you want to monitor *a specific DNS name* on a *list of DNS servers* use a config like this:
+
+.. literalinclude:: ../../tests/prometheus/list_of_servers/prometheus.yml
 
 This configuration will scrape the ``dns_exporter`` instance running at ``dnsexp.example.com:15353`` twice. The DNS lookups will be for the type ``MX`` and for the name ``example.com`` using the servers ``dns.google`` and ``dns.quad9.net``.
 
 .. tip::
-   Targets can be anything! The list of targets doesn't have to contain DNS names or DNS servers. It can be anything you want to iterate over in that scrape job - ``query_type``, ``protocol``, or ``family`` for example. Use ``relabel_configs`` to make sure the scrape job labels are correct.
+   The list of targets in the Prometheus scrape job can be anything! The list doesn't have to contain DNS names or DNS servers. It can be anything you want to iterate over in that scrape job - ``query_type``, ``protocol``, or ``family`` for example. Use ``relabel_configs`` to make sure the scrape job labels are correct.
 
 
 Further Reading
