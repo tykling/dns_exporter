@@ -459,10 +459,10 @@ class DNSCollector(Collector):
             # raised by doq when an invalid CA path is passed,
             # and a bunch of other error cases
             logger.debug(
-                "Protocol doq raised dns.quic._common.UnexpectedEOF - is verify_certificate_path wrong?",
+                "Protocol doq raised dns.quic._common.UnexpectedEOF",
                 exc_info=True,
             )
-            raise ProtocolSpecificError("invalid_request_config") from e
+            raise ProtocolSpecificError("connection_error") from e
 
     def validate_response_rcode(self, response: Message) -> None:
         """Validate response RCODE."""
