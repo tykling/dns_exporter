@@ -167,7 +167,7 @@ def main(mockargs: list[str] | None = None) -> None:
             "An error occurred while configuring dns_exporter. Bailing out.",
         )
         sys.exit(1)
-    logger.debug(
+    logger.info(
         f"Ready to serve requests. Starting listener on {args.listen_ip} port {args.port}...",
     )
     try:
