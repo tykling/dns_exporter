@@ -230,7 +230,10 @@ class DNSCollector(Collector):
                     self.labels.update({"nsid": opt.data.decode("ASCII")})
                 else:
                     # for dnspython 2.6.0+
-                    self.labels.update({"nsid": opt.to_text()})
+                    nsid = opt.to_text()
+                    if nsid.startswith("NSID"):
+                        nsid = nsid[5:]
+                    self.labels.update({"nsid": nsid})
                 break
 
     def yield_ttl_metrics(self, response: Message) -> Iterator[GaugeMetricFamily]:
