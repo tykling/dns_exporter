@@ -206,3 +206,12 @@ def proxy_server():
     proc.terminate()
     proc.communicate()
     print("Teardown finished!")
+
+
+@pytest.fixture()
+def mock_dns_query_https_valuerror(mocker):
+    """Monkeypatch dns.query.https to raise a ValueError like a non-2XX statuscode was received from server."""
+    mocker.patch(
+        "dns.query.https",
+        side_effect=ValueError("mocked"),
+    )

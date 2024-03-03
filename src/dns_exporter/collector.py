@@ -439,6 +439,12 @@ class DNSCollector(Collector):
             # raised by doh when ca path is not found
             logger.debug("Protocol doh unable to find CA path, returning invalid_request_config")
             raise ProtocolSpecificError("invalid_request_config") from e
+        except ValueError as e:
+            # raised by doh when the server response with a non-2XX HTTP status code
+            logger.debug(
+                "Protocol doh raised ValueErrror due to non-2XX status_code - returning invalid_response_statuscode"
+            )
+            raise ProtocolSpecificError("invalid_response_statuscode") from e
 
     def get_dns_response_doq(  # noqa: PLR0913
         self, query: Message, ip: str, port: int, timeout: float, server: urllib.parse.SplitResult, verify: str | bool
@@ -631,7 +637,6 @@ class DNSCollector(Collector):
             protocol = "none"
             server = "none"
             proxy = "none"
-
 
         # was there a failure?
         if not failure_reason:

@@ -54,6 +54,7 @@ FAILURE_REASONS = [
     "certificate_error",
     "connection_error",
     "timeout",
+    "invalid_response_statuscode",
     "invalid_response_rcode",
     "invalid_response_flags",
     "invalid_response_answer_rrs",
