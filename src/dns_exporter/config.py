@@ -191,7 +191,7 @@ class Config:
     collect per-RR TTL metrics. Default is ``True``"""
 
     collect_ttl_rr_value_length: int
-    """int: Limits the length of the ``rr_value`` label when collecing per-RR TTL metrics. Default is ``255``"""
+    """int: Limits the length of the ``rr_value`` label when collecing per-RR TTL metrics. Default is ``50``"""
 
     edns: bool
     """bool: Set this bool to ``True`` to enable ``EDNS0`` for the DNS query, ``False`` to not use ``EDNS0``.
@@ -366,7 +366,7 @@ class Config:
         *,
         name: str,
         collect_ttl: bool = True,
-        collect_ttl_rr_value_length: int = 255,
+        collect_ttl_rr_value_length: int = 50,
         edns: bool = True,
         edns_do: bool = False,
         edns_nsid: bool = True,

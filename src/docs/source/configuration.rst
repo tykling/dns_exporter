@@ -23,7 +23,7 @@ Settings
 +---------------------------------+-----------------+------------------------------------------------------------+
 | ``collect_ttl``                 | ``true``        | Toggles collection of per-RR TTL metrics.                  |
 +---------------------------------+-----------------+------------------------------------------------------------+
-| ``collect_ttl_rr_value_length`` | ``255``         | Limits the length of the ``rr_value`` label in TTL metrics |
+| ``collect_ttl_rr_value_length`` | ``50``          | Limits the length of the ``rr_value`` label in TTL metrics |
 +---------------------------------+-----------------+------------------------------------------------------------+
 | ``edns``                        | ``true``        | Enables EDNS0                                              |
 +---------------------------------+-----------------+------------------------------------------------------------+
@@ -92,7 +92,7 @@ The default value is ``True``.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 This int limits the number of bytes of the RR value to include in the ``rr_value`` label. If the length of the RR value exceeds ``collect_ttl_rr_value_length`` then the string will be cut to this number of bytes.
 
-The default value is ``255``.
+The default value is ``50``.
 
 
 ``edns``

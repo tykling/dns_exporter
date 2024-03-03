@@ -143,7 +143,7 @@ def get_dns_ttl_metric() -> GaugeMetricFamily:
         - ``rr_section`` (answer, authority or additional)
         - ``rr_name`` (the RR name)
         - ``rr_type`` (the RR type)
-        - ``rr_value`` (the first 255 chars of the RR value)
+        - ``rr_value`` (the first X chars of the RR value)
     """
     return GaugeMetricFamily(
         name="dnsexp_dns_response_rr_ttl_seconds",
