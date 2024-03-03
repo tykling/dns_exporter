@@ -70,6 +70,7 @@ This configuration will scrape the ``dns_exporter`` instance running at ``dnsexp
 .. tip::
    The list of targets in the Prometheus scrape job can be anything! The list doesn't have to contain DNS names or DNS servers. It can be anything you want to iterate over in that scrape job - ``query_type``, ``protocol``, or ``family`` for example. Use ``relabel_configs`` to make sure the scrape job labels are correct.
 
+.. Note:: The ``monitor`` label in the Prometheus ``relabel_configs`` is included to be able to tell multiple instances of ``dns_exporter`` apart. It is used in the official Grafana dashboards for ``dns_exporter``.
 
 Further Reading
 ---------------
