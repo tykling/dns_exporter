@@ -259,24 +259,24 @@ dnsexp_http_responses_total{path="/query",response_code="200"} 74.0
 dnsexp_http_responses_total{path="/",response_code="200"} 1.0
 dnsexp_dns_queries_total 59.0
 dnsexp_dns_responsetime_seconds_bucket{additional="0",answer="1",authority="0",family="ipv4",flags="QR RA RD",ip="8.8.4.4",le="2.0",nsid="no_nsid",opcode="QUERY",port="53",protocol="udp",proxy="none",query_name="example.com",query_type="A",rcode="NOERROR",server="udp://dns.google:53",transport="UDP"}
-dnsexp_scrape_failures_total{proxy="none",reason="invalid_request_server",server="none"} 2.0
-dnsexp_scrape_failures_total{proxy="none",reason="invalid_response_answer_rrs",server="udp://l.root-servers.net:53"} 1.0
-dnsexp_scrape_failures_total{proxy="none",reason="invalid_response_flags",server="udp://dns.google:53"} 5.0
-dnsexp_scrape_failures_total{proxy="none",reason="invalid_request_query_name",server="none"} 1.0
-dnsexp_scrape_failures_total{proxy="none",reason="invalid_request_ip",server="none"} 3.0
-dnsexp_scrape_failures_total{proxy="none",reason="invalid_response_answer_rrs",server="udp://dns.google:53"} 3.0
-dnsexp_scrape_failures_total{proxy="none",reason="other_failure",server="doh://dns.google:443/dns-query"} 1.0
-dnsexp_scrape_failures_total{proxy="none",reason="invalid_response_additional_rrs",server="udp://k.root-servers.net:53"} 1.0
-dnsexp_scrape_failures_total{proxy="none",reason="invalid_response_flags",server="udp://dns.quad9.net:53"} 1.0
-dnsexp_scrape_failures_total{proxy="none",reason="invalid_request_module",server="none"} 1.0
-dnsexp_scrape_failures_total{proxy="none",reason="invalid_request_config",server="none"} 4.0
-dnsexp_scrape_failures_total{proxy="none",reason="invalid_response_rcode",server="udp://dns.google:53"} 1.0
-dnsexp_scrape_failures_total{proxy="none",reason="invalid_request_family",server="none"} 1.0
-dnsexp_scrape_failures_total{proxy="none",reason="invalid_request_proxy",server="none"} 2.0
-dnsexp_scrape_failures_total{proxy="none",reason="invalid_request_config",server="doh://91.239.100.100:443/dns-query"} 1.0
-dnsexp_scrape_failures_total{proxy="none",reason="certificate_error",server="doh://91.239.100.100:443/dns-query"} 2.0
-dnsexp_scrape_failures_total{proxy="none",reason="invalid_request_config",server="dot://91.239.100.100:853"} 1.0
-dnsexp_scrape_failures_total{proxy="none",reason="certificate_error",server="dot://91.239.100.100:853"} 2.0
+dnsexp_scrape_failures_total{protocol="none",proxy="none",reason="invalid_request_server",server="none"} 2.0
+dnsexp_scrape_failures_total{protocol="udp",proxy="none",reason="invalid_response_answer_rrs",server="udp://l.root-servers.net:53"} 1.0
+dnsexp_scrape_failures_total{protocol="udp",proxy="none",reason="invalid_response_flags",server="udp://dns.google:53"} 5.0
+dnsexp_scrape_failures_total{protocol="none",proxy="none",reason="invalid_request_query_name",server="none"} 1.0
+dnsexp_scrape_failures_total{protocol="none",proxy="none",reason="invalid_request_ip",server="none"} 3.0
+dnsexp_scrape_failures_total{protocol="udp",proxy="none",reason="invalid_response_answer_rrs",server="udp://dns.google:53"} 3.0
+dnsexp_scrape_failures_total{protocol="doh",proxy="none",reason="other_failure",server="doh://dns.google:443/dns-query"} 1.0
+dnsexp_scrape_failures_total{protocol="udp",proxy="none",reason="invalid_response_additional_rrs",server="udp://k.root-servers.net:53"} 1.0
+dnsexp_scrape_failures_total{protocol="udp",proxy="none",reason="invalid_response_flags",server="udp://dns.quad9.net:53"} 1.0
+dnsexp_scrape_failures_total{protocol="none",proxy="none",reason="invalid_request_module",server="none"} 1.0
+dnsexp_scrape_failures_total{protocol="none",proxy="none",reason="invalid_request_config",server="none"} 4.0
+dnsexp_scrape_failures_total{protocol="udp",proxy="none",reason="invalid_response_rcode",server="udp://dns.google:53"} 1.0
+dnsexp_scrape_failures_total{protocol="none",proxy="none",reason="invalid_request_family",server="none"} 1.0
+dnsexp_scrape_failures_total{protocol="none",proxy="none",reason="invalid_request_proxy",server="none"} 2.0
+dnsexp_scrape_failures_total{protocol="doh",proxy="none",reason="invalid_request_config",server="doh://91.239.100.100:443/dns-query"} 1.0
+dnsexp_scrape_failures_total{protocol="doh",proxy="none",reason="certificate_error",server="doh://91.239.100.100:443/dns-query"} 2.0
+dnsexp_scrape_failures_total{protocol="dot",proxy="none",reason="invalid_request_config",server="dot://91.239.100.100:853"} 1.0
+dnsexp_scrape_failures_total{protocol="dot",proxy="none",reason="certificate_error",server="dot://91.239.100.100:853"} 2.0
 """.split("\n"):
         assert metric in r.text, f"expected metrics not found: {r.text}"
 

@@ -265,13 +265,14 @@ received since start and how long the query took.
 
 dnsexp_scrape_failures_total = Counter(
     name="dnsexp_scrape_failures_total",
-    documentation="The total number of scrapes failed by failure reason, server, and proxy (where applicable). This counter is increased every time the dns_exporter receives a scrape request which fails for some reason, including response validation logic.",  # noqa: E501
-    labelnames=["reason", "server", "proxy"],
+    documentation="The total number of scrapes failed by failure reason, protocol, server, and proxy (where applicable). This counter is increased every time the dns_exporter receives a scrape request which fails for some reason, including response validation logic.",  # noqa: E501
+    labelnames=["reason", "protocol", "server", "proxy"],
 )
 """``dnsexp_scrape_failures_total`` is the Counter keeping track of how many scrape requests failed for some reason.
 
-This metric has three labels:
+This metric has four labels:
     - ``reason`` is set to the failure reason.
+    - ``protocol`` is set to the protocol.
     - ``server`` is set to the server URL.
     - ``proxy`` is set to the proxy URL (or ``none``).
 

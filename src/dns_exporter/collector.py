@@ -624,11 +624,14 @@ class DNSCollector(Collector):
         """
         # get server and proxy (if any)
         if config:
+            protocol = config.protocol
             server = config.server.geturl() if config.server else "none"
             proxy = config.proxy.geturl() if config.proxy else "none"
         else:
+            protocol = "none"
             server = "none"
             proxy = "none"
+
 
         # was there a failure?
         if not failure_reason:
@@ -640,7 +643,7 @@ class DNSCollector(Collector):
             raise UnknownFailureReasonError(failure_reason)
 
         # increase the global failure counter
-        dnsexp_scrape_failures_total.labels(reason=failure_reason, server=server, proxy=proxy).inc()
+        dnsexp_scrape_failures_total.labels(reason=failure_reason, protocol=protocol, server=server, proxy=proxy).inc()
         return
 
 
