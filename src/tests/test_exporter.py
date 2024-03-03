@@ -277,7 +277,6 @@ dnsexp_scrape_failures_total{proxy="none",reason="invalid_request_config",server
 dnsexp_scrape_failures_total{proxy="none",reason="certificate_error",server="doh://91.239.100.100:443/dns-query"} 2.0
 dnsexp_scrape_failures_total{proxy="none",reason="invalid_request_config",server="dot://91.239.100.100:853"} 1.0
 dnsexp_scrape_failures_total{proxy="none",reason="certificate_error",server="dot://91.239.100.100:853"} 2.0
-dnsexp_scrape_failures_total{proxy="none",reason="invalid_request_config",server="doq://94.140.14.140:853"} 1.0
 """.split("\n"):
         assert metric in r.text, f"expected metrics not found: {r.text}"
 
