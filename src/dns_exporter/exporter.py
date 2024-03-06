@@ -684,21 +684,22 @@ class DNSExporter(MetricsHandler):
 
         # this endpoint exposes metrics about the exporter itself and the python process
         elif self.url.path == "/metrics":
-            self.send_metric_response(registry=self.registry, query=self.qs)
             logger.debug("Returning exporter metrics for request to /metrics")
+            self.send_metric_response(registry=self.registry, query=self.qs)
 
         # the root just returns a bit of informational html
         elif self.url.path == "/":
             # return a basic index page
+            logger.debug("Returning index page for request to /")
             self.send_response(200)
             self.send_header("Content-Length", str(len(INDEX.encode("utf-8"))))
             self.end_headers()
             self.wfile.write(INDEX.encode("utf-8"))
             dnsexp_http_responses_total.labels(path="/", response_code=200).inc()
-            logger.debug("Returning index page for request to /")
 
         # unknown endpoint
         else:
+            logger.debug(f"Unknown endpoint '{self.url.path}' returning 404")
             self.send_response(404)
             msg = b"404 not found"
             self.send_header("Content-Length", str(len(msg)))
@@ -708,7 +709,6 @@ class DNSExporter(MetricsHandler):
                 path=self.url.path,
                 response_code=404,
             ).inc()
-            logger.debug(f"Unknown endpoint '{self.url.path}' returning 404")
 
     def send_metric_response(
         self,
