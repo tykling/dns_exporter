@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Always send Content-Length header for metrics responses
+- Do not overwrite ``no_nsid`` placeholder if a blank NSID is received from server (to avoid blank labels)
+
+### Changed
+- Add the ``monitor`` label in all examples, also the ones scraping internal metrics
 
 
 ## [v1.0.0-rc1] - 2024-03-06
