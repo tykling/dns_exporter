@@ -227,12 +227,14 @@ class DNSCollector(Collector):
                 if hasattr(opt, "data"):  # pragma: no cover
                     # dnspython < 2.6.0 compatibility
                     # treat nsid as ascii text for prom labels
-                    self.labels.update({"nsid": opt.data.decode("ASCII")})
+                    nsid = opt.data.decode("ASCII")
                 else:
                     # for dnspython 2.6.0+
                     nsid = opt.to_text()
                     if nsid.startswith("NSID"):
                         nsid = nsid[5:]
+                # do we have an NSID string? then overwrite the default 'no_nsid' string
+                if nsid:
                     self.labels.update({"nsid": nsid})
                 break
 
