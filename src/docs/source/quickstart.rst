@@ -16,6 +16,10 @@ There is also a Docker image so you can get your container on::
 
    docker run -p 15353:15353 tykling/dns_exporter:latest
 
+If you need more logging from the container you can run the exporter in debug mode::
+
+   docker run -p 15353:15353 tykling/dns_exporter:latest -d
+
 You can mount your own config in the container thusly::
 
    docker run -p 15353:15353 -v ./dns_exporter_example.yml:/home/nonroot/dns_exporter.yml tykling/dns_exporter:latest
