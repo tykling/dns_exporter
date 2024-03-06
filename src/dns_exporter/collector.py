@@ -440,6 +440,11 @@ class DNSCollector(Collector):
             reason = "certificate_error" if "CERTIFICATE_VERIFY_FAILED" in str(e) else "connection_error"
             logger.debug(f"Protocol doh raised exception, returning {reason}")
             raise ProtocolSpecificError(reason) from e
+        except httpx.ConnectTimeout as e:
+            # raised by doh on timeouts
+            reason = "timeout"
+            logger.debug(f"Protocol doh raised exception, returning {reason}")
+            raise ProtocolSpecificError(reason) from e
         except OSError as e:
             # raised by doh when ca path is not found
             logger.debug("Protocol doh unable to find CA path, returning invalid_request_config")

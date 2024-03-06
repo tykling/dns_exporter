@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-- No changes yet
+### Fixed
+- Catch `httpx.ConnectTimeout` from protocol `doh` as failure reason `timeout`
 
 
 ## [v1.0.0-rc2] - 2024-03-06
