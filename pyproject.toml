@@ -18,7 +18,7 @@ dependencies = [
     "prometheus-client >= 0.15.0",
     "PySocks >= 1.7.1",
 ]
-description = "Prometheus exporter for blackbox-style DNS monitoring"
+description = "Multi-target Prometheus exporter with an exclusive focus on DNS monitoring"
 dynamic = ["version"]
 keywords = ["prometheus", "dns", "monitoring"]
 license = {text = "BSD 3-Clause License"}
