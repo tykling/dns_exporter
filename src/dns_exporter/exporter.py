@@ -73,7 +73,6 @@ class DNSExporter(MetricsHandler):
     """
 
     __version__ = __version__
-    protocol_version = "HTTP/1.1"
 
     # the modules key is populated by configure() before the class is initialised
     modules: dict[str, Config] | None = None
