@@ -219,29 +219,20 @@ dnsexp_dns_responsetime_seconds = Histogram(
     documentation="DNS query response timing histogram. This histogram is updated every time the dns_exporter receives a query response.",  # noqa: E501
     labelnames=QTIME_LABELS,
     buckets=(
+        0.005,
+        0.01,
+        0.025,
+        0.05,
+        0.075,
+        0.1,
+        0.25,
+        0.5,
+        0.75,
         1.0,
-        2.0,
-        4.0,
-        8.0,
-        16.0,
-        32.0,
-        64.0,
-        128.0,
-        256.0,  # 4 minutes
-        512.0,  # 8 minutes
-        1024.0,  # 17 minutes
-        2048.0,  # 34 minutes
-        4096.0,  # 1 hour 8 minutes
-        8192.0,  # 2 hours 16 minutes
-        16384.0,  # 4.5 hours
-        32768.0,  # 9.1 hours
-        65536.0,  # 18.2 hours
-        131072.0,  # 36.4 hours
-        262144.0,  # 72.8 hours
-        524288.0,  # 6 days
-        1048576.0,  # 12 days
-        2097152.0,  # 24 days
-        4194304.0,  # 48 days
+        2.5,
+        5.0,
+        7.5,
+        10.0,
         INF,
     ),
 )

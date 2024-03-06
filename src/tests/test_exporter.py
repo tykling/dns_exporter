@@ -258,7 +258,7 @@ dnsexp_http_responses_total{path="/notfound",response_code="404"} 1.0
 dnsexp_http_responses_total{path="/query",response_code="200"} 77.0
 dnsexp_http_responses_total{path="/",response_code="200"} 1.0
 dnsexp_dns_queries_total 62.0
-dnsexp_dns_responsetime_seconds_bucket{additional="0",answer="1",authority="0",family="ipv4",flags="QR RA RD",ip="8.8.4.4",le="2.0",nsid="no_nsid",opcode="QUERY",port="53",protocol="udp",proxy="none",query_name="example.com",query_type="A",rcode="NOERROR",server="udp://dns.google:53",transport="UDP"}
+dnsexp_dns_responsetime_seconds_bucket{additional="0",answer="1",authority="0",family="ipv4",flags="QR RA RD",ip="8.8.4.4",le="2.5",nsid="no_nsid",opcode="QUERY",port="53",protocol="udp",proxy="none",query_name="example.com",query_type="A",rcode="NOERROR",server="udp://dns.google:53",transport="UDP"}
 dnsexp_scrape_failures_total{additional="none",answer="none",authority="none",family="none",flags="none",ip="none",nsid="none",opcode="none",port="none",protocol="none",proxy="none",query_name="none",query_type="none",rcode="none",reason="invalid_request_config",server="none",transport="none"} 4.0
 dnsexp_scrape_failures_total{additional="none",answer="none",authority="none",family="none",flags="none",ip="none",nsid="none",opcode="none",port="none",protocol="none",proxy="none",query_name="none",query_type="none",rcode="none",reason="invalid_request_server",server="none",transport="none"} 2.0
 dnsexp_scrape_failures_total{additional="none",answer="none",authority="none",family="ipv6",flags="none",ip="192.0.2.42",nsid="none",opcode="none",port="420",protocol="udp",proxy="none",query_name="example.org",query_type="A",rcode="none",reason="timeout",server="udp://192.0.2.42:420",transport="none"} 2.0
