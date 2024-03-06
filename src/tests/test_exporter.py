@@ -758,6 +758,7 @@ def test_catch_unknown_exception(
         params={
             "query_name": "example.com",
             "server": "dns.google",
+            "ip": "8.8.8.8",
             "family": "ipv4",
             "protocol": "doh",
         },
