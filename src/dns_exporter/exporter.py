@@ -696,7 +696,6 @@ class DNSExporter(MetricsHandler):
             self.wfile.write(INDEX.encode("utf-8"))
             dnsexp_http_responses_total.labels(path="/", response_code=200).inc()
             logger.debug("Returning index page for request to /")
-            # self.close()
 
         # unknown endpoint
         else:
