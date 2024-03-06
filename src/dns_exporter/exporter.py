@@ -691,16 +691,20 @@ class DNSExporter(MetricsHandler):
         elif self.url.path == "/":
             # return a basic index page
             self.send_response(200)
+            self.send_header("content-length", str(len(INDEX.encode("utf-8"))))
             self.end_headers()
             self.wfile.write(INDEX.encode("utf-8"))
             dnsexp_http_responses_total.labels(path="/", response_code=200).inc()
             logger.debug("Returning index page for request to /")
+            # self.close()
 
         # unknown endpoint
         else:
             self.send_response(404)
+            msg = b"404 not found"
+            self.send_header("content-length", str(len(msg)))
             self.end_headers()
-            self.wfile.write(b"404 not found")
+            self.wfile.write(msg)
             dnsexp_http_responses_total.labels(
                 path=self.url.path,
                 response_code=404,
