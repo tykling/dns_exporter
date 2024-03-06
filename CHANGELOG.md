@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Add the ``monitor`` label in all examples, also the ones scraping internal metrics
-
+- Add more labels to the `dnsexp_scrape_failures_total` metric so it has all the same labels as `dnsexp_dns_query_time_seconds` in addition to the `reason` label.
 
 ## [v1.0.0-rc1] - 2024-03-06
 

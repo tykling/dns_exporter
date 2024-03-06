@@ -18,7 +18,7 @@ from dns_exporter.version import __version__
 ########################################################
 # scrape-specific metrics used by the DNSCollector (served under /query)
 
-# the labels used in the qtime and ttl metrics
+# the labels used in the qtime, ttl, and failure metrics
 QTIME_LABELS = [
     "server",
     "ip",
@@ -36,6 +36,14 @@ QTIME_LABELS = [
     "authority",
     "additional",
     "nsid",
+]
+
+# additional labels used in the per-RR TTL metrics
+TTL_LABELS = [
+    "rr_section",  # answer, authority or additional
+    "rr_name",
+    "rr_type",
+    "rr_value",
 ]
 
 FAILURE_REASONS = [
@@ -150,10 +158,7 @@ def get_dns_ttl_metric() -> GaugeMetricFamily:
         documentation="DNS response RR TTL in seconds.",
         labels=[
             *QTIME_LABELS,
-            "rr_section",  # answer, authority or additional
-            "rr_name",
-            "rr_type",
-            "rr_value",
+            *TTL_LABELS,
         ],
     )
 
@@ -267,14 +272,29 @@ received since start and how long the query took.
 dnsexp_scrape_failures_total = Counter(
     name="dnsexp_scrape_failures_total",
     documentation="The total number of scrapes failed by failure reason, protocol, server, and proxy (where applicable). This counter is increased every time the dns_exporter receives a scrape request which fails for some reason, including response validation logic.",  # noqa: E501
-    labelnames=["reason", "protocol", "server", "proxy"],
+    labelnames=["reason", *QTIME_LABELS],
 )
 """``dnsexp_scrape_failures_total`` is the Counter keeping track of how many scrape requests failed for some reason.
 
-This metric has four labels:
-    - ``reason`` is set to the failure reason.
-    - ``protocol`` is set to the protocol.
-    - ``server`` is set to the server URL.
-    - ``proxy`` is set to the proxy URL (or ``none``).
+This Counter has the following labels, they are the same as ``dns_exporter.metrics.dnsexp_dns_query_time_seconds``
+plus the ``reason`` label which has the failure reason.
 
+        - ``reason``
+        - ``server``
+        - ``ip``
+        - ``port``
+        - ``protocol``
+        - ``family``
+        - ``query_name``
+        - ``query_type``
+        - ``transport``
+        - ``opcode``
+        - ``rcode``
+        - ``flags``
+        - ``answer``
+        - ``authority``
+        - ``additional``
+        - ``nsid``
+
+The placeholder ``none`` is used for cases where there is no suitable value for the label.
 """

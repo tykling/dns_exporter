@@ -37,7 +37,7 @@ from prometheus_client import CollectorRegistry, MetricsHandler, exposition
 from dns_exporter.collector import DNSCollector, FailCollector
 from dns_exporter.config import Config, ConfigDict, RFValidator, RRValidator
 from dns_exporter.exceptions import ConfigError
-from dns_exporter.metrics import dnsexp_http_requests_total, dnsexp_http_responses_total
+from dns_exporter.metrics import QTIME_LABELS, dnsexp_http_requests_total, dnsexp_http_responses_total
 from dns_exporter.version import __version__
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -356,10 +356,10 @@ class DNSExporter(MetricsHandler):
             raise ConfigError("invalid_request_query_name")
 
     @staticmethod
-    def handle_failure(fail_registry: CollectorRegistry, failure: str) -> None:
+    def handle_failure(fail_registry: CollectorRegistry, failure: str, labels: dict[str, str]) -> None:
         """Handle various failure cases that can occur before the DNSCollector is called."""
         logger.debug(f"Initialising FailCollector to handle failure: {failure}")
-        fail_collector = FailCollector(failure_reason=failure)
+        fail_collector = FailCollector(failure_reason=failure, labels=labels)
         logger.debug("Registering FailCollector in dnsexp_registry")
         fail_registry.register(fail_collector)
 
@@ -585,11 +585,17 @@ class DNSExporter(MetricsHandler):
         dnsexp_registry = CollectorRegistry()
         self.fail_registry = CollectorRegistry()
 
+        # begin labels dict
+        self.labels: dict[str, str] = {}
+        for key in QTIME_LABELS:
+            # default all labels to the string "none"
+            self.labels[key] = "none"
+
         # build and validate configuration for this scrape from defaults, config file and request querystring
         try:
             self.build_final_config(qs=self.qs)
         except ConfigError as E:
-            self.handle_failure(self.fail_registry, str(E))
+            self.handle_failure(self.fail_registry, str(E), labels=self.labels)
             # something is wrong with the config, send error response and bail out
             self.send_metric_response(registry=self.fail_registry, query=self.qs)
             return
@@ -603,16 +609,18 @@ class DNSExporter(MetricsHandler):
             return
 
         # config is ready for action, begin the labels dict
-        labels: dict[str, str] = {
-            "server": str(self.config.server.geturl()),  # type: ignore[union-attr]
-            "ip": str(self.config.ip),
-            "port": str(self.config.server.port),  # type: ignore[union-attr]
-            "protocol": str(self.config.protocol),
-            "family": str(self.config.family),
-            "proxy": str(self.config.proxy.geturl()) if self.config.proxy else "none",
-            "query_name": str(self.config.query_name),
-            "query_type": str(self.config.query_type),
-        }
+        self.labels.update(
+            {
+                "server": str(self.config.server.geturl()),  # type: ignore[union-attr]
+                "ip": str(self.config.ip),
+                "port": str(self.config.server.port),  # type: ignore[union-attr]
+                "protocol": str(self.config.protocol),
+                "family": str(self.config.family),
+                "proxy": str(self.config.proxy.geturl()) if self.config.proxy else "none",
+                "query_name": str(self.config.query_name),
+                "query_type": str(self.config.query_type),
+            }
+        )
 
         # prepare query
         qname = dns.name.from_text(str(self.config.query_name))
@@ -662,7 +670,7 @@ class DNSExporter(MetricsHandler):
             q.flags |= dns.flags.RD
 
         # register the DNSCollector in dnsexp_registry
-        dns_collector = DNSCollector(config=self.config, query=q, labels=labels)
+        dns_collector = DNSCollector(config=self.config, query=q, labels=self.labels)
         dnsexp_registry.register(dns_collector)
         # send the response (which triggers the collect)
         logger.debug("Returning DNS query metrics")

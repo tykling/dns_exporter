@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import re
 import socket
@@ -26,6 +27,7 @@ from prometheus_client.registry import Collector
 from dns_exporter.exceptions import ProtocolSpecificError, UnknownFailureReasonError, ValidationError
 from dns_exporter.metrics import (
     FAILURE_REASONS,
+    TTL_LABELS,
     dnsexp_dns_queries_total,
     dnsexp_dns_responsetime_seconds,
     dnsexp_scrape_failures_total,
@@ -126,13 +128,13 @@ class DNSCollector(Collector):
         except dns.exception.Timeout:
             # configured timeout was reached before a response arrived
             reason = "timeout"
-            self.increase_failure_reason_metric(failure_reason=reason, config=self.config)
+            self.increase_failure_reason_metric(failure_reason=reason, labels=self.labels)
         except ConnectionRefusedError:
             # server actively refused the connection
             reason = "connection_error"
             self.increase_failure_reason_metric(
                 failure_reason=reason,
-                config=self.config,
+                labels=self.labels,
             )
         except OSError as e:
             # raised by multiple protocols on ICMP unreach
@@ -140,7 +142,7 @@ class DNSCollector(Collector):
             reason = "connection_error"
             self.increase_failure_reason_metric(
                 failure_reason=reason,
-                config=self.config,
+                labels=self.labels,
             )
         except ProtocolSpecificError as e:
             # a protocol specific exception was raised, log and re-raise
@@ -149,7 +151,7 @@ class DNSCollector(Collector):
                 exc_info=True,
             )
             reason = str(e)
-            self.increase_failure_reason_metric(failure_reason=reason, config=self.config)
+            self.increase_failure_reason_metric(failure_reason=reason, labels=self.labels)
         except Exception:  # noqa: BLE001
             logger.warning(
                 f"""Caught an unknown exception while looking up qname {self.config.query_name} using server
@@ -158,7 +160,7 @@ class DNSCollector(Collector):
                 exc_info=True,
             )
             reason = "other_failure"
-            self.increase_failure_reason_metric(failure_reason=reason, config=self.config)
+            self.increase_failure_reason_metric(failure_reason=reason, labels=self.labels)
 
         # clock it
         qtime = time.time() - start
@@ -213,11 +215,11 @@ class DNSCollector(Collector):
         logger.debug("Validating response and yielding remaining metrics")
         try:
             self.validate_response(response=response)
-            self.increase_failure_reason_metric(failure_reason="")
+            self.increase_failure_reason_metric(failure_reason="", labels=self.labels)
             yield get_dns_success_metric(1)
         except ValidationError as E:
             logger.exception(f"Validation failed: {E.args[1]}")
-            self.increase_failure_reason_metric(failure_reason=E.args[1], config=self.config)
+            self.increase_failure_reason_metric(failure_reason=E.args[1], labels=self.labels)
             yield get_dns_success_metric(0)
 
     def handle_response_options(self, response: Message) -> None:
@@ -630,24 +632,11 @@ class DNSCollector(Collector):
         self.validate_response_rrs(response=response)
 
     @staticmethod
-    def increase_failure_reason_metric(
-        failure_reason: str,
-        config: Config | None = None,
-    ) -> None:
+    def increase_failure_reason_metric(failure_reason: str, labels: dict[str, str]) -> None:
         """This method is used to maintain failure metrics.
 
         If an empty string is passed as failure_reason (meaning success) the failure counters will not be incremented.
         """
-        # get server and proxy (if any)
-        if config:
-            protocol = config.protocol
-            server = config.server.geturl() if config.server else "none"
-            proxy = config.proxy.geturl() if config.proxy else "none"
-        else:
-            protocol = "none"
-            server = "none"
-            proxy = "none"
-
         # was there a failure?
         if not failure_reason:
             return
@@ -657,17 +646,27 @@ class DNSCollector(Collector):
             # unknown failure_reason, this is a bug
             raise UnknownFailureReasonError(failure_reason)
 
+        # delete unwelcome labels
+        for key in TTL_LABELS:
+            with contextlib.suppress(KeyError):
+                del labels[key]
+
+        # build a dict with reason first and the rest of the labels after
+        labeldict = {"reason": failure_reason}
+        labeldict.update(labels)
+        logger.debug(labeldict)
         # increase the global failure counter
-        dnsexp_scrape_failures_total.labels(reason=failure_reason, protocol=protocol, server=server, proxy=proxy).inc()
+        dnsexp_scrape_failures_total.labels(**labeldict).inc()
         return
 
 
 class FailCollector(DNSCollector):
     """Custom collector class used to handle pre-DNSCollector failures, like configuration issues."""
 
-    def __init__(self, failure_reason: str) -> None:
+    def __init__(self, failure_reason: str, labels: dict[str, str]) -> None:
         """Save failure reason for use later."""
         self.reason = failure_reason
+        self.labels = labels
 
     def collect_dns(
         self,
@@ -677,4 +676,4 @@ class FailCollector(DNSCollector):
         yield get_dns_qtime_metric()
         yield get_dns_ttl_metric()
         yield get_dns_success_metric(value=0)
-        self.increase_failure_reason_metric(failure_reason=self.reason)
+        self.increase_failure_reason_metric(failure_reason=self.reason, labels=self.labels)

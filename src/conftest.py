@@ -6,6 +6,7 @@ from http.server import HTTPServer
 from pathlib import Path
 from threading import Thread
 
+import httpx
 import pytest
 import yaml
 from dns_exporter.entrypoint import main
@@ -214,4 +215,13 @@ def mock_dns_query_https_valuerror(mocker):
     mocker.patch(
         "dns.query.https",
         side_effect=ValueError("mocked"),
+    )
+
+
+@pytest.fixture()
+def mock_dns_query_httpx_connecttimeout(mocker):
+    """Monkeypatch dns.query.https to raise a httpx.ConnectTimeout."""
+    mocker.patch(
+        "dns.query.https",
+        side_effect=httpx.ConnectTimeout("mocked"),
     )

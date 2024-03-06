@@ -250,34 +250,33 @@ def test_internal_metrics(dns_exporter_example_config, caplog):
     assert f'dnsexp_build_version_info{{version="{__version__}"}} 1.0' in r.text
     assert "Returning exporter metrics for request to /metrics" in caplog.text
     for metric in """dnsexp_http_requests_total{path="/notfound"} 1.0
-dnsexp_http_requests_total{path="/query"} 76.0
+dnsexp_http_requests_total{path="/query"} 77.0
 dnsexp_http_requests_total{path="/config"} 2.0
 dnsexp_http_requests_total{path="/"} 1.0
 dnsexp_http_requests_total{path="/metrics"} 1.0
 dnsexp_http_responses_total{path="/notfound",response_code="404"} 1.0
-dnsexp_http_responses_total{path="/query",response_code="200"} 76.0
+dnsexp_http_responses_total{path="/query",response_code="200"} 77.0
 dnsexp_http_responses_total{path="/",response_code="200"} 1.0
-dnsexp_dns_queries_total 61.0
+dnsexp_dns_queries_total 62.0
 dnsexp_dns_responsetime_seconds_bucket{additional="0",answer="1",authority="0",family="ipv4",flags="QR RA RD",ip="8.8.4.4",le="2.0",nsid="no_nsid",opcode="QUERY",port="53",protocol="udp",proxy="none",query_name="example.com",query_type="A",rcode="NOERROR",server="udp://dns.google:53",transport="UDP"}
-dnsexp_scrape_failures_total{protocol="none",proxy="none",reason="invalid_request_server",server="none"} 2.0
-dnsexp_scrape_failures_total{protocol="udp",proxy="none",reason="invalid_response_answer_rrs",server="udp://l.root-servers.net:53"} 1.0
-dnsexp_scrape_failures_total{protocol="udp",proxy="none",reason="invalid_response_flags",server="udp://dns.google:53"} 5.0
-dnsexp_scrape_failures_total{protocol="none",proxy="none",reason="invalid_request_query_name",server="none"} 1.0
-dnsexp_scrape_failures_total{protocol="none",proxy="none",reason="invalid_request_ip",server="none"} 3.0
-dnsexp_scrape_failures_total{protocol="udp",proxy="none",reason="invalid_response_answer_rrs",server="udp://dns.google:53"} 3.0
-dnsexp_scrape_failures_total{protocol="doh",proxy="none",reason="other_failure",server="doh://dns.google:443/dns-query"} 1.0
-dnsexp_scrape_failures_total{protocol="udp",proxy="none",reason="invalid_response_additional_rrs",server="udp://k.root-servers.net:53"} 1.0
-dnsexp_scrape_failures_total{protocol="udp",proxy="none",reason="invalid_response_flags",server="udp://dns.quad9.net:53"} 1.0
-dnsexp_scrape_failures_total{protocol="none",proxy="none",reason="invalid_request_module",server="none"} 1.0
-dnsexp_scrape_failures_total{protocol="none",proxy="none",reason="invalid_request_config",server="none"} 4.0
-dnsexp_scrape_failures_total{protocol="udp",proxy="none",reason="invalid_response_rcode",server="udp://dns.google:53"} 1.0
-dnsexp_scrape_failures_total{protocol="none",proxy="none",reason="invalid_request_family",server="none"} 1.0
-dnsexp_scrape_failures_total{protocol="none",proxy="none",reason="invalid_request_proxy",server="none"} 2.0
-dnsexp_scrape_failures_total{protocol="doh",proxy="none",reason="invalid_request_config",server="doh://91.239.100.100:443/dns-query"} 1.0
-dnsexp_scrape_failures_total{protocol="doh",proxy="none",reason="certificate_error",server="doh://91.239.100.100:443/dns-query"} 2.0
-dnsexp_scrape_failures_total{protocol="dot",proxy="none",reason="invalid_request_config",server="dot://91.239.100.100:853"} 1.0
-dnsexp_scrape_failures_total{protocol="dot",proxy="none",reason="certificate_error",server="dot://91.239.100.100:853"} 2.0
-""".split("\n"):
+dnsexp_scrape_failures_total{additional="none",answer="none",authority="none",family="none",flags="none",ip="none",nsid="none",opcode="none",port="none",protocol="none",proxy="none",query_name="none",query_type="none",rcode="none",reason="invalid_request_config",server="none",transport="none"} 4.0
+dnsexp_scrape_failures_total{additional="none",answer="none",authority="none",family="none",flags="none",ip="none",nsid="none",opcode="none",port="none",protocol="none",proxy="none",query_name="none",query_type="none",rcode="none",reason="invalid_request_server",server="none",transport="none"} 2.0
+dnsexp_scrape_failures_total{additional="none",answer="none",authority="none",family="ipv6",flags="none",ip="192.0.2.42",nsid="none",opcode="none",port="420",protocol="udp",proxy="none",query_name="example.org",query_type="A",rcode="none",reason="timeout",server="udp://192.0.2.42:420",transport="none"} 2.0
+dnsexp_scrape_failures_total{additional="none",answer="none",authority="none",family="none",flags="none",ip="none",nsid="none",opcode="none",port="none",protocol="none",proxy="none",query_name="none",query_type="none",rcode="none",reason="invalid_request_query_name",server="none",transport="none"} 1.0
+dnsexp_scrape_failures_total{additional="none",answer="none",authority="none",family="none",flags="none",ip="none",nsid="none",opcode="none",port="none",protocol="none",proxy="none",query_name="none",query_type="none",rcode="none",reason="invalid_request_ip",server="none",transport="none"} 3.0
+dnsexp_scrape_failures_total{additional="none",answer="none",authority="none",family="ipv4",flags="none",ip="8.8.8.8",nsid="none",opcode="none",port="443",protocol="doh",proxy="none",query_name="example.com",query_type="A",rcode="none",reason="invalid_response_statuscode",server="doh://dns.google:443/dns-query",transport="none"} 1.0
+dnsexp_scrape_failures_total{additional="none",answer="none",authority="none",family="none",flags="none",ip="none",nsid="none",opcode="none",port="none",protocol="none",proxy="none",query_name="none",query_type="none",rcode="none",reason="invalid_request_module",server="none",transport="none"} 1.0
+dnsexp_scrape_failures_total{additional="none",answer="none",authority="none",family="ipv6",flags="none",ip="192.0.2.42",nsid="none",opcode="none",port="420",protocol="udptcp",proxy="none",query_name="example.org",query_type="A",rcode="none",reason="timeout",server="udptcp://192.0.2.42:420",transport="none"} 2.0
+dnsexp_scrape_failures_total{additional="none",answer="none",authority="none",family="ipv6",flags="none",ip="192.0.2.42",nsid="none",opcode="none",port="420",protocol="tcp",proxy="none",query_name="example.org",query_type="A",rcode="none",reason="timeout",server="tcp://192.0.2.42:420",transport="none"} 2.0
+dnsexp_scrape_failures_total{additional="none",answer="none",authority="none",family="none",flags="none",ip="none",nsid="none",opcode="none",port="none",protocol="none",proxy="none",query_name="none",query_type="none",rcode="none",reason="invalid_request_family",server="none",transport="none"} 1.0
+dnsexp_scrape_failures_total{additional="none",answer="none",authority="none",family="ipv4",flags="none",ip="8.8.8.8",nsid="none",opcode="none",port="443",protocol="doh",proxy="none",query_name="example.com",query_type="A",rcode="none",reason="other_failure",server="doh://dns.google:443/dns-query",transport="none"} 1.0
+dnsexp_scrape_failures_total{additional="none",answer="none",authority="none",family="ipv4",flags="none",ip="91.239.100.100",nsid="none",opcode="none",port="853",protocol="dot",proxy="none",query_name="example.com",query_type="A",rcode="none",reason="certificate_error",server="dot://91.239.100.100:853",transport="none"} 2.0
+dnsexp_scrape_failures_total{additional="none",answer="none",authority="none",family="ipv4",flags="none",ip="91.239.100.100",nsid="none",opcode="none",port="443",protocol="doh",proxy="none",query_name="example.com",query_type="A",rcode="none",reason="invalid_request_config",server="doh://91.239.100.100:443/dns-query",transport="none"} 1.0
+dnsexp_scrape_failures_total{additional="none",answer="none",authority="none",family="ipv4",flags="none",ip="91.239.100.100",nsid="none",opcode="none",port="443",protocol="doh",proxy="none",query_name="example.com",query_type="A",rcode="none",reason="certificate_error",server="doh://91.239.100.100:443/dns-query",transport="none"} 2.0
+dnsexp_scrape_failures_total{additional="none",answer="none",authority="none",family="ipv4",flags="none",ip="91.239.100.100",nsid="none",opcode="none",port="853",protocol="dot",proxy="none",query_name="example.com",query_type="A",rcode="none",reason="invalid_request_config",server="dot://91.239.100.100:853",transport="none"} 1.0
+dnsexp_scrape_failures_total{additional="none",answer="none",authority="none",family="none",flags="none",ip="none",nsid="none",opcode="none",port="none",protocol="none",proxy="none",query_name="none",query_type="none",rcode="none",reason="invalid_request_proxy",server="none",transport="none"} 2.0""".split(
+        "\n"
+    ):
         assert metric in r.text, f"expected metrics not found: {r.text}"
 
 
@@ -869,6 +868,23 @@ def test_doh_bad_statuscode(dns_exporter_example_config, mock_dns_query_https_va
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
     assert "failure reason is 'invalid_response_statuscode'" in caplog.text
+
+
+def test_doh_timeout(dns_exporter_example_config, mock_dns_query_httpx_connecttimeout, caplog):
+    """Test DoH fail with a timeout."""
+    caplog.clear()
+    caplog.set_level(logging.DEBUG)
+    r = requests.get(
+        "http://127.0.0.1:25353/query",
+        params={
+            "server": "dns.google",
+            "query_name": "example.com",
+            "protocol": "doh",
+            "family": "ipv4",
+        },
+    )
+    assert "dnsexp_dns_query_success 0.0" in r.text
+    assert "failure reason is 'timeout'" in caplog.text
 
 
 def test_nsid(dns_exporter_example_config, caplog):
