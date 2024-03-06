@@ -7,7 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-- No changes yet
+### Changed
+- Remove wrong buckets on response time Histogram, replace with default buckets
 
 
 ## [v1.0.0-rc3] - 2024-03-06
@@ -17,7 +18,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Add more labels to the `dnsexp_scrape_failures_total` metric so it has all the same labels as `dnsexp_dns_query_time_seconds` in addition to the `reason` label.
-- Remove wrong buckets on response time Histogram, replace with default buckets
 
 
 ## [v1.0.0-rc2] - 2024-03-06
