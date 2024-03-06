@@ -861,6 +861,7 @@ def test_doh_bad_statuscode(dns_exporter_example_config, mock_dns_query_https_va
         "http://127.0.0.1:25353/query",
         params={
             "server": "dns.google",
+            "ip": "8.8.8.8",
             "query_name": "example.com",
             "protocol": "doh",
             "family": "ipv4",
