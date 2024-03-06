@@ -73,6 +73,7 @@ class DNSExporter(MetricsHandler):
     """
 
     __version__ = __version__
+    protocol_version = "HTTP/1.1"
 
     # the modules key is populated by configure() before the class is initialised
     modules: dict[str, Config] | None = None
@@ -691,7 +692,7 @@ class DNSExporter(MetricsHandler):
         elif self.url.path == "/":
             # return a basic index page
             self.send_response(200)
-            self.send_header("content-length", str(len(INDEX.encode("utf-8"))))
+            self.send_header("Content-Length", str(len(INDEX.encode("utf-8"))))
             self.end_headers()
             self.wfile.write(INDEX.encode("utf-8"))
             dnsexp_http_responses_total.labels(path="/", response_code=200).inc()
@@ -701,7 +702,7 @@ class DNSExporter(MetricsHandler):
         else:
             self.send_response(404)
             msg = b"404 not found"
-            self.send_header("content-length", str(len(msg)))
+            self.send_header("Content-Length", str(len(msg)))
             self.end_headers()
             self.wfile.write(msg)
             dnsexp_http_responses_total.labels(
@@ -724,7 +725,7 @@ class DNSExporter(MetricsHandler):
             params=query,
             disable_compression=False,
         )
-
+        headers.append(("Content-Length", str(len(output))))
         # Return output
         self.send_response(int(status.split(" ")[0]))
         for header in headers:
