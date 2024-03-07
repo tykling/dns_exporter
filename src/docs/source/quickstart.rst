@@ -76,6 +76,14 @@ This configuration will scrape the ``dns_exporter`` instance running at ``dnsexp
 
 .. Note:: The ``monitor`` label in the Prometheus ``relabel_configs`` is included to be able to tell multiple instances of ``dns_exporter`` apart. It is used in the official Grafana dashboards for ``dns_exporter``.
 
+
+Grafana Dashboard
+-----------------
+There is a `Grafana dashboard <https://grafana.com/grafana/dashboards/20617-dns-exporter/>`_ you can use as a starting point for your own dashboards.
+
+.. Note:: This Grafana dashboard requires use of the ``monitor`` label shown in the Prometheus ``relabel_configs`` examples. If your SD has some other way of discerning multiple exporters you will need to change the dashboard to match your requirements.
+
+
 Further Reading
 ---------------
 ``dns_exporter`` combined with ``relabel_configs`` is flexible. Read more about the available settings in :doc:`configuration` or go to the :doc:`examples` to learn more.
