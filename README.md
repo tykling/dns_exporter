@@ -27,6 +27,8 @@ There is also a Docker image so you can get your container on:
 # Documentation
 The documentation is available on [ReadTheDocs](https://dns-exporter.readthedocs.io/latest/)
 
+# Grafana Dashboard
+There is a [Grafana dashboard](https://grafana.com/grafana/dashboards/20617-dns-exporter/) you can use as a starting point for your own dashboards.
 
 # Fancy Repo Activity Graphics
 ![Alt](https://repobeats.axiom.co/api/embed/3c531c8db07c5982061d4c6e800238c7ddf8ab59.svg "Repobeats analytics image")
