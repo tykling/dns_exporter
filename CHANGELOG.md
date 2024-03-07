@@ -5,6 +5,13 @@ All notable changes to `dns_exporter` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.0.0] - 2024-03-07
+
+1.0.0 represents the first stable release of `dns_exporter`. Future changes (especially concerning metrics naming and labels) will follow semver rules regarding versioning. The goal is to never introduce dashboard breaking changes to metrics without bumping the major version.
+
+The details about all the changes through the pre-releases are included below, but are probably only interesting if you have been using a pre-1.0 version. If you have existing dashboards with pre-1.0 data you will need to create new, seperate dashboards for 1.0 because the metrics have changed so much. You can use https://grafana.com/grafana/dashboards/20617-dns-exporter/ as a starting point for your own dashboards.
+
+
 ## [v1.0.0-rc4] - 2024-03-06
 
 ### Changed
