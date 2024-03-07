@@ -5,6 +5,11 @@ All notable changes to `dns_exporter` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+- No changes yet
+
+
 ## [v1.0.0] - 2024-03-07
 
 1.0.0 represents the first stable release of `dns_exporter`. Future changes (especially concerning metrics naming and labels) will follow semver rules regarding versioning. The goal is to never introduce dashboard breaking changes to metrics without bumping the major version.
