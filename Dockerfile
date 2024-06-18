@@ -1,12 +1,13 @@
-#syntax=docker/dockerfile:1.6.0
-FROM python:3.12.2-alpine3.19 AS builder
+#syntax=docker/dockerfile:1.8.1
+FROM python:3.12.4-alpine3.20 AS builder
 # install dependenciess for building package
-RUN apk add -U --purge --clean-protected -l -u --no-cache \
-    alpine-sdk \
-    cargo \
-    libbsd-dev \
-    libffi-dev \
-    openssl-dev
+RUN apk update
+RUN apk add \
+        alpine-sdk \
+        cargo \
+        libbsd-dev \
+        libffi-dev \
+        openssl-dev
 # add nonroot group
 RUN addgroup -g 65532 -S nonroot
 # add nonroot user
@@ -31,7 +32,7 @@ COPY --from=builder /home/nonroot/.local /home/nonroot/.local
 # copy example config
 COPY --from=builder /home/nonroot/src/dns_exporter/dns_exporter_example.yml /home/nonroot/dns_exporter.yml
 
-FROM python:3.12.2-alpine3.19 AS runtime
+FROM python:3.12.4-alpine3.20 AS runtime
 # add nonroot group
 RUN addgroup -g 65532 -S nonroot && \
     # add nonroot user
