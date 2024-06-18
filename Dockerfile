@@ -33,8 +33,11 @@ COPY --from=builder /home/nonroot/.local /home/nonroot/.local
 COPY --from=builder /home/nonroot/src/dns_exporter/dns_exporter_example.yml /home/nonroot/dns_exporter.yml
 
 FROM python:3.12.4-alpine3.20 AS runtime
-# add nonroot group
-RUN addgroup -g 65532 -S nonroot && \
+RUN \
+    # upgrade alpine packages to reduce cve
+    apk upgrade -U -a -l --no-cache && \
+    # add nonroot group
+    addgroup -g 65532 -S nonroot && \
     # add nonroot user
     adduser -S -D -g "" -G nonroot -u 65532 nonroot && \
     # additional cleanup
