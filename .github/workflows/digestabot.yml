@@ -1,0 +1,27 @@
+---
+name: Docker image digests update
+
+on:  # yamllint disable-line rule:truthy
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * *"
+
+jobs:
+  image-update:
+    name: Docker image digests update
+    runs-on: ubuntu-24.04
+
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871
+
+      - name: Update Docker image digests
+        uses: chainguard-dev/digestabot@02ea60d2aeb26664ace4a9cc2ecdbea96888aaa4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+...
