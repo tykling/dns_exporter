@@ -1,43 +1,36 @@
-#syntax=docker/dockerfile:1.6.0
-FROM python:3.12.2-alpine3.19 AS builder
+#syntax=docker/dockerfile:1
+FROM python:3.12-alpine@sha256:e75de178bc15e72f3f16bf75a6b484e33d39a456f03fc771a2b3abb9146b75f8 AS builder
 # install dependenciess for building package
-RUN apk add -U --purge --clean-protected -l -u --no-cache \
-    alpine-sdk \
-    cargo \
-    libbsd-dev \
-    libffi-dev \
-    openssl-dev
-# add nonroot group
-RUN addgroup -g 65532 -S nonroot
-# add nonroot user
-RUN adduser -S -D -g "" -G nonroot -u 65532 nonroot
-# switch to nonroot for package build
-USER nonroot
-# set workdir
-WORKDIR /home/nonroot
+RUN \
+apk add -U --purge --clean-protected -l -u --no-cache \
+  alpine-sdk \
+  cargo \
+  libbsd-dev \
+  libffi-dev \
+  openssl-dev
 # copy source
-COPY --chown=nonroot:nonroot . .
+COPY / /src
 # install dns_exporter
-RUN pip install .
-# switch back to root for initial cleanup
-USER root
+RUN pip install --user /src
 # cleanup
 RUN find / | grep -E "(\/.cache$|\/__pycache__$|\.pyc$|\.pyo$)" | xargs rm -rf
 
 # create tmp container for copying files
 FROM scratch AS tmp
 # copy dns_exporter and dependencies
-COPY --from=builder /home/nonroot/.local /home/nonroot/.local
+COPY --from=builder /root/.local /home/nonroot/.local
 # copy example config
-COPY --from=builder /home/nonroot/src/dns_exporter/dns_exporter_example.yml /home/nonroot/dns_exporter.yml
+COPY --from=builder /src/src/dns_exporter/dns_exporter_example.yml /home/nonroot/dns_exporter.yml
 
-FROM python:3.12.2-alpine3.19 AS runtime
+FROM python:3.12-alpine@sha256:e75de178bc15e72f3f16bf75a6b484e33d39a456f03fc771a2b3abb9146b75f8 AS runtime
+RUN <<EOF
 # add nonroot group
-RUN addgroup -g 65532 -S nonroot && \
-    # add nonroot user
-    adduser -S -D -g "" -G nonroot -u 65532 nonroot && \
-    # additional cleanup
-    find / | grep -E "(\/.cache$|\/__pycache__$|\.pyc$|\.pyo$)" | xargs rm -rf
+addgroup -g 65532 -S nonroot
+# add nonroot user
+adduser -S -D -g "" -G nonroot -u 65532 nonroot
+# additional cleanup
+find / | grep -E "(\/.cache$|\/__pycache__$|\.pyc$|\.pyo$)" | xargs rm -rf
+EOF
 # expose dns_exporter default port
 EXPOSE 15353
 # copy dns_exporter
