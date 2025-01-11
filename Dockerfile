@@ -1,5 +1,5 @@
 #syntax=docker/dockerfile:1
-FROM python:3.12-alpine@sha256:38e179a0f0436c97ecc76bcd378d7293ab3ee79e4b8c440fdc7113670cb6e204 AS builder
+FROM python:3.12-alpine@sha256:54bec49592c8455de8d5983d984efff76b6417a6af9b5dcc8d0237bf6ad3bd20 AS builder
 # install dependenciess for building package
 RUN apk add -U -l -u gcc git libbsd-dev musl-dev openssl-dev
 # install dns_exporter
@@ -7,7 +7,7 @@ RUN --mount=type=bind,readwrite,source=/,target=/src pip install --user /src
 # cleanup
 RUN find / | grep -E "(\/.cache$|\/__pycache__$|\.pyc$|\.pyo$)" | xargs rm -rf
 
-FROM python:3.12-alpine@sha256:38e179a0f0436c97ecc76bcd378d7293ab3ee79e4b8c440fdc7113670cb6e204 AS runtime
+FROM python:3.12-alpine@sha256:54bec49592c8455de8d5983d984efff76b6417a6af9b5dcc8d0237bf6ad3bd20 AS runtime
 RUN \
 --mount=type=bind,from=builder,source=/root/.local,target=/tmp/.local \
 --mount=type=bind,source=/src/dns_exporter/dns_exporter_example.yml,target=/tmp/dns_exporter.yml \
