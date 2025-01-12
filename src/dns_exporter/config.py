@@ -35,6 +35,7 @@ valid_protocols = [
     "udptcp",
     "dot",
     "doh",
+    "doh3",
     "doq",
 ]
 

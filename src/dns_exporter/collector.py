@@ -348,8 +348,21 @@ class DNSCollector(Collector):
                 timeout=timeout,
                 server=server,
                 verify=verify,
+                http_version=dns.query.HTTPVersion.HTTP_2,
             )
             transport = "TCP"
+
+        elif protocol == "doh3":
+            r = self.get_dns_response_doh(
+                query=query,
+                ip=str(ip),
+                port=port,
+                timeout=timeout,
+                server=server,
+                verify=verify,
+                http_version=dns.query.HTTPVersion.HTTP_3,
+            )
+            transport = "QUIC"
 
         elif protocol == "doq":
             r = self.get_dns_response_doq(
@@ -436,6 +449,7 @@ class DNSCollector(Collector):
                 timeout=timeout,
                 verify=verify,
                 one_rr_per_rrset=True,
+                http_version=http_version,
             )
         except httpx.ConnectError as e:
             # raised by doh on both certificate errors and other connection issues

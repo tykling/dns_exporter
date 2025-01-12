@@ -12,7 +12,7 @@
 
 `dns_exporter` works similar to the [Blackbox exporter](https://github.com/prometheus/blackbox_exporter) where Prometheus asks the exporter to scrape the target, rather than the exporter itself being the target. This is called the [Multi Target Exporter Pattern](https://prometheus.io/docs/guides/multi-target-exporter/). It is typically used in black-box style exporters where 1) the thing you are monitoring is not under your control, or 2) you want to measure the path as well. Often when monitoring DNS both 1) and 2) are relevant.
 
-This means that for each scrape Prometheus speaks HTTP to the `dns_exporter` which then speaks DNS with the target DNS server and returns the resulting metrics over HTTP to Prometheus. `dns_exporter` supports doing DNS queries over plain port 53 `UDP` and `TCP`, as well as `DoT`, `DoH` and `DoQ`.
+This means that for each scrape Prometheus speaks HTTP to the `dns_exporter` which then speaks DNS with the target DNS server and returns the resulting metrics over HTTP to Prometheus. `dns_exporter` supports doing DNS queries over plain port 53 `UDP` and `TCP`, as well as `DoT`, `DoH`, `DoH3`, and `DoQ`.
 
 # Installation
 `dns_exporter` is not yet in any OS package managers but installing `dns_exporter` can be done from pypi. This is the recommended way to install for now:

@@ -463,7 +463,7 @@ class DNSExporter(MetricsHandler):
           - a https:// url with a hostname and no port
           - a https:// url with a hostname:port
 
-        In the DoH https:// cases the url can be with or without a path.
+        In the DoH/DoH3 https:// cases the url can be with or without a path.
 
         Parse it with urllib.parse.urlsplit, add explicit port if needed, and return the result.
         """
@@ -474,7 +474,7 @@ class DNSExporter(MetricsHandler):
         splitresult = urllib.parse.urlsplit(server)
         # make sure scheme is the dns_exporter internal protocol identifier (not https://)
         splitresult = splitresult._replace(scheme=protocol)
-        if protocol == "doh" and not splitresult.path:
+        if protocol in ["doh", "doh3"] and not splitresult.path:
             # use the default DoH path
             splitresult = splitresult._replace(path="/dns-query")
         # is there an explicit port in the configured server url? use default if not.
@@ -486,7 +486,7 @@ class DNSExporter(MetricsHandler):
                 # DoT and DoQ
                 port = 853
             else:
-                # DoH
+                # DoH or DoH3
                 port = 443
             logger.debug(
                 f"No explicit port in configured server, using default for protocol {protocol}: {port}",

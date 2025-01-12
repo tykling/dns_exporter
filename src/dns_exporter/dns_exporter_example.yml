@@ -83,6 +83,10 @@ modules:  # this is the only key currently read from the config
     <<: *template_v4_2s
     protocol: "doh"
 
+  doh3:
+    <<: *template_v4_2s
+    protocol: "doh3"
+
   doq:
     <<: *template_v4_2s
     protocol: "doq"
