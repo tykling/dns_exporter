@@ -1,4 +1,4 @@
-"""dns_exporter tests for the exporter module."""
+"""dnsexporter tests for the exporter module."""
 import logging
 
 import pytest
@@ -270,14 +270,12 @@ dnsexp_scrape_failures_total{additional="none",answer="none",authority="none",fa
 dnsexp_scrape_failures_total{additional="none",answer="none",authority="none",family="ipv6",flags="none",ip="192.0.2.42",nsid="none",opcode="none",port="420",protocol="tcp",proxy="none",query_name="example.org",query_type="A",rcode="none",reason="timeout",server="tcp://192.0.2.42:420",transport="none"} 2.0
 dnsexp_scrape_failures_total{additional="none",answer="none",authority="none",family="none",flags="none",ip="none",nsid="none",opcode="none",port="none",protocol="none",proxy="none",query_name="none",query_type="none",rcode="none",reason="invalid_request_family",server="none",transport="none"} 1.0
 dnsexp_scrape_failures_total{additional="none",answer="none",authority="none",family="ipv4",flags="none",ip="8.8.8.8",nsid="none",opcode="none",port="443",protocol="doh",proxy="none",query_name="example.com",query_type="A",rcode="none",reason="other_failure",server="doh://dns.google:443/dns-query",transport="none"} 1.0
-dnsexp_scrape_failures_total{additional="none",answer="none",authority="none",family="ipv4",flags="none",ip="91.239.100.100",nsid="none",opcode="none",port="853",protocol="dot",proxy="none",query_name="example.com",query_type="A",rcode="none",reason="certificate_error",server="dot://91.239.100.100:853",transport="none"} 2.0
-dnsexp_scrape_failures_total{additional="none",answer="none",authority="none",family="ipv4",flags="none",ip="91.239.100.100",nsid="none",opcode="none",port="443",protocol="doh",proxy="none",query_name="example.com",query_type="A",rcode="none",reason="invalid_request_config",server="doh://91.239.100.100:443/dns-query",transport="none"} 1.0
-dnsexp_scrape_failures_total{additional="none",answer="none",authority="none",family="ipv4",flags="none",ip="91.239.100.100",nsid="none",opcode="none",port="443",protocol="doh",proxy="none",query_name="example.com",query_type="A",rcode="none",reason="certificate_error",server="doh://91.239.100.100:443/dns-query",transport="none"} 2.0
-dnsexp_scrape_failures_total{additional="none",answer="none",authority="none",family="ipv4",flags="none",ip="91.239.100.100",nsid="none",opcode="none",port="853",protocol="dot",proxy="none",query_name="example.com",query_type="A",rcode="none",reason="invalid_request_config",server="dot://91.239.100.100:853",transport="none"} 1.0
+dnsexp_scrape_failures_total{additional="none",answer="none",authority="none",family="ipv4",flags="none",ip="91.239.100.100",nsid="none",opcode="none",port="853",protocol="dot",proxy="none",query_name="example.com",query_type="A",rcode="none",reason="certificate_error",server="dot://91.239.100.100:853",transport="none"} 3.0
+dnsexp_scrape_failures_total{additional="none",answer="none",authority="none",family="ipv4",flags="none",ip="91.239.100.100",nsid="none",opcode="none",port="443",protocol="doh",proxy="none",query_name="example.com",query_type="A",rcode="none",reason="certificate_error",server="doh://91.239.100.100:443/dns-query",transport="none"} 3.0
 dnsexp_scrape_failures_total{additional="none",answer="none",authority="none",family="none",flags="none",ip="none",nsid="none",opcode="none",port="none",protocol="none",proxy="none",query_name="none",query_type="none",rcode="none",reason="invalid_request_proxy",server="none",transport="none"} 2.0""".split(
         "\n"
     ):
-        assert metric in r.text, f"expected metrics not found: {r.text}"
+        assert metric in r.text, f"expected metric {metric} not found in: {r.text}"
 
 
 def test_index(dns_exporter_example_config, caplog):

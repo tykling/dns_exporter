@@ -286,10 +286,10 @@ class DNSCollector(Collector):
         proxy = self.config.proxy.geturl() if self.config.proxy else "is not active"
 
         # verify certificate?
-        verify: bool | str
+        verify: bool | ssl.SSLContext
         if self.config.verify_certificate_path and self.config.verify_certificate:
             # verify with custom CA path
-            verify = self.config.verify_certificate_path
+            verify = ssl.create_default_context(capath=self.config.verify_certificate_path, cafile=None, cadata=None)
         elif self.config.verify_certificate:
             # verify with default system CA
             verify = True
@@ -409,7 +409,13 @@ class DNSCollector(Collector):
         return r, "TCP" if tcp else "UDP"
 
     def get_dns_response_dot(  # noqa: PLR0913
-        self, query: Message, ip: str, port: int, timeout: float, server: urllib.parse.SplitResult, verify: str | bool
+        self,
+        query: Message,
+        ip: str,
+        port: int,
+        timeout: float,
+        server: urllib.parse.SplitResult,
+        verify: ssl.SSLContext | bool,
     ) -> Message | None:
         """Perform a DNS query with the dot protocol and catch protocol specific exceptions."""
         try:
@@ -420,7 +426,8 @@ class DNSCollector(Collector):
                 port=port,
                 server_hostname=server.hostname if verify else None,
                 timeout=timeout,
-                verify=verify,
+                # https://github.com/rthalley/dnspython/issues/1172
+                verify=verify,  # type: ignore[arg-type]
                 one_rr_per_rrset=True,
             )
         except ssl.SSLCertVerificationError as e:
@@ -435,7 +442,14 @@ class DNSCollector(Collector):
             raise ProtocolSpecificError("invalid_request_config") from e
 
     def get_dns_response_doh(  # noqa: PLR0913
-        self, query: Message, ip: str, port: int, timeout: float, server: urllib.parse.SplitResult, verify: str | bool
+        self,
+        query: Message,
+        ip: str,
+        port: int,
+        http_version: dns.query.HTTPVersion,
+        timeout: float,
+        server: urllib.parse.SplitResult,
+        verify: ssl.SSLContext | bool,
     ) -> Message | None:
         """Perform a DNS query with the doh protocol and catch protocol specific exceptions."""
         try:
@@ -447,7 +461,8 @@ class DNSCollector(Collector):
                 bootstrap_address=ip,
                 port=port,
                 timeout=timeout,
-                verify=verify,
+                # https://github.com/rthalley/dnspython/issues/1172
+                verify=verify,  # type: ignore[arg-type]
                 one_rr_per_rrset=True,
                 http_version=http_version,
             )
@@ -473,7 +488,13 @@ class DNSCollector(Collector):
             raise ProtocolSpecificError("invalid_response_statuscode") from e
 
     def get_dns_response_doq(  # noqa: PLR0913
-        self, query: Message, ip: str, port: int, timeout: float, server: urllib.parse.SplitResult, verify: str | bool
+        self,
+        query: Message,
+        ip: str,
+        port: int,
+        timeout: float,
+        server: urllib.parse.SplitResult,
+        verify: ssl.SSLContext | bool,
     ) -> Message | None:
         """Perform a DNS query with the doh protocol and catch protocol specific exceptions."""
         try:
@@ -484,7 +505,8 @@ class DNSCollector(Collector):
                 port=port,
                 server_hostname=server.hostname,
                 timeout=timeout,
-                verify=verify,
+                # https://github.com/rthalley/dnspython/issues/1172
+                verify=verify,  # type: ignore[arg-type]
                 one_rr_per_rrset=True,
             )
         except dns.quic._common.UnexpectedEOF as e:  # noqa: SLF001

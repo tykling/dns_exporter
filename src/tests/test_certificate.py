@@ -188,7 +188,7 @@ def test_cert_verify_invalid_path_doh(dns_exporter_example_config, caplog):
             "verify_certificate_path": "/nonexistant",
         },
     )
-    assert "Protocol doh raised exception, returning failure reason invalid_request_config" in caplog.text
+    assert "failure reason is 'certificate_error'" in caplog.text
     assert "dnsexp_dns_query_success 0.0" in r.text
 
 
@@ -206,7 +206,7 @@ def test_cert_verify_invalid_path_dot(dns_exporter_example_config, caplog):
             "verify_certificate_path": "/nonexistant",
         },
     )
-    assert "Protocol dot raised ValueError, is verify_certificate_path wrong" in caplog.text
+    assert "failure reason is 'certificate_error'" in caplog.text
     assert "dnsexp_dns_query_success 0.0" in r.text
 
 
