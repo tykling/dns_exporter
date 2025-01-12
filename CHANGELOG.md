@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Bump dnspython dependency minimum version to 2.7.0
 
+### Fixed
+- Docs url in package metadata (used for example in PyPi sidebar). Issue #11
+
 
 ## [v1.0.0] - 2024-03-07
 

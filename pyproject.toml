@@ -36,7 +36,7 @@ docs = ["Sphinx==8.1.3", "furo==2024.8.6"]
 
 [project.urls]
 homepage = "https://github.com/tykling/dns_exporter"
-documentation = "https://dnsexporter.readthedocs.org/"
+documentation = "https://dns-exporter.readthedocs.org/"
 
 [tool.setuptools_scm]
 write_to = "src/dns_exporter/_version.py"
