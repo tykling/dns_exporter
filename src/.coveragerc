@@ -1,7 +1,0 @@
-[run]
-omit =
-    tests/*
-    conftest.py
-
-[html]
-show_contexts = True
