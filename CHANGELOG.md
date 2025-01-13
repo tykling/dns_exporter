@@ -12,9 +12,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Bump dnspython dependency minimum version to 2.7.0
+- Pass custom CA path as ssl.SSLContext for DoH2 requests to silence httpx DeprecationWarning
+- Refactor verify logic into new seperate methods `get_tls_context()` and `get_tls_verify()`
+- Verify that the configured `verify_certificate_path` exists in the filesystem, raise ConfigError if not.
+- Improve certificate related unit tests (parametrize and add more tests)
+- Move `test_internal_metrics()` test to seperate file, write metrics to temp file to ease debugging when the test breaks (which happens often).
 
 ### Fixed
-- Docs url in package metadata (used for example in PyPi sidebar). Issue #11
+- Docs url in package metadata (used for example in PyPi sidebar). Issue #11.
+- Make unit tests, mypy and linters happy after DoH3 addition.
 
 
 ## [v1.0.0] - 2024-03-07

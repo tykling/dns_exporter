@@ -1,5 +1,4 @@
 """``dns_exporter.collector`` contains the DNSCollector class used by the DNSExporter during scrapes."""
-
 from __future__ import annotations
 
 import contextlib
@@ -8,6 +7,7 @@ import re
 import socket
 import ssl
 import time
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import dns.edns
@@ -264,6 +264,34 @@ class DNSCollector(Collector):
         logger.debug("yielding ttl metrics")
         yield ttl
 
+    def get_tls_context(self) -> ssl.SSLContext | bool:
+        """Return a bool or ssl.SSLContext instance. Used by DoH2 (httpx)."""
+        # is there a custom verify_certificate_path?
+        if self.config.verify_certificate_path and self.config.verify_certificate:
+            # verify with custom ca path, determine dir or file
+            certpath = Path(self.config.verify_certificate_path)
+            if certpath.is_dir():
+                return ssl.create_default_context(capath=str(certpath), cafile=None, cadata=None)
+            if certpath.is_file():
+                return ssl.create_default_context(capath=None, cafile=str(certpath), cadata=None)
+            # verify_certificate_path is neither dir or file, do not return a context
+        # do cert verification?
+        if self.config.verify_certificate:
+            # verify with default system CA
+            return True
+        # do not verify
+        return False
+
+    def get_tls_verify(self) -> bool | str:
+        """Return a bool or str for TLS verify args. Used by DoT, DoQ, DoH3."""
+        if self.config.verify_certificate_path and self.config.verify_certificate:
+            return self.config.verify_certificate_path
+        if self.config.verify_certificate:
+            # verify with default system CA
+            return True
+        # do not verify
+        return False
+
     def get_dns_response(  # noqa: PLR0913
         self,
         protocol: str,
@@ -285,17 +313,6 @@ class DNSCollector(Collector):
         # get proxy string for logging
         proxy = self.config.proxy.geturl() if self.config.proxy else "is not active"
 
-        # verify certificate?
-        verify: bool | ssl.SSLContext
-        if self.config.verify_certificate_path and self.config.verify_certificate:
-            # verify with custom CA path
-            verify = ssl.create_default_context(capath=self.config.verify_certificate_path, cafile=None, cadata=None)
-        elif self.config.verify_certificate:
-            # verify with default system CA
-            verify = True
-        else:
-            # do not verify
-            verify = False
         logger.debug(
             f"Doing DNS query {query.question} with server {server.geturl()} (using IP {ip}) and proxy {proxy}",
         )
@@ -336,7 +353,7 @@ class DNSCollector(Collector):
                 port=port,
                 timeout=timeout,
                 server=server,
-                verify=verify,
+                verify=self.get_tls_verify(),
             )
             transport = "TCP"
 
@@ -347,7 +364,7 @@ class DNSCollector(Collector):
                 port=port,
                 timeout=timeout,
                 server=server,
-                verify=verify,
+                verify=self.get_tls_context(),
                 http_version=dns.query.HTTPVersion.HTTP_2,
             )
             transport = "TCP"
@@ -359,7 +376,7 @@ class DNSCollector(Collector):
                 port=port,
                 timeout=timeout,
                 server=server,
-                verify=verify,
+                verify=self.get_tls_verify(),
                 http_version=dns.query.HTTPVersion.HTTP_3,
             )
             transport = "QUIC"
@@ -371,7 +388,7 @@ class DNSCollector(Collector):
                 port=port,
                 timeout=timeout,
                 server=server,
-                verify=verify,
+                verify=self.get_tls_verify(),
             )
             transport = "QUIC"
 
@@ -415,7 +432,7 @@ class DNSCollector(Collector):
         port: int,
         timeout: float,
         server: urllib.parse.SplitResult,
-        verify: ssl.SSLContext | bool,
+        verify: str | bool,
     ) -> Message | None:
         """Perform a DNS query with the dot protocol and catch protocol specific exceptions."""
         try:
@@ -427,7 +444,7 @@ class DNSCollector(Collector):
                 server_hostname=server.hostname if verify else None,
                 timeout=timeout,
                 # https://github.com/rthalley/dnspython/issues/1172
-                verify=verify,  # type: ignore[arg-type]
+                verify=verify,
                 one_rr_per_rrset=True,
             )
         except ssl.SSLCertVerificationError as e:
@@ -436,10 +453,6 @@ class DNSCollector(Collector):
                 "Protocol dot raised ssl.SSLCertVerificationError, returning certificate_error",
             )
             raise ProtocolSpecificError("certificate_error") from e
-        except ValueError as e:
-            # raised by dot when ca path is not found
-            logger.debug("Protocol dot raised ValueError, is verify_certificate_path wrong?")
-            raise ProtocolSpecificError("invalid_request_config") from e
 
     def get_dns_response_doh(  # noqa: PLR0913
         self,
@@ -449,9 +462,9 @@ class DNSCollector(Collector):
         http_version: dns.query.HTTPVersion,
         timeout: float,
         server: urllib.parse.SplitResult,
-        verify: ssl.SSLContext | bool,
+        verify: str | ssl.SSLContext | bool,
     ) -> Message | None:
-        """Perform a DNS query with the doh protocol and catch protocol specific exceptions."""
+        """Perform a DNS query with the doh protocol (h2/h3), catch protocol specific exceptions."""
         try:
             # DoH query, use the url for where= and use bootstrap_address= for the ip
             url = f"https://{server.hostname}{server.path}"
@@ -476,10 +489,6 @@ class DNSCollector(Collector):
             reason = "timeout"
             logger.debug(f"Protocol doh raised exception, returning {reason}")
             raise ProtocolSpecificError(reason) from e
-        except OSError as e:
-            # raised by doh when ca path is not found
-            logger.debug("Protocol doh unable to find CA path, returning invalid_request_config")
-            raise ProtocolSpecificError("invalid_request_config") from e
         except ValueError as e:
             # raised by doh when the server response with a non-2XX HTTP status code
             logger.debug(
@@ -494,9 +503,9 @@ class DNSCollector(Collector):
         port: int,
         timeout: float,
         server: urllib.parse.SplitResult,
-        verify: ssl.SSLContext | bool,
+        verify: str | bool,
     ) -> Message | None:
-        """Perform a DNS query with the doh protocol and catch protocol specific exceptions."""
+        """Perform a DNS query with the doq protocol and catch protocol specific exceptions."""
         try:
             # DoQ query, use the IP for where= and use server_hostname for the hostname
             return dns.query.quic(
@@ -505,8 +514,7 @@ class DNSCollector(Collector):
                 port=port,
                 server_hostname=server.hostname,
                 timeout=timeout,
-                # https://github.com/rthalley/dnspython/issues/1172
-                verify=verify,  # type: ignore[arg-type]
+                verify=verify,
                 one_rr_per_rrset=True,
             )
         except dns.quic._common.UnexpectedEOF as e:  # noqa: SLF001

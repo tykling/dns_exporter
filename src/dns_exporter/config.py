@@ -8,6 +8,7 @@ import json
 import logging
 import typing as t
 from dataclasses import asdict, dataclass, field
+from pathlib import Path
 
 import dns.edns
 import dns.exception
@@ -356,10 +357,11 @@ class Config:
         # validate proxy
         self.validate_proxy()
 
-        # validate verify_certificate_path
-        if self.verify_certificate_path and self.protocol == "doq":
-            logger.error("Custom CA path for DoQ is disabled pending https://github.com/tykling/dns_exporter/issues/95")
-            raise ConfigError("invalid_request_config")
+        # validate ca path
+        if self.verify_certificate_path:
+            certpath = Path(self.verify_certificate_path)
+            if not certpath.exists():
+                raise ConfigError("invalid_request_path")
 
     @classmethod
     def create(  # noqa: PLR0913
