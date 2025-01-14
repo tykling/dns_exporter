@@ -1,12 +1,12 @@
 ---
-name: "Run Tox"
+name: Run Tox
 
 on:  # yamllint disable-line rule:truthy
   push:
 
 jobs:
   build:
-    runs-on: "ubuntu-latest"
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13"]
@@ -21,15 +21,24 @@ jobs:
 
       - name: Check out main repo
         uses: actions/checkout@v4
-  
-      - name: Test with python ${{ matrix.python-version }}
-        run: uv run --frozen tox
 
-      - name: "Upload coverage to Codecov"
-        uses: "codecov/codecov-action@v4"
+      - name: Setup venv
+        run: |
+          uv venv
+          echo "VIRTUAL_ENV=$PWD/.venv" >> $GITHUB_ENV
+          echo "$PWD/.venv/bin" >> $GITHUB_PATH
+
+      - name: Install python dependencies
+        run: uv pip install .[test]
+
+      - name: Run tox
+        run: tox -e py
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
         with:
           token: "${{secrets.CODECOV_TOKEN}}"
           # disable until codecov improves stability
           # fail_ci_if_error: true
-          files: "./src/coverage.xml"
+          files: ./src/coverage.xml
 ...
