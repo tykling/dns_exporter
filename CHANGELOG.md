@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - DNS-over-HTTP3 support: New protocol ``doh3`` was added for doing DNS-over-QUIC wrapped in HTTP3, aka DNS-over-HTTP3.
+- Digestabot introduced to keep docker image digests up-to-date.
 
 ### Changed
 - Bump dnspython dependency minimum version to 2.7.0
@@ -17,10 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Verify that the configured `verify_certificate_path` exists in the filesystem, raise ConfigError if not.
 - Improve certificate related unit tests (parametrize and add more tests)
 - Move `test_internal_metrics()` test to seperate file, write metrics to temp file to ease debugging when the test breaks (which happens often).
+- Update and simplify Dockerfile
+- Move coverage.py, pytest and tox config to pyproject.toml.
 
 ### Fixed
 - Docs url in package metadata (used for example in PyPi sidebar). Issue #11.
 - Make unit tests, mypy and linters happy after DoH3 addition.
+- Re-enable custom CA path support for DoQ. Only works with a CA file, not with a CA dir, for now (#132).
 
 
 ## [v1.0.0] - 2024-03-07
