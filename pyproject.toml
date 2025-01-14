@@ -15,7 +15,7 @@ keywords = ["prometheus", "dns", "monitoring"]
 license = {text = "BSD 3-Clause License"}
 name = "dns_exporter"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 
 
 ########### DEPENDENCIES ###############
@@ -101,7 +101,7 @@ convention = "google"
 
 ############ MYPY #####################
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.10"
 exclude = [
     "build/",
     "venv/",
