@@ -16,13 +16,15 @@ jobs:
       id-token: write
     steps:
       # https://github.com/pypa/sampleproject/blob/main/.github/workflows/release.yml
+      - name: Checkout source
+        uses: actions/checkout@v4
+
       - name: Install the latest version of uv and set the python version
         uses: astral-sh/setup-uv@v5
         with:
           python-version: "3.13"
-
-      - name: Checkout source
-        uses: actions/checkout@v4
+          enable-cache: true
+          cache-dependency-glob: ./pyproject.toml
 
       - name: Setup venv
         run: |
