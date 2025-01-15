@@ -17,21 +17,13 @@ jobs:
       - name: Install system dependencies
         run: sudo apt install -y prometheus
 
-      - name: Install the latest version of uv and set the python version
-        uses: astral-sh/setup-uv@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          enable-cache: true
-          cache-dependency-glob: ./pyproject.toml
-
-      - name: Setup venv
-        run: |
-          uv venv
-          echo "VIRTUAL_ENV=$PWD/.venv" >> $GITHUB_ENV
-          echo "$PWD/.venv/bin" >> $GITHUB_PATH
 
       - name: Install python dependencies
-        run: uv pip install .[test]
+        run: pip install .[test]
 
       - name: Run tox
         run: tox -e py
