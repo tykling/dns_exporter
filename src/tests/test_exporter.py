@@ -357,7 +357,7 @@ def test_doq(dns_exporter_example_config, caplog, recwarn):
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "server": "quic://dns-unfiltered.adguard.com",
+            "server": "quic://anycast.uncensoreddns.org",
             "query_name": "example.com",
             "protocol": "doq",
             "family": "ipv4",
