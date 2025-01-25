@@ -338,7 +338,7 @@ def test_doh3(dns_exporter_example_config, caplog):
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "server": "anycast.censurfridns.dk",
+            "server": "unicast.censurfridns.dk",
             "query_name": "example.com",
             "protocol": "doh3",
             "family": "ipv4",
@@ -357,7 +357,7 @@ def test_doq(dns_exporter_example_config, caplog, recwarn):
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "server": "quic://anycast.uncensoreddns.org",
+            "server": "quic://unicast.uncensoreddns.org",
             "query_name": "example.com",
             "protocol": "doq",
             "family": "ipv4",
