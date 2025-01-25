@@ -178,7 +178,7 @@ The default value is ``udp``.
 
 
 ``proxy``
-~~~~~~~~~~~~
+~~~~~~~~~
 This setting decides which proxy server to use, if any. The proxy must be provided including protocol, but port can be omitted if the default is fine. Hostname or IP can be used. Proxy protocol must be one of:
 
 ``SOCKS4``
@@ -190,9 +190,10 @@ This setting decides which proxy server to use, if any. The proxy must be provid
 ``HTTP``
    HTTP proxy URL, for example ``http://example.com:8080`` - defaults to port ``8080``.
 
-Using a proxy server is currently supported for protocols ``udp``, ``tcp``, and ``doh``. Support for protocol ``doq`` is coming with the next release of dnspython (see `this issue <https://github.com/rthalley/dnspython/pull/1060>`_). Support for protocol ``dot`` is planned for a later release.
+Using a proxy server is currently supported for protocols ``udp``, ``tcp``, ``doh``, ``doh3``, and ``doq``. Support for protocol ``dot`` is planned for a later release.
 
 .. Note:: Using a proxy server will affect DNS lookup measurements. When using a proxy the timing metrics are measuring both the time the actual DNS lookup takes as well as the roundtrip latency to the proxy server. As always when dealing with metrics consider carefully what you are measuring.
+
 
 ``query_class``
 ~~~~~~~~~~~~~~~
@@ -285,6 +286,7 @@ This setting has no default value.
 
 .. Note:: The ``validate_authority_rrs`` setting can only be configured in a module in a config file. It can not be set in the scrape request querystring.
 
+
 ``validate_additional_rrs``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 This setting defines validation rules for the ``ADDITIONAL`` section of the DNS response. ``validate_additional_rrs`` can do the same validations as ``validate_answer_rrs``, see above for details.
@@ -292,6 +294,7 @@ This setting defines validation rules for the ``ADDITIONAL`` section of the DNS 
 This setting has no default value.
 
 .. Note:: The ``validate_additional_rrs`` setting can only be configured in a module in a config file. It can not be set in the scrape request querystring.
+
 
 ``validate_response_flags``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -312,6 +315,7 @@ This setting can be used to validate the response flags of the DNS response. ``v
 This setting has no default value.
 
 .. Note:: The ``validate_response_flags`` setting can only be configured in a module in a config file. It can not be set in the scrape request querystring.
+
 
 ``valid_rcodes``
 ~~~~~~~~~~~~~~~~

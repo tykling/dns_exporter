@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - DNS-over-HTTP3 support: New protocol ``doh3`` was added for doing DNS-over-QUIC wrapped in HTTP3, aka DNS-over-HTTP3.
 - Digestabot introduced to keep docker image digests up-to-date.
+- Proxy support for DoQ and DoH3. Issue #96.
 
 ### Changed
 - Bump dnspython dependency minimum version to 2.7.0

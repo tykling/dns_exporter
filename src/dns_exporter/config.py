@@ -320,11 +320,9 @@ class Config:
 
     def validate_proxy(self) -> None:
         """Validate proxy."""
-        if self.proxy and self.protocol in ["dot", "doq"]:
+        if self.proxy and self.protocol in ["dot"]:
             # proxy support doesn't work for DoT for now
             # https://github.com/tykling/dns_exporter/issues/76
-            # and doesn't work for DoQ until next dnspython release
-            # https://github.com/tykling/dns_exporter/issues/96
             logger.error(f"proxy not valid for protocol {self.protocol}")
             raise ConfigError(
                 "invalid_request_config",

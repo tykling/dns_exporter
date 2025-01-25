@@ -72,7 +72,10 @@ class DNSCollector(Collector):
                 addr=self.config.proxy.hostname,
                 port=self.config.proxy.port,
             )
-            dns.query.socket_factory = socks.socksocket
+            if self.config.protocol in ["doh3", "doq"]:
+                dns.quic._sync.socket_factory = socks.socksocket  # noqa: SLF001
+            else:
+                dns.query.socket_factory = socks.socksocket
             logger.debug(f"Using proxy {self.config.proxy.geturl()}")
         else:
             dns.query.socket_factory = socket.socket

@@ -7,60 +7,38 @@ import requests
 ###################################################################################
 
 
-def test_proxy_udp(dns_exporter_example_config, proxy_server):
-    """Test proxy functionality for udp protocol."""
+@pytest.mark.parametrize(
+    ("protocol", "server"),
+    [
+        ("udp", "dns.google"),
+        ("tcp", "dns.google"),
+        ("doh", "anycast.uncensoreddns.org"),
+        ("doh3", "anycast.uncensoreddns.org"),
+        ("doq", "anycast.uncensoreddns.org"),
+    ],
+)
+def test_proxy(dns_exporter_example_config, proxy_server, protocol, server):
+    """Test proxy functionality for all protocols."""
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
             "query_name": "example.com",
-            "server": "dns.google",
+            "server": server,
             "family": "ipv4",
-            "protocol": "udp",
+            "protocol": protocol,
             "proxy": "socks5://127.0.0.1:1080",
         },
     )
     assert 'proxy="socks5://127.0.0.1:1080"' in r.text
-    assert 'server="udp://dns.google:53"' in r.text
-
-
-def test_proxy_tcp(dns_exporter_example_config, proxy_server):
-    """Test proxy functionality for tcp protocol."""
-    r = requests.get(
-        "http://127.0.0.1:25353/query",
-        params={
-            "query_name": "example.com",
-            "server": "dns.google",
-            "family": "ipv4",
-            "protocol": "tcp",
-            "proxy": "socks5://127.0.0.1:1080",
-        },
-    )
-    assert 'proxy="socks5://127.0.0.1:1080"' in r.text
-    assert 'server="tcp://dns.google:53"' in r.text
-
-
-def test_proxy_doh(dns_exporter_example_config, proxy_server):
-    """Test proxy functionality for doh protocol."""
-    r = requests.get(
-        "http://127.0.0.1:25353/query",
-        params={
-            "query_name": "example.com",
-            "server": "dns.google",
-            "family": "ipv4",
-            "protocol": "doh",
-            "proxy": "socks5://127.0.0.1:1080",
-        },
-    )
-    assert 'proxy="socks5://127.0.0.1:1080"' in r.text
-    assert 'server="doh://dns.google:443/dns-query"' in r.text
+    assert f'server="{protocol}://{server}:' in r.text
 
 
 ###################################################################################
 
 
-@pytest.mark.parametrize("protocol", ["udp", "tcp", "doh"])
+@pytest.mark.parametrize("protocol", ["udp", "tcp", "doh", "doh3", "doq"])
 def test_proxy_fail(dns_exporter_example_config, proxy_server, protocol):
-    """Test proxy failure for udp protocol."""
+    """Test proxy failure for all protocols."""
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
