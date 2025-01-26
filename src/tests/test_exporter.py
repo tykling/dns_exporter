@@ -5,7 +5,6 @@ import pytest
 import requests
 from dns_exporter.config import RFValidator, RRValidator
 from dns_exporter.entrypoint import main
-from flaky import flaky
 
 
 def test_main_no_config(dns_exporter_main_no_config_no_debug):
