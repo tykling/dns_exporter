@@ -20,8 +20,8 @@ import dns.quic
 import dns.rcode
 import dns.rdatatype
 import dns.resolver
-import httpx  # type: ignore[import-not-found]
-import socks  # type: ignore[import-not-found]
+import httpx
+import socks  # type: ignore[import-untyped]
 from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
 from prometheus_client.registry import Collector
 

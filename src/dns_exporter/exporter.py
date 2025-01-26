@@ -31,7 +31,7 @@ import dns.query
 import dns.rcode
 import dns.rdatatype
 import dns.resolver
-import socks  # type: ignore[import-not-found]
+import socks  # type: ignore[import-untyped]
 from prometheus_client import CollectorRegistry, MetricsHandler, exposition
 
 from dns_exporter.collector import DNSCollector, FailCollector

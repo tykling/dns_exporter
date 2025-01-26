@@ -25,3 +25,4 @@ Contents
 
    Source Code <https://github.com/tykling/dns_exporter/>
    Issue Tracker <https://github.com/tykling/dns_exporter/issues/>
+   PyPi <https://pypi.org/project/dns-exporter/>
