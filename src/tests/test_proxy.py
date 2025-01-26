@@ -1,4 +1,5 @@
 """Unit tests for proxy functionality."""
+
 import logging
 
 import pytest

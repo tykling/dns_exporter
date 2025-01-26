@@ -3,6 +3,7 @@
 All metrics exposed by ``dns_exporter`` are prefixed with ``dnsexp_`` (apart from ``up``
 and the built-in Python metrics).
 """
+
 from __future__ import annotations
 
 from prometheus_client.core import (

@@ -1,6 +1,7 @@
 """Unit tests for DNSCollector and other collector.py code."""
 
 import pytest
+
 from dns_exporter.collector import DNSCollector
 
 

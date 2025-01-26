@@ -2,6 +2,7 @@
 
 This module is mostly boilerplate code for command-line argument handling and logging.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -161,7 +162,7 @@ def main(mockargs: list[str] | None = None) -> None:
     # configure DNSExporter handler and start HTTPServer
     handler = DNSExporter
     if configfile["modules"] and not handler.configure(
-        modules={k: ConfigDict(**v) for k, v in configfile["modules"].items()},  # type: ignore[misc]
+        modules={k: ConfigDict(**v) for k, v in configfile["modules"].items()},  # type: ignore[typeddict-item]
     ):
         logger.error(
             "An error occurred while configuring dns_exporter. Bailing out.",

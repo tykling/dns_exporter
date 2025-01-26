@@ -1,7 +1,9 @@
 """dns_exporter tests for the config module."""
+
 from ipaddress import IPv4Address
 
 import pytest
+
 from dns_exporter.config import Config, ConfigDict, ConfigError
 
 

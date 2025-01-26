@@ -1,4 +1,5 @@
 """``dns_exporter.collector`` contains the DNSCollector class used by the DNSExporter during scrapes."""
+
 from __future__ import annotations
 
 import contextlib
@@ -19,8 +20,8 @@ import dns.quic
 import dns.rcode
 import dns.rdatatype
 import dns.resolver
-import httpx  # type: ignore[import]
-import socks  # type: ignore[import]
+import httpx  # type: ignore[import-not-found]
+import socks  # type: ignore[import-not-found]
 from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
 from prometheus_client.registry import Collector
 
@@ -160,7 +161,7 @@ class DNSCollector(Collector):
         except Exception:  # noqa: BLE001
             logger.warning(
                 f"""Caught an unknown exception while looking up qname {self.config.query_name} using server
-                {self.config.server.geturl()} and proxy {self.config.proxy.geturl() if self.config.proxy else 'none'}
+                {self.config.server.geturl()} and proxy {self.config.proxy.geturl() if self.config.proxy else "none"}
                 - exception details follow, returning other_failure""",
                 exc_info=True,
             )
@@ -281,21 +282,13 @@ class DNSCollector(Collector):
                 return ssl.create_default_context(capath=None, cafile=str(certpath), cadata=None)
             # verify_certificate_path is neither dir or file, do not return a context
         # do cert verification?
-        if self.config.verify_certificate:
-            # verify with default system CA
-            return True
-        # do not verify
-        return False
+        return self.config.verify_certificate
 
     def get_tls_verify(self) -> bool | str:
         """Return a bool or str for TLS verify args. Used by DoT, DoQ, DoH3."""
         if self.config.verify_certificate_path and self.config.verify_certificate:
             return self.config.verify_certificate_path
-        if self.config.verify_certificate:
-            # verify with default system CA
-            return True
-        # do not verify
-        return False
+        return self.config.verify_certificate
 
     def get_dns_response(  # noqa: PLR0913
         self,
@@ -603,7 +596,7 @@ class DNSCollector(Collector):
             p = re.compile(regex)
             for rr in rrs:
                 m = p.match(str(rr))
-                if m and fail_on_match or not m and not fail_on_match:
+                if (m and fail_on_match) or (not m and not fail_on_match):
                     raise ValidationError(validator, f"invalid_response_{section}_rrs")
             if invert:
                 raise ValidationError(validator, f"invalid_response_{section}_rrs")

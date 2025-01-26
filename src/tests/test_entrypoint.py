@@ -1,8 +1,10 @@
 """Unit tests for entrypoint.py."""
+
 import time
 
-import dns_exporter.entrypoint
 import pytest
+
+import dns_exporter.entrypoint
 from dns_exporter.entrypoint import main
 from dns_exporter.version import __version__
 
@@ -25,8 +27,7 @@ def test_listen_port_busy(dns_exporter_example_config, caplog):
 
 def test_version(capsys):
     """Make sure the -v command-line option returns the version."""
-    with pytest.raises(SystemExit) as e:
+    with pytest.raises(SystemExit):
         main(["-v"])
-    assert e.type == SystemExit, f"Exit was not as expected, it was {e.type}"
     captured = capsys.readouterr()
     assert __version__ in captured.out

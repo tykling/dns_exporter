@@ -9,11 +9,12 @@ from threading import Thread
 import httpx
 import pytest
 import yaml
+
 from dns_exporter.entrypoint import main
 from dns_exporter.exporter import DNSExporter
 
 
-@pytest.fixture()
+@pytest.fixture
 def exporter():
     """Fixture to return a clean version of the DNSExporter class."""
 
@@ -73,7 +74,7 @@ def dns_exporter_main_no_config_no_debug():
     print("Beginning teardown")
 
 
-@pytest.fixture()
+@pytest.fixture
 def dns_exporter_param_config(request):
     """Run a server in a subprocess with the config from request.param."""
     print(f"Running dns_exporter with config {request.param} on 127.0.0.1:15353 ...")
@@ -92,7 +93,7 @@ def dns_exporter_param_config(request):
     proc.terminate()
 
 
-@pytest.fixture()
+@pytest.fixture
 def dns_exporter_broken_yaml_configfile(tmp_path_factory):
     """Write a dns_exporter.yml file with invalid yaml."""
     confpath = tmp_path_factory.mktemp("conf") / "dns_exporter.yml"
@@ -103,7 +104,7 @@ def dns_exporter_broken_yaml_configfile(tmp_path_factory):
     return confpath
 
 
-@pytest.fixture()
+@pytest.fixture
 def dns_exporter_empty_yaml_configfile(tmp_path_factory):
     """Write a dns_exporter.yml file with no configs in it."""
     confpath = tmp_path_factory.mktemp("conf") / "dns_exporter.yml"
@@ -114,7 +115,7 @@ def dns_exporter_empty_yaml_configfile(tmp_path_factory):
     return confpath
 
 
-@pytest.fixture()
+@pytest.fixture
 def dns_exporter_invalid_yaml_configfile(tmp_path_factory):
     """Write a dns_exporter.yml file with configs with errors in it."""
     confpath = tmp_path_factory.mktemp("conf") / "dns_exporter.yml"
@@ -128,7 +129,7 @@ def dns_exporter_invalid_yaml_configfile(tmp_path_factory):
     return confpath
 
 
-@pytest.fixture()
+@pytest.fixture
 def prometheus_server(request, tmp_path_factory, tmpdir_factory):
     """Run a prometheus server with a config provided by the unit test in request.param."""
     # write the prometheus config with scrape configs from request.param
@@ -171,7 +172,7 @@ def prometheus_server(request, tmp_path_factory, tmpdir_factory):
     print("Teardown finished!")
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_collect_zerodivisionerror(mocker):
     """Monkeypatch DNSCollector.get_dns_response() to raise ZeroDivisionError (something not explicitly handled)."""
     mocker.patch(
@@ -209,7 +210,7 @@ def proxy_server():
     print("Teardown finished!")
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_dns_query_https_valuerror(mocker):
     """Monkeypatch dns.query.https to raise a ValueError like a non-2XX statuscode was received from server."""
     mocker.patch(
@@ -218,7 +219,7 @@ def mock_dns_query_https_valuerror(mocker):
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_dns_query_httpx_connecttimeout(mocker):
     """Monkeypatch dns.query.https to raise a httpx.ConnectTimeout."""
     mocker.patch(

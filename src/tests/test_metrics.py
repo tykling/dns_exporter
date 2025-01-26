@@ -1,8 +1,10 @@
 """dnsexporter test of internal metrics. Runs last, breaks easily."""
+
 import logging
 
 import pytest
 import requests
+
 from dns_exporter.version import __version__
 
 

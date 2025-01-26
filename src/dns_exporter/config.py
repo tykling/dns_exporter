@@ -2,6 +2,7 @@
 
 The primary class is the Config object and the two RRValidator and RFValidator objects.
 """
+
 from __future__ import annotations
 
 import json

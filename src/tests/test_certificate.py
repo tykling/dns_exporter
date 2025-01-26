@@ -1,4 +1,5 @@
 """Certificate related tests."""
+
 import logging
 import ssl
 

@@ -31,7 +31,7 @@ import dns.query
 import dns.rcode
 import dns.rdatatype
 import dns.resolver
-import socks  # type: ignore[import]
+import socks  # type: ignore[import-not-found]
 from prometheus_client import CollectorRegistry, MetricsHandler, exposition
 
 from dns_exporter.collector import DNSCollector, FailCollector
@@ -366,7 +366,7 @@ class DNSExporter(MetricsHandler):
     def build_final_config(self, qs: dict[str, str]) -> None:
         """Construct the final effective scrape config from defaults and values from the querystring."""
         # first get the defaults
-        config = ConfigDict(**asdict(Config.create(name="defaults")))  # type: ignore[misc]
+        config = ConfigDict(**asdict(Config.create(name="defaults")))  # type: ignore[typeddict-item]
 
         # if a module is specified in the querystring apply it first
         if "module" in qs:
@@ -427,7 +427,7 @@ class DNSExporter(MetricsHandler):
             cls.modules = {}
         for name, config in modules.items():
             try:
-                prepared = cls.prepare_config(ConfigDict(**config))  # type: ignore[misc]
+                prepared = cls.prepare_config(ConfigDict(**config))
             except ConfigError:
                 logger.exception(f"There was an issue while preparing config {name}")
                 return False
@@ -542,9 +542,7 @@ class DNSExporter(MetricsHandler):
     @staticmethod
     def check_ip_family(ip: IPv4Address | IPv6Address, family: str) -> bool:
         """Make sure the IP matches the address family."""
-        if ip.version == 4 and family == "ipv4" or ip.version == 6 and family == "ipv6":  # noqa: PLR2004
-            return True
-        return False
+        return (ip.version == 4 and family == "ipv4") or (ip.version == 6 and family == "ipv6")  # noqa: PLR2004
 
     def resolve_ip_getaddrinfo(self, hostname: str, family: str) -> str:
         """Resolve the IP of a DNS server hostname."""

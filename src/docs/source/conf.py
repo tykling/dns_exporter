@@ -16,6 +16,7 @@ author = "Thomas Steen Rasmussen"
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
+    "sphinx_changelog",
 ]
 
 

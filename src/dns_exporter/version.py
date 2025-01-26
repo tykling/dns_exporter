@@ -2,6 +2,7 @@
 
 The module contains no functions or methods and only a single module-level variable which is the version.
 """
+
 import logging
 from importlib.metadata import PackageNotFoundError, version
 
@@ -14,7 +15,7 @@ try:
 except PackageNotFoundError:  # pragma: no cover
     # package is not installed, get version from file
     try:
-        from _version import version as __version__  # type: ignore[no-redef,import]
+        from _version import version as __version__  # type: ignore[no-redef,import-not-found]
     except ImportError:
         # this must be a git checkout with no _version.py file, version unknown
         __version__: str = "0.0.0"  # type: ignore[no-redef]

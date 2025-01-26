@@ -1,8 +1,10 @@
 """dnsexporter tests for the exporter module."""
+
 import logging
 
 import pytest
 import requests
+
 from dns_exporter.config import RFValidator, RRValidator
 from dns_exporter.entrypoint import main
 
@@ -625,7 +627,6 @@ def test_broken_yaml_config(caplog, dns_exporter_broken_yaml_configfile):
     caplog.set_level(logging.DEBUG)
     with pytest.raises(SystemExit) as e:
         main(["-c", str(dns_exporter_broken_yaml_configfile)])
-    assert e.type == SystemExit, f"Exit was not as expected, it was {e.type}"
     assert "Unable to parse YAML config file" in caplog.text
     assert e.value.code == 1, "Exit code not 1 as expected with broken yaml config"
 
@@ -636,7 +637,6 @@ def test_empty_yaml_config(caplog, dns_exporter_empty_yaml_configfile):
     caplog.set_level(logging.DEBUG)
     with pytest.raises(SystemExit) as e:
         main(["-c", str(dns_exporter_empty_yaml_configfile)])
-    assert e.type == SystemExit, f"Exit was not as expected, it was {e.type}"
     assert "Invalid config file" in caplog.text
     assert e.value.code == 1, "Exit code not 1 as expected with empty yaml config"
 
@@ -647,7 +647,6 @@ def test_invalid_yaml_config(caplog, dns_exporter_invalid_yaml_configfile):
     caplog.set_level(logging.DEBUG)
     with pytest.raises(SystemExit) as e:
         main(["-c", str(dns_exporter_invalid_yaml_configfile)])
-    assert e.type == SystemExit, f"Exit was not as expected, it was {e.type}"
     assert "An error occurred while configuring dns_exporter" in caplog.text
     assert e.value.code == 1, "Exit code not 1 as expected with invalid yaml config"
 

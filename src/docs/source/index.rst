@@ -16,6 +16,7 @@ Contents
    configuration
    examples
    reference/index
+   changelog
 
 
 .. toctree::

@@ -1,4 +1,5 @@
 """tests for example configuration snippets."""
+
 import shutil
 import time
 
