@@ -80,7 +80,7 @@ class DNSCollector(Collector):
         else:
             # no proxy, make sure sockets are reset to socket.socket
             dns.query.socket_factory = socket.socket
-            dns.quic._sync.socket_factory = socket.socket
+            dns.quic._sync.socket_factory = socket.socket  # noqa: SLF001
             logger.debug("Not using a proxy for this request")
 
     def describe(self) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:
