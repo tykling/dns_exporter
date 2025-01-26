@@ -332,7 +332,6 @@ def test_doh(dns_exporter_example_config, caplog):
     assert "dnsexp_dns_query_success 1.0" in r.text
 
 
-@flaky
 def test_doh3(dns_exporter_example_config, caplog):
     """Test basic DoH3 functionality."""
     caplog.clear()
@@ -352,7 +351,6 @@ def test_doh3(dns_exporter_example_config, caplog):
     assert "dnsexp_dns_query_success 1.0" in r.text
 
 
-@flaky
 def test_doq(dns_exporter_example_config, caplog, recwarn):
     """Test basic DoQ functionality."""
     caplog.clear()

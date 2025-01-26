@@ -42,7 +42,6 @@ def test_cert_verify_fail_custom_ca(dns_exporter_example_config, protocol, caplo
     assert "dnsexp_dns_query_success 0.0" in r.text
 
 
-@flaky
 @pytest.mark.parametrize("protocol", ["dot", "doh", "doh3", "doq"])
 def test_cert_verify_false(dns_exporter_example_config, protocol, caplog):
     """Test cert verify functionality disabled allows lookups with bad certs for doh."""
