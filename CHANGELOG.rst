@@ -8,6 +8,16 @@ Changelog <https://keepachangelog.com/en/1.0.0/>`__, and this project
 adheres to `Semantic
 Versioning <https://semver.org/spec/v2.0.0.html>`__.
 
+Unreleased
+----------
+
+Changed
+~~~~~~~
+
+-  Update linters in ``.pre-commit-config.yaml`` and fix new linting issues
+-  Convert CHANGELOG.md to CHANGELOG.rst and include in sphinx build/RTD
+
+
 [v1.1.0-beta1] - 2025-01-26
 ---------------------------
 
@@ -36,7 +46,6 @@ Changed
    often).
 -  Update and simplify Dockerfile
 -  Move coverage.py, pytest and tox config to ``pyproject.toml``.
--  Update linters in ``.pre-commit-config.yaml``
 
 Fixed
 ~~~~~
