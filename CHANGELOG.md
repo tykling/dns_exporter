@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Docs url in package metadata (used for example in PyPi sidebar). Issue #11.
 - Make unit tests, mypy and linters happy after DoH3 addition.
 - Re-enable custom CA path support for DoQ. Only works with a CA file, not with a CA dir, for now (#132).
+- Socket reuse bug introduced with proxy support for QUIC based protocols.
 
 
 ## [v1.0.0] - 2024-03-07
