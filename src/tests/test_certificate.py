@@ -6,6 +6,7 @@ import pytest
 import requests
 from flaky import flaky
 
+
 @pytest.mark.parametrize("protocol", ["dot", "doh", "doh3", "doq"])
 def test_cert_verify_fail(dns_exporter_example_config, protocol, caplog):
     """Test cert verify functionality when there is a certificate<>hostname mismatch."""

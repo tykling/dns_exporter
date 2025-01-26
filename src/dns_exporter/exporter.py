@@ -135,7 +135,7 @@ class DNSExporter(MetricsHandler):
         tmp: ConfigDict = {}
         key = "ip"
         if config.get(key):
-            if isinstance(config["ip"], (IPv4Address, IPv6Address)):
+            if isinstance(config["ip"], IPv4Address | IPv6Address):
                 # use as-is
                 tmp[key] = config[key]
             elif isinstance(config[key], str):

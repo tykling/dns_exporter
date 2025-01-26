@@ -108,7 +108,7 @@ class DNSCollector(Collector):
         """Collect and yield DNS metrics."""
         # pleasing mypy
         if TYPE_CHECKING:  # pragma: no cover
-            assert isinstance(self.config.ip, (IPv4Address, IPv6Address))
+            assert isinstance(self.config.ip, IPv4Address | IPv6Address)
             assert isinstance(self.config.server, urllib.parse.SplitResult)
             assert isinstance(self.config.server.port, int)
 
