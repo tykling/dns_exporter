@@ -10,7 +10,12 @@ repos:
     rev: 'v1.14.1'
     hooks:
       - id: "mypy"
-        additional_dependencies: ["dnspython", "prometheus_client", "types-PyYAML", "httpx", "PySocks"]
+        additional_dependencies:
+          - "dnspython"
+          - "prometheus_client"
+          - "types-PyYAML"
+          - "httpx"
+          - "PySocks"
         args: ["--strict", "."]
         pass_filenames: false
   - repo: "https://github.com/adrienverge/yamllint.git"

@@ -7,7 +7,7 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "dns_exporter"
-copyright = "2023, Thomas Steen Rasmussen"
+copyright = "2023-%Y, Thomas Steen Rasmussen"
 author = "Thomas Steen Rasmussen"
 
 # -- General configuration ---------------------------------------------------
