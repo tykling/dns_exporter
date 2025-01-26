@@ -78,7 +78,9 @@ class DNSCollector(Collector):
                 dns.query.socket_factory = socks.socksocket
             logger.debug(f"Using proxy {self.config.proxy.geturl()}")
         else:
+            # no proxy, make sure sockets are reset to socket.socket
             dns.query.socket_factory = socket.socket
+            dns.quic._sync.socket_factory = socket.socket
             logger.debug("Not using a proxy for this request")
 
     def describe(self) -> Iterator[CounterMetricFamily | GaugeMetricFamily]:

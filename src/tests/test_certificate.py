@@ -4,7 +4,6 @@ import ssl
 
 import pytest
 import requests
-from flaky import flaky
 
 
 @pytest.mark.parametrize("protocol", ["dot", "doh", "doh3", "doq"])
