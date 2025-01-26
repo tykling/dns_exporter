@@ -5,6 +5,7 @@ import pytest
 import requests
 from dns_exporter.config import RFValidator, RRValidator
 from dns_exporter.entrypoint import main
+from flaky import flaky
 
 
 def test_main_no_config(dns_exporter_main_no_config_no_debug):
@@ -331,6 +332,7 @@ def test_doh(dns_exporter_example_config, caplog):
     assert "dnsexp_dns_query_success 1.0" in r.text
 
 
+@flaky
 def test_doh3(dns_exporter_example_config, caplog):
     """Test basic DoH3 functionality."""
     caplog.clear()
@@ -338,7 +340,7 @@ def test_doh3(dns_exporter_example_config, caplog):
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "server": "unicast.censurfridns.dk",
+            "server": "dns-unfiltered.adguard.com",
             "query_name": "example.com",
             "protocol": "doh3",
             "family": "ipv4",
@@ -350,6 +352,7 @@ def test_doh3(dns_exporter_example_config, caplog):
     assert "dnsexp_dns_query_success 1.0" in r.text
 
 
+@flaky
 def test_doq(dns_exporter_example_config, caplog, recwarn):
     """Test basic DoQ functionality."""
     caplog.clear()
@@ -357,7 +360,7 @@ def test_doq(dns_exporter_example_config, caplog, recwarn):
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "server": "quic://unicast.uncensoreddns.org",
+            "server": "dns-unfiltered.adguard.com",
             "query_name": "example.com",
             "protocol": "doq",
             "family": "ipv4",

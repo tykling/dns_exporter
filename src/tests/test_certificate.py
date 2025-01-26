@@ -4,7 +4,7 @@ import ssl
 
 import pytest
 import requests
-
+from flaky import flaky
 
 @pytest.mark.parametrize("protocol", ["dot", "doh", "doh3", "doq"])
 def test_cert_verify_fail(dns_exporter_example_config, protocol, caplog):
@@ -31,7 +31,7 @@ def test_cert_verify_fail_custom_ca(dns_exporter_example_config, protocol, caplo
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "server": "anycast.censurfridns.dk",
+            "server": "dns-unfiltered.adguard.com",
             "query_name": "example.com",
             "protocol": protocol,
             "family": "ipv4",
@@ -41,6 +41,7 @@ def test_cert_verify_fail_custom_ca(dns_exporter_example_config, protocol, caplo
     assert "dnsexp_dns_query_success 0.0" in r.text
 
 
+@flaky
 @pytest.mark.parametrize("protocol", ["dot", "doh", "doh3", "doq"])
 def test_cert_verify_false(dns_exporter_example_config, protocol, caplog):
     """Test cert verify functionality disabled allows lookups with bad certs for doh."""
@@ -49,7 +50,7 @@ def test_cert_verify_false(dns_exporter_example_config, protocol, caplog):
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "server": "91.239.100.100",
+            "server": "94.140.14.141",  # dns-unfiltered.adguard.com
             "query_name": "example.com",
             "protocol": protocol,
             "family": "ipv4",
