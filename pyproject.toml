@@ -31,7 +31,7 @@ dev = ["pre-commit == 4.1.0", "setuptools-scm == 8.1.0"]
 test = [
     "coverage[toml]==7.6.11",
     "gera2ld.socks==0.5.0",
-    "prometheus-client==0.19.0",
+    "prometheus-client==0.21.1",
     "pytest==8.3.4",
     "pytest-cov==6.0.0",
     "pytest-mock==3.14.0",
