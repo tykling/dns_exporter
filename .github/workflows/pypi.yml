@@ -5,10 +5,6 @@ on:  # yamllint disable-line rule:truthy
   push:
     tags:
       - 'v*'
-  workflow_run:
-    workflows: [Run Tox]
-    types:
-      - completed
 
 # https://docs.pypi.org/trusted-publishers/using-a-publisher/
 jobs:

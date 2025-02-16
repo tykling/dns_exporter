@@ -9,10 +9,6 @@ on:  # yamllint disable-line rule:truthy
   push:
     tags:
       - 'v*'
-  workflow_run:
-    workflows: [Run Tox]
-    types:
-      - completed
 
 env:
   REGISTRY_IMAGE: tykling/dns_exporter
