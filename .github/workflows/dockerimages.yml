@@ -9,7 +9,6 @@ on:  # yamllint disable-line rule:truthy
   push:
     tags:
       - 'v*'
-  workflow_dispatch:
 
 env:
   DOCKERHUB_REPO: ${{ github.repository }}
