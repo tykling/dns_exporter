@@ -8,6 +8,15 @@ Changelog <https://keepachangelog.com/en/1.0.0/>`__, and this project
 adheres to `Semantic
 Versioning <https://semver.org/spec/v2.0.0.html>`__.
 
+v1.1.0-beta3 - 2025-02-18
+-------------------------
+
+Fixed
+~~~~~
+
+-  Docker image workflow was broken for some platforms
+
+
 v1.1.0-beta2 - 2025-02-18
 -------------------------
 
