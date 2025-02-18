@@ -8,14 +8,15 @@ Changelog <https://keepachangelog.com/en/1.0.0/>`__, and this project
 adheres to `Semantic
 Versioning <https://semver.org/spec/v2.0.0.html>`__.
 
-Unreleased
-----------
+v1.1.0-beta2 - 2025-02-18
+-------------------------
 
 Changed
 ~~~~~~~
 
 -  Update linters in ``.pre-commit-config.yaml`` and fix new linting issues
 -  Convert CHANGELOG.md to CHANGELOG.rst and include in sphinx build/RTD
+-  Rework Dockerfile, push images to both Dockerhub and Github
 
 
 [v1.1.0-beta1] - 2025-01-26
