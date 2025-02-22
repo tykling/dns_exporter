@@ -136,10 +136,11 @@ jobs:
             ${{ env.DH_REPO }}
             ${{ env.GHCR_REPO }}
           tags: |
-            type=ref,event=branch
-            type=ref,event=pr
+            type=ref,event=tag
+            type=semver,pattern={{raw}}
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}},enable=${{ !startsWith(github.ref, 'refs/tags/v0.') }}
 
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
