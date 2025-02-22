@@ -8,6 +8,15 @@ Changelog <https://keepachangelog.com/en/1.0.0/>`__, and this project
 adheres to `Semantic
 Versioning <https://semver.org/spec/v2.0.0.html>`__.
 
+v1.1.0-beta4 - 2025-02-22
+-------------------------
+
+Changed
+~~~~~~~
+
+-  Better metadata for Docker image builds
+
+
 v1.1.0-beta3 - 2025-02-18
 -------------------------
 
