@@ -1,0 +1,9 @@
+---
+services:
+  dns_exporter:
+    image: tykling/dns_exporter:latest
+    ports:
+      - 15353:15353
+    volumes:
+      - ./dns_exporter.yml:/home/nonroot/dns_exporter.yml
+...
