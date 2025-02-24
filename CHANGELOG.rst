@@ -8,6 +8,12 @@ Changelog <https://keepachangelog.com/en/1.0.0/>`__, and this project
 adheres to `Semantic
 Versioning <https://semver.org/spec/v2.0.0.html>`__.
 
+v1.1.0 - 2025-02-24
+-------------------
+
+No changes since v1.1.0-beta4
+
+
 v1.1.0-beta4 - 2025-02-22
 -------------------------
 
