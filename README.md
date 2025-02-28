@@ -23,7 +23,7 @@ There is also a Docker image so you can get your container on:
 
 `docker run -p 15353:15353 tykling/dns_exporter:latest`
 
-There is also a Kubernetes Helm Chart available on [https://artifacthub.io/packages/helm/christianhuth/dns-exporter](ArtifactHUB).
+There is also a Kubernetes Helm Chart (maintained by @christianhuth) available on [https://artifacthub.io/packages/helm/christianhuth/dns-exporter](ArtifactHUB).
 
 
 # Documentation
