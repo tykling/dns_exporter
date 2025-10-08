@@ -588,18 +588,42 @@ class DNSCollector(Collector):
         validator: str,
         rrs: str,
         section: str,
-        fail_on_match: bool = False,
-        invert: bool = False,
     ) -> None:
+
+        logger.debug(f"{validator} validating {len(rrs)} rrs from {section} section...",)
+
+        num_matches_per_rrs = {str(rr): 0 for rr in rrs}
+
         """Loop over response RRs and check for regex matches."""
         for regex in getattr(validators, validator):
             p = re.compile(regex)
             for rr in rrs:
-                m = p.match(str(rr))
-                if (m and fail_on_match) or (not m and not fail_on_match):
-                    raise ValidationError(validator, f"invalid_response_{section}_rrs")
-            if invert:
-                raise ValidationError(validator, f"invalid_response_{section}_rrs")
+                result = p.match(str(rr))
+                logger.debug(f"matching '{rr}' against '{regex}': " + ("success" if result else "failed"))
+                if result:
+                    num_matches_per_rrs[str(rr)]=+1
+
+        # consider request failed if any answer rr matches one of these regexes
+        # -> no regex matches any rr
+        if validator == "fail_if_matches_regexp" and sum(num_matches_per_rrs.values()) == 0:
+            return
+
+        # consider request failed if all answer rrs match one of these regexes
+        # -> all regex dit not match at least one rr
+        if validator == "fail_if_all_match_regexp" and 0 in num_matches_per_rrs.values():
+            return
+
+        # consider request failed if any answer rr does not match one of these regexes
+        # -> any regex matched at least one rr
+        if validator == "fail_if_not_matches_regexp" and min(num_matches_per_rrs.values()) > 0:
+            return
+
+        # consider request failed if none of the answer rrs match one of these regexes
+        # -> one regex mathed at least one rr
+        if validator == "fail_if_none_matches_regexp" and sum(num_matches_per_rrs.values()) > 0:
+            return
+
+        raise ValidationError(validator, f"invalid_response_{section}_rrs")
 
     def validate_response_rrs(self, response: Message) -> None:
         """Validate response RRs."""
@@ -609,55 +633,35 @@ class DNSCollector(Collector):
             if getattr(self.config, key):
                 validators: RRValidator = getattr(self.config, key)
                 if rrs and validators.fail_if_matches_regexp:
-                    logger.debug(
-                        f"fail_if_matches_regexp validating {len(rrs)} rrs from {section} section...",
-                    )
                     self.check_regexes(
                         validators=validators,
                         validator="fail_if_matches_regexp",
                         rrs=rrs,
                         section=section,
-                        fail_on_match=True,
-                        invert=False,
                     )
 
                 if rrs and validators.fail_if_all_match_regexp:
-                    logger.debug(
-                        f"fail_if_all_match_regexp validating {len(rrs)} rrs from {section} section...",
-                    )
                     self.check_regexes(
                         validators=validators,
                         validator="fail_if_all_match_regexp",
                         rrs=rrs,
                         section=section,
-                        fail_on_match=False,
-                        invert=True,
                     )
 
                 if validators.fail_if_not_matches_regexp:
-                    logger.debug(
-                        f"fail_if_not_matches_regexp validating {len(rrs)} rrs from {section} section...",
-                    )
                     self.check_regexes(
                         validators=validators,
                         validator="fail_if_not_matches_regexp",
                         rrs=rrs,
                         section=section,
-                        fail_on_match=False,
-                        invert=False,
                     )
 
                 if validators.fail_if_none_matches_regexp:
-                    logger.debug(
-                        f"fail_if_none_matches_regexp validating {len(rrs)} rrs from {section} section...",
-                    )
                     self.check_regexes(
                         validators=validators,
                         validator="fail_if_none_matches_regexp",
                         rrs=rrs,
                         section=section,
-                        fail_on_match=False,
-                        invert=True,
                     )
 
     def validate_response(self, response: Message) -> None:
