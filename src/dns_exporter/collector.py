@@ -589,7 +589,6 @@ class DNSCollector(Collector):
         section: str,
     ) -> None:
         """Loop over response RRs and check for regex matches."""
-
         logger.debug(f"{validator} validating {len(rrs)} rrs from {section} section...")
 
         num_matches_per_rrs = {str(rr): 0 for rr in rrs}
