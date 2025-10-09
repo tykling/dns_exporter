@@ -581,18 +581,19 @@ class DNSCollector(Collector):
                     "invalid_response_flags",
                 )
 
-    def check_regexes(  # noqa: D102
+    def check_regexes(
         self,
         validators: RRValidator,
         validator: str,
         rrs: str,
         section: str,
     ) -> None:
+        """Loop over response RRs and check for regex matches."""
+
         logger.debug(f"{validator} validating {len(rrs)} rrs from {section} section...")
 
         num_matches_per_rrs = {str(rr): 0 for rr in rrs}
 
-        """Loop over response RRs and check for regex matches."""
         for regex in getattr(validators, validator):
             p = re.compile(regex)
             for rr in rrs:
