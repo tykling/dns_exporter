@@ -581,9 +581,8 @@ class DNSCollector(Collector):
                     "invalid_response_flags",
                 )
 
-    def check_regexes(
+    def check_regexes(  # noqa: D102
         self,
-        *,
         validators: RRValidator,
         validator: str,
         rrs: str,
@@ -598,7 +597,8 @@ class DNSCollector(Collector):
             p = re.compile(regex)
             for rr in rrs:
                 result = p.match(str(rr))
-                logger.debug(f"matching '{rr}' against '{regex}': " + ("success" if result else "failed"))
+                log_entry = f"matching '{rr}' against '{regex}': " + ("success" if result else "failed")
+                logger.debug(log_entry)
                 if result:
                     num_matches_per_rrs[str(rr)] = +1
 
