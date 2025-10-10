@@ -1,16 +1,20 @@
 """Unit tests for DNSCollector and other collector.py code."""
 
-import pytest
 import logging
 from contextlib import nullcontext as does_not_raise
 
+import pytest
+from dns.message import from_text
+
 from dns_exporter.collector import DNSCollector
 from dns_exporter.config import Config, RRValidator
-from dns.message import from_text
 from dns_exporter.exceptions import ValidationError
 
-test_dns_response = from_text("\n".join([x.strip() for x in
-    """id 0
+test_dns_response = from_text(
+    "\n".join(
+        [
+            x.strip()
+            for x in """id 0
     opcode QUERY
     rcode NOERROR
     flags QR RD RA
@@ -23,7 +27,11 @@ test_dns_response = from_text("\n".join([x.strip() for x in
     abc.dscc.exampleedge.net. 20 IN A 10.8.23.42
     ;AUTHORITY
     ;ADDITIONAL
-    """.split("\n")]))
+    """.split("\n")
+        ]
+    )
+)
+
 
 def test_invalid_failure_reason(caplog):
     """Call DNSCollector.yield_failure_reason_metric() with an unknown reason."""
@@ -50,13 +58,9 @@ def test_invalid_failure_reason(caplog):
 )
 def test_fail_if_matches_regexp(regex_list, expectation, caplog):
     """Call DNSCollector.validate_response_rrs() with config for fail_if_matches_regexp.
-        -> consider request failed if any answer rr matches one of these regexes
+    -> consider request failed if any answer rr matches one of these regexes
     """
-
-    test_config = {
-        "name": "test",
-        "validate_answer_rrs": RRValidator.create(fail_if_matches_regexp=regex_list)
-    }
+    test_config = {"name": "test", "validate_answer_rrs": RRValidator.create(fail_if_matches_regexp=regex_list)}
 
     expected_exception = "Response validator fail_if_matches_regexp failed with reason invalid_response_answer_rrs"
 
@@ -83,13 +87,9 @@ def test_fail_if_matches_regexp(regex_list, expectation, caplog):
 )
 def test_fail_if_all_match_regexp(regex_list, expectation, caplog):
     """Call DNSCollector.validate_response_rrs() with config for fail_if_all_match_regexp.
-        -> consider request failed if all answer rrs match one of these regexes
+    -> consider request failed if all answer rrs match one of these regexes
     """
-
-    test_config = {
-        "name": "test",
-        "validate_answer_rrs": RRValidator.create(fail_if_all_match_regexp=regex_list)
-    }
+    test_config = {"name": "test", "validate_answer_rrs": RRValidator.create(fail_if_all_match_regexp=regex_list)}
 
     expected_exception = "Response validator fail_if_all_match_regexp failed with reason invalid_response_answer_rrs"
 
@@ -103,6 +103,7 @@ def test_fail_if_all_match_regexp(regex_list, expectation, caplog):
 
     assert isinstance(expectation, does_not_raise) or expected_exception in str(e)
 
+
 @pytest.mark.parametrize(
     "regex_list,expectation",
     [
@@ -115,13 +116,9 @@ def test_fail_if_all_match_regexp(regex_list, expectation, caplog):
 )
 def test_fail_if_not_matches_regexp(regex_list, expectation, caplog):
     """Call DNSCollector.validate_response_rrs() with config for fail_if_not_matches_regexp.
-        -> consider request failed if any answer rr does not match one of these regexes
+    -> consider request failed if any answer rr does not match one of these regexes
     """
-
-    test_config = {
-        "name": "test",
-        "validate_answer_rrs": RRValidator.create(fail_if_not_matches_regexp=regex_list)
-    }
+    test_config = {"name": "test", "validate_answer_rrs": RRValidator.create(fail_if_not_matches_regexp=regex_list)}
 
     expected_exception = "Response validator fail_if_not_matches_regexp failed with reason invalid_response_answer_rrs"
 
@@ -134,6 +131,7 @@ def test_fail_if_not_matches_regexp(regex_list, expectation, caplog):
         c.validate_response_rrs(test_dns_response)
 
     assert isinstance(expectation, does_not_raise) or expected_exception in str(e)
+
 
 @pytest.mark.parametrize(
     "regex_list,expectation",
@@ -148,13 +146,9 @@ def test_fail_if_not_matches_regexp(regex_list, expectation, caplog):
 )
 def test_fail_if_none_matches_regexp(regex_list, expectation, caplog):
     """Call DNSCollector.validate_response_rrs() with config for fail_if_none_matches_regexp.
-        -> consider request failed if none of the answer rrs match one of these regexes
+    -> consider request failed if none of the answer rrs match one of these regexes
     """
-
-    test_config = {
-        "name": "test",
-        "validate_answer_rrs": RRValidator.create(fail_if_none_matches_regexp=regex_list)
-    }
+    test_config = {"name": "test", "validate_answer_rrs": RRValidator.create(fail_if_none_matches_regexp=regex_list)}
 
     expected_exception = "Response validator fail_if_none_matches_regexp failed with reason invalid_response_answer_rrs"
 
