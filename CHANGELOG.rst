@@ -8,6 +8,15 @@ Changelog <https://keepachangelog.com/en/1.0.0/>`__, and this project
 adheres to `Semantic
 Versioning <https://semver.org/spec/v2.0.0.html>`__.
 
+Unreleased
+----------
+
+Fixed
+~~~~~
+
+-  Specifying ``valid_rcodes`` as a URL querystring parameter did not work, bug fixed and regression test added.
+
+
 v1.1.0 - 2025-02-24
 -------------------
 

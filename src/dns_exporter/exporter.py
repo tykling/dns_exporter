@@ -28,7 +28,6 @@ import dns.exception
 import dns.flags
 import dns.opcode
 import dns.query
-import dns.rcode
 import dns.rdatatype
 import dns.resolver
 import socks  # type: ignore[import-untyped]
@@ -307,6 +306,31 @@ class DNSExporter(MetricsHandler):
         return tmp
 
     @classmethod
+    def prepare_config_lists(
+        cls,
+        config: ConfigDict,
+    ) -> ConfigDict:
+        """Parse and create list objects for the config."""
+        tmp: ConfigDict = {}
+        # use literals for TypedDict keys to make mypy happy
+        valid_rcodes: Literal["valid_rcodes"] = "valid_rcodes"
+        try:
+            for key in [valid_rcodes]:
+                if key in config:
+                    if isinstance(config[key], str):
+                        tmp[key] = str(config[key]).split(",")
+                    elif isinstance(config[key], list):
+                        # use as-is
+                        tmp[key] = config[key]
+                    else:
+                        # unsupported type
+                        raise TypeError(key)  # noqa: TRY301
+        except (ValueError, TypeError) as e:
+            logger.exception(f"Unable to validate list for key {key}")
+            raise ConfigError("invalid_request_config") from e
+        return tmp
+
+    @classmethod
     def prepare_config(cls, config: ConfigDict) -> ConfigDict:
         """Make sure the configdict has the right types and objects.
 
@@ -339,6 +363,8 @@ class DNSExporter(MetricsHandler):
         config.update(cls.prepare_config_floats(config))
         # validate bool keys
         config.update(cls.prepare_config_bools(config))
+        # validate list keys
+        config.update(cls.prepare_config_lists(config))
         # parse server
         config.update(cls.prepare_config_server(config))
         # parse proxy
