@@ -692,6 +692,8 @@ class DNSExporter(MetricsHandler):
         # set RD flag?
         if self.config.recursion_desired:
             q.flags |= dns.flags.RD
+        else:
+            q.flags &= ~dns.flags.RD
 
         # register the DNSCollector in dnsexp_registry
         dns_collector = DNSCollector(config=self.config, query=q, labels=self.labels)
