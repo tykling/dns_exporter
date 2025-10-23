@@ -77,8 +77,6 @@ line-length = 120
 select = ["ALL"]
 ignore = [
     "G004", # Logging statement uses f-string
-    "ANN101", # Missing type annotation for `self` in method
-    "ANN102", # Missing type annotation for `cls` in classmethod
     "EM101", # Exception must not use a string literal, assign to variable first
     "COM812", # missing-trailing-comma (https://docs.astral.sh/ruff/formatter/#conflicting-lint-rules)
     "ISC001", # single-line-implicit-string-concatenation (https://docs.astral.sh/ruff/formatter/#conflicting-lint-rules)
