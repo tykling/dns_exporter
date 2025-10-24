@@ -2,11 +2,13 @@
 
 import logging
 
+import dns.flags
 import pytest
 import requests
 
-from dns_exporter.config import RFValidator, RRValidator
+from dns_exporter.config import Config, ConfigDict, RFValidator, RRValidator
 from dns_exporter.entrypoint import main
+from dns_exporter.exporter import get_query
 
 
 def test_main_no_config(dns_exporter_main_no_config_no_debug):
@@ -658,3 +660,33 @@ def test_nsid(dns_exporter_example_config, caplog):
     assert "Protocol dot got a DNS query response over TCP" in caplog.text
     assert "dnsexp_dns_query_success 1.0" in r.text
     assert 'nsid="unicast2.servers.censurfridns.dk"' in r.text
+
+
+def test_query_rd_true(caplog, exporter):
+    """Make sure the RD flag is set in the query when recursion_desired is true.
+
+    Regression test for https://github.com/tykling/dns_exporter/issues/177
+    """
+    caplog.clear()
+    caplog.set_level(logging.DEBUG)
+    prepared = exporter.prepare_config(
+        ConfigDict(recursion_desired=True, query_name="example.com", server="dns.google")
+    )
+    config = Config.create(name="test", **prepared)
+    q = get_query(config=config)
+    assert dns.flags.RD in q.flags, "RD flag should be set"
+
+
+def test_query_rd_false(caplog, exporter):
+    """Make sure the RD flag is not set in the query when recursion_desired is false.
+
+    Regression test for https://github.com/tykling/dns_exporter/issues/177
+    """
+    caplog.clear()
+    caplog.set_level(logging.DEBUG)
+    prepared = exporter.prepare_config(
+        ConfigDict(recursion_desired=False, query_name="example.com", server="dns.google")
+    )
+    config = Config.create(name="test", **prepared)
+    q = get_query(config=config)
+    assert dns.flags.RD not in q.flags, "RD flag should not be set"

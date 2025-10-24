@@ -598,60 +598,6 @@ class DNSExporter(MetricsHandler):
         qs: dict[str, str] = {k: v[0] for k, v in parsed_qs.items()}
         return url, qs
 
-    def get_query(self) -> QueryMessage:
-        """Build and return the dns.message.QueryMessage object."""
-        # prepare query
-        qname = dns.name.from_text(str(self.config.query_name))
-        q = dns.message.make_query(
-            qname=qname,
-            rdtype=str(self.config.query_type),
-            rdclass=self.config.query_class,
-        )
-
-        # use EDNS?
-        if self.config.edns:
-            # use edns
-            ednsargs: dict[
-                str,
-                str | int | bool | list[dns.edns.GenericOption],
-            ] = {"options": []}
-            # use the DO bit?
-            if self.config.edns_do:
-                ednsargs["ednsflags"] = dns.flags.DO
-            # use nsid?
-            if self.config.edns_nsid:
-                ednsargs["options"].append(  # type: ignore[union-attr]
-                    dns.edns.GenericOption(dns.edns.NSID, ""),
-                )
-            # set bufsize/payload?
-            if self.config.edns_bufsize:
-                # dnspython calls bufsize "payload"
-                ednsargs["payload"] = int(self.config.edns_bufsize)
-            # set edns padding?
-            if self.config.edns_pad:
-                ednsargs["options"].append(  # type: ignore[union-attr]
-                    dns.edns.GenericOption(
-                        dns.edns.PADDING,
-                        bytes(int(self.config.edns_pad)),
-                    ),
-                )
-            # enable edns with the chosen options
-            q.use_edns(edns=0, **ednsargs)  # type: ignore[arg-type]
-            logger.debug(f"using edns options {ednsargs}")
-        else:
-            # do not use edns
-            q.use_edns(edns=False)
-            logger.debug("not using edns")
-
-        # set RD flag?
-        if self.config.recursion_desired:
-            q.flags |= dns.flags.RD
-        else:
-            q.flags &= ~dns.flags.RD
-
-        # go
-        return q
-
     def handle_query_request(self) -> None:
         """Handle incoming HTTP GET requests to /query or /config."""
         logger.debug(
@@ -700,7 +646,7 @@ class DNSExporter(MetricsHandler):
             }
         )
 
-        q = self.get_query()
+        q = get_query(config=self.config)
 
         # register the DNSCollector in dnsexp_registry
         dns_collector = DNSCollector(config=self.config, query=q, labels=self.labels)
@@ -773,3 +719,58 @@ class DNSExporter(MetricsHandler):
         self.end_headers()
         self.wfile.write(output)
         dnsexp_http_responses_total.labels(path=self.url.path, response_code=200).inc()
+
+
+def get_query(config: Config) -> QueryMessage:
+    """Build and return the dns.message.QueryMessage object."""
+    # prepare query
+    qname = dns.name.from_text(str(config.query_name))
+    q = dns.message.make_query(
+        qname=qname,
+        rdtype=str(config.query_type),
+        rdclass=config.query_class,
+    )
+
+    # use EDNS?
+    if config.edns:
+        # use edns
+        ednsargs: dict[
+            str,
+            str | int | bool | list[dns.edns.GenericOption],
+        ] = {"options": []}
+        # use the DO bit?
+        if config.edns_do:
+            ednsargs["ednsflags"] = dns.flags.DO
+        # use nsid?
+        if config.edns_nsid:
+            ednsargs["options"].append(  # type: ignore[union-attr]
+                dns.edns.GenericOption(dns.edns.NSID, ""),
+            )
+        # set bufsize/payload?
+        if config.edns_bufsize:
+            # dnspython calls bufsize "payload"
+            ednsargs["payload"] = int(config.edns_bufsize)
+        # set edns padding?
+        if config.edns_pad:
+            ednsargs["options"].append(  # type: ignore[union-attr]
+                dns.edns.GenericOption(
+                    dns.edns.PADDING,
+                    bytes(int(config.edns_pad)),
+                ),
+            )
+        # enable edns with the chosen options
+        q.use_edns(edns=0, **ednsargs)  # type: ignore[arg-type]
+        logger.debug(f"using edns options {ednsargs}")
+    else:
+        # do not use edns
+        q.use_edns(edns=False)
+        logger.debug("not using edns")
+
+    # set RD flag?
+    if config.recursion_desired:
+        q.flags |= dns.flags.RD
+    else:
+        q.flags &= ~dns.flags.RD
+
+    # go
+    return q
