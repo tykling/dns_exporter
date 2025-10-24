@@ -385,6 +385,24 @@ def test_validate_rcode(dns_exporter_example_config, caplog):
     assert "dnsexp_dns_query_success 0.0" in r.text
 
 
+def test_validate_rcode_2(dns_exporter_example_config, caplog):
+    """Trigger an invalid_response_rcode error by asking for an NXDOMAIN."""
+    r = requests.get(
+        "http://127.0.0.1:25353/query",
+        params={
+            "server": "dns.google",
+            "query_name": "404.example.com",
+            "family": "ipv4",
+            "valid_rcodes": "NXDOMAIN,NOERROR",
+        },
+    )
+    assert 'rcode="NXDOMAIN"' in r.text
+    assert "dnsexp_dns_query_success 1.0" in r.text
+
+
+# validate_flags fail_if_any_absent
+
+
 def test_validate_flags_fail_if_any_absent(dns_exporter_example_config, caplog):
     """Trigger an invalid_response_flags failure by checking for AD flag on google.com."""
     r = requests.get(
@@ -397,6 +415,23 @@ def test_validate_flags_fail_if_any_absent(dns_exporter_example_config, caplog):
         },
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
+
+
+def test_validate_flags_fail_if_any_absent_2(dns_exporter_example_config, caplog):
+    """Test invalid_response_flags fail_if_any_absent without failing."""
+    r = requests.get(
+        "http://127.0.0.1:25353/query",
+        params={
+            "server": "dns.google",
+            "query_name": "bornhack.dk",
+            "family": "ipv4",
+            "module": "has_ad",
+        },
+    )
+    assert "dnsexp_dns_query_success 1.0" in r.text
+
+
+# validate_flags fail_if_any_present
 
 
 def test_validate_flags_fail_if_any_present(dns_exporter_example_config, caplog):
@@ -413,6 +448,23 @@ def test_validate_flags_fail_if_any_present(dns_exporter_example_config, caplog)
     assert "dnsexp_dns_query_success 0.0" in r.text
 
 
+def test_validate_flags_fail_if_any_present_2(dns_exporter_example_config, caplog):
+    """Test invalid_response_flags fail_if_any_present without failing."""
+    r = requests.get(
+        "http://127.0.0.1:25353/query",
+        params={
+            "server": "dns.google",
+            "query_name": "google.com",
+            "family": "ipv4",
+            "module": "has_no_ad",
+        },
+    )
+    assert "dnsexp_dns_query_success 1.0" in r.text
+
+
+# validate_flags fail_if_all_present
+
+
 def test_validate_flags_fail_if_all_present(dns_exporter_example_config, caplog):
     """Trigger an invalid_response_flags failure by requiring AA flag from a recursor."""
     r = requests.get(
@@ -427,20 +479,6 @@ def test_validate_flags_fail_if_all_present(dns_exporter_example_config, caplog)
     assert "dnsexp_dns_query_success 0.0" in r.text
 
 
-def test_validate_flags_fail_if_all_absent(dns_exporter_example_config, caplog):
-    """Trigger an invalid_response_flags failure by asking a recursor and expecting no RA flag."""
-    r = requests.get(
-        "http://127.0.0.1:25353/query",
-        params={
-            "server": "dns.google",
-            "query_name": "google.com",
-            "family": "ipv4",
-            "module": "fail_recursive",
-        },
-    )
-    assert "dnsexp_dns_query_success 0.0" in r.text
-
-
 def test_validate_flags_fail_if_all_present_2(dns_exporter_example_config, caplog):
     """Trigger an invalid_response_flags failure by expecting an AA+AD response from a recursor."""
     r = requests.get(
@@ -450,20 +488,6 @@ def test_validate_flags_fail_if_all_present_2(dns_exporter_example_config, caplo
             "query_name": "google.com",
             "family": "ipv4",
             "module": "fail_not_auth",
-        },
-    )
-    assert "dnsexp_dns_query_success 0.0" in r.text
-
-
-def test_validate_flags_fail_if_all_absent_2(dns_exporter_example_config, caplog):
-    """Trigger an invalid_response_flags failure by not expecting recursive flags from a recursor."""
-    r = requests.get(
-        "http://127.0.0.1:25353/query",
-        params={
-            "server": "dns.google",
-            "query_name": "wikipedia.org",
-            "family": "ipv4",
-            "module": "fail_recursive",
         },
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
@@ -484,6 +508,37 @@ def test_validate_flags_fail_if_all_present_3(dns_exporter_example_config, caplo
     assert "dnsexp_dns_query_success 1.0" in r.text
 
 
+# validate_flags fail_if_all_absent
+
+
+def test_validate_flags_fail_if_all_absent(dns_exporter_example_config, caplog):
+    """Trigger an invalid_response_flags failure by asking a recursor and expecting no RA flag."""
+    r = requests.get(
+        "http://127.0.0.1:25353/query",
+        params={
+            "server": "dns.google",
+            "query_name": "google.com",
+            "family": "ipv4",
+            "module": "fail_recursive",
+        },
+    )
+    assert "dnsexp_dns_query_success 0.0" in r.text
+
+
+def test_validate_flags_fail_if_all_absent_2(dns_exporter_example_config, caplog):
+    """Trigger an invalid_response_flags failure by not expecting recursive flags from a recursor."""
+    r = requests.get(
+        "http://127.0.0.1:25353/query",
+        params={
+            "server": "dns.google",
+            "query_name": "wikipedia.org",
+            "family": "ipv4",
+            "module": "fail_recursive",
+        },
+    )
+    assert "dnsexp_dns_query_success 0.0" in r.text
+
+
 def test_validate_flags_fail_if_all_absent_3(dns_exporter_example_config, caplog):
     """Test a module using fail_if_all_absent without failing by asking a root server for . and failing if AA and AD are missing."""
     r = requests.get(
@@ -498,7 +553,10 @@ def test_validate_flags_fail_if_all_absent_3(dns_exporter_example_config, caplog
     assert "dnsexp_dns_query_success 1.0" in r.text
 
 
-def test_validate_rr_fail_if_matches_regexp(dns_exporter_example_config, caplog):
+# validate_rrs fail_if_matches_regexp
+
+
+def test_validate_rrs_fail_if_matches_regexp(dns_exporter_example_config, caplog):
     """Trigger an invalid_response_answer_rrs failure by asking for root NS and failing on seeing k.root-servers.net. in the result."""
     r = requests.get(
         "http://127.0.0.1:25353/query",
@@ -511,6 +569,24 @@ def test_validate_rr_fail_if_matches_regexp(dns_exporter_example_config, caplog)
         },
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
+
+
+def test_validate_rrs_fail_if_matches_regexp_2(dns_exporter_example_config, caplog):
+    """Test invalid_response_answer_rrs fail_if_matches_regexp without failing."""
+    r = requests.get(
+        "http://127.0.0.1:25353/query",
+        params={
+            "server": "dns.google",
+            "query_name": "example.com",
+            "family": "ipv4",
+            "query_type": "NS",
+            "module": "fail_auth_k_root",
+        },
+    )
+    assert "dnsexp_dns_query_success 1.0" in r.text
+
+
+# validate_rrs fail_if_all_match_regexp
 
 
 def test_validate_rrs_fail_if_all_match_regexp(dns_exporter_example_config, caplog):
@@ -543,6 +619,9 @@ def test_validate_rrs_fail_if_all_match_regexp_2(dns_exporter_example_config, ca
     assert "dnsexp_dns_query_success 1.0" in r.text
 
 
+# validate_rrs fail_if_not_matches_regexp
+
+
 def test_validate_rrs_fail_if_not_matches_regexp(dns_exporter_example_config, caplog):
     """Trigger an invalid_response_answer_rrs by asking for example.com NS and failing on NOT seeing root servers in ANSWER section."""
     r = requests.get(
@@ -556,6 +635,24 @@ def test_validate_rrs_fail_if_not_matches_regexp(dns_exporter_example_config, ca
         },
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
+
+
+def test_validate_rrs_fail_if_not_matches_regexp_2(dns_exporter_example_config, caplog):
+    """Test invalid_response_answer_rrs fail_if_not_matches_regexp without failing."""
+    r = requests.get(
+        "http://127.0.0.1:25353/query",
+        params={
+            "server": "dns.google",
+            "query_name": ".",
+            "family": "ipv4",
+            "query_type": "NS",
+            "module": "fail_additional_root",
+        },
+    )
+    assert "dnsexp_dns_query_success 1.0" in r.text
+
+
+# validate_rrs fail_if_none_matches_regexp
 
 
 def test_validate_rrs_fail_if_none_matches_regexp(dns_exporter_example_config, caplog):
@@ -577,7 +674,7 @@ def test_validate_rrs_fail_if_none_matches_regexp_2(
     dns_exporter_example_config,
     caplog,
 ):
-    """Trigger an invalid_response_answer_rrs by asking for example.com NS and failing on NOT seeing root servers in ANSWER section."""
+    """Trigger an invalid_response_answer_rrs by asking for root NS and failing on NOT seeing root servers in ANSWER section."""
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
@@ -589,6 +686,21 @@ def test_validate_rrs_fail_if_none_matches_regexp_2(
         },
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
+
+
+def test_validate_rrs_fail_if_none_matches_regexp_3(dns_exporter_example_config, caplog):
+    """Test fail_if_none_matches with a successful query, make sure k-root is one of the root NS."""
+    r = requests.get(
+        "http://127.0.0.1:25353/query",
+        params={
+            "server": "dns.google",
+            "query_name": ".",
+            "family": "ipv4",
+            "query_type": "NS",
+            "module": "fail_answer_root_none",
+        },
+    )
+    assert "dnsexp_dns_query_success 1.0" in r.text
 
 
 def test_edns_pad(dns_exporter_example_config, caplog):
