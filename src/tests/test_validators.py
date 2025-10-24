@@ -1,17 +1,10 @@
 """dnsexporter tests for validator code."""
 
 import logging
-
-import pytest
-import requests
-
-from dns_exporter.config import RFValidator, RRValidator
-from dns_exporter.entrypoint import main
-
-import logging
 from contextlib import nullcontext as does_not_raise
 
 import pytest
+import requests
 from dns.message import from_text
 
 from dns_exporter.collector import DNSCollector
