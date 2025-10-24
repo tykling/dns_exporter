@@ -3,6 +3,7 @@
 from ipaddress import IPv4Address
 
 import pytest
+import requests
 
 from dns_exporter.config import Config, ConfigDict, ConfigError
 
@@ -156,3 +157,34 @@ def test_wrongtype_bool(exporter):
     prepared["edns_do"] = 42
     with pytest.raises(ConfigError):
         Config.create(name="test", **prepared)
+
+
+# test querystring configuration
+
+
+def test_config_querystring_rcode(dns_exporter_example_config):
+    """Test setting rcode in request querystring."""
+    r = requests.get(
+        "http://127.0.0.1:25353/config",
+        params={
+            "server": "dns.google",
+            "query_name": "example.com",
+            "valid_rcodes": "NXDOMAIN",
+        },
+    )
+    config = r.json()
+    assert config["valid_rcodes"] == ["NXDOMAIN"]
+
+
+def test_config_querystring_rcode_2(dns_exporter_example_config):
+    """Test setting multiple rcodes in request querystring."""
+    r = requests.get(
+        "http://127.0.0.1:25353/config",
+        params={
+            "server": "dns.google",
+            "query_name": "example.com",
+            "valid_rcodes": "NXDOMAIN,NOERROR",
+        },
+    )
+    config = r.json()
+    assert config["valid_rcodes"] == ["NXDOMAIN", "NOERROR"]

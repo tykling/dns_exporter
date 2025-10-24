@@ -314,7 +314,7 @@ class Config:
         all_rcodes = [dns.rcode.to_text(x) for x in dns.rcode.Rcode]
         invalid_rcodes = set(self.valid_rcodes).difference(all_rcodes)
         if invalid_rcodes:
-            logger.error("Invalid rcodes used")
+            logger.error(f"Invalid rcodes used: {invalid_rcodes}")
             raise ConfigError(
                 "invalid_request_config",
             )
