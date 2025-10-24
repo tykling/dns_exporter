@@ -11,10 +11,23 @@ Versioning <https://semver.org/spec/v2.0.0.html>`__.
 Unreleased
 ----------
 
+Added
+~~~~~
+-  A Docker compose file is now included in the root of the project.
+
 Fixed
 ~~~~~
 
 -  Specifying ``valid_rcodes`` as a URL querystring parameter did not work, bug fixed and regression test added.
+-  The ``fail_if_none_matches`` RR validator was broken for non-failing cases. Fixed in #174, thanks @bb-Ricardo!
+-  The ``recursion_desired`` option did not actually disable ``RD`` when set to false. Fixed in #176, thanks @hp0724!
+
+Changed
+~~~~~~~
+
+- Dependencies updated
+- Linters updated
+- Unit tests for response validators moved to seperate ``tests/test_validators.py`` file.
 
 
 v1.1.0 - 2025-02-24
