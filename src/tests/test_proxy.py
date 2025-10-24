@@ -14,8 +14,8 @@ import requests
         ("udp", "dns.google"),
         ("tcp", "dns.google"),
         ("doh", "anycast.uncensoreddns.org"),
-        ("doh3", "anycast.uncensoreddns.org"),
-        ("doq", "anycast.uncensoreddns.org"),
+        ("doq", "dns-unfiltered.adguard.com"),
+        ("doh3", "dns-unfiltered.adguard.com"),
     ],
 )
 def test_proxy(dns_exporter_example_config, proxy_server, protocol, server):

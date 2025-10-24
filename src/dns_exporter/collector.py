@@ -474,8 +474,7 @@ class DNSCollector(Collector):
                 bootstrap_address=ip,
                 port=port,
                 timeout=timeout,
-                # https://github.com/rthalley/dnspython/issues/1172
-                verify=verify,  # type: ignore[arg-type]
+                verify=verify,
                 one_rr_per_rrset=True,
                 http_version=http_version,
             )
