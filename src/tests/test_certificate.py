@@ -84,8 +84,8 @@ def test_cert_verify_invalid_path(dns_exporter_example_config, protocol, caplog)
     [
         "dot",
         "doh",
-        pytest.param("doh3", marks=pytest.mark.xfail(reason="https://github.com/tykling/dns_exporter/issues/132")),
-        pytest.param("doq", marks=pytest.mark.xfail(reason="https://github.com/tykling/dns_exporter/issues/132")),
+        "doh3",
+        "doq",
     ],
 )
 def test_cert_verify_custom_ca_dir(dns_exporter_example_config, protocol, caplog):
@@ -95,7 +95,7 @@ def test_cert_verify_custom_ca_dir(dns_exporter_example_config, protocol, caplog
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "server": "anycast.censurfridns.dk",
+            "server": "dns-unfiltered.adguard.com",
             "query_name": "example.com",
             "protocol": protocol,
             "family": "ipv4",
