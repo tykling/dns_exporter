@@ -41,7 +41,7 @@ test = [
     "tox==4.24.1",
     "types-PyYAML==6.0.12.20241230",
 ]
-docs = ["Sphinx==8.2.1", "sphinx_changelog==1.6.0"]
+docs = ["Sphinx==8.2.3", "sphinx_changelog==1.6.0"]
 
 
 ########## SCRIPTS ####################
