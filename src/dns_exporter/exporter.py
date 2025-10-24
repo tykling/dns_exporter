@@ -406,13 +406,12 @@ class DNSExporter(MetricsHandler):
 
         # prepare config dict
         config = self.prepare_config(config)
-
         # the final config has the name "final"
-        config.update(name="final")
+        del config["name"]
 
         # create the config object
         try:
-            self.config = Config.create(**config)
+            self.config = Config.create(name="final", **config)
         except TypeError as e:
             logger.exception(
                 "Exception while creating config - invalid field specified?",

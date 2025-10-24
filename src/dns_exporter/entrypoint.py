@@ -103,7 +103,7 @@ def main(mockargs: list[str] | None = None) -> None:
         warnings.simplefilter("ignore")
 
     # get arpparser and parse args
-    parser, args = parse_args(mockargs)
+    _, args = parse_args(mockargs)
 
     # handle version check
     if hasattr(args, "version"):
