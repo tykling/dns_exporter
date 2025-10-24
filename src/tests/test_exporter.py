@@ -679,7 +679,7 @@ def test_validate_rrs_fail_if_none_matches_regexp_2(
         "http://127.0.0.1:25353/query",
         params={
             "server": "dns.google",
-            "query_name": ".",
+            "query_name": "example.com",
             "family": "ipv4",
             "query_type": "NS",
             "module": "fail_answer_root_none",
