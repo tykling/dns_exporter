@@ -3,7 +3,7 @@ name: Run Tox
 
 on:  # yamllint disable-line rule:truthy
   push:
-  pull-request:
+  pull_request:
 
 jobs:
   build:
