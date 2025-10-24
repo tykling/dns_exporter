@@ -474,7 +474,7 @@ class DNSCollector(Collector):
                 bootstrap_address=ip,
                 port=port,
                 timeout=timeout,
-                verify=verify,  # type: ignore[arg-type]
+                verify=verify,
                 one_rr_per_rrset=True,
                 http_version=http_version,
             )
