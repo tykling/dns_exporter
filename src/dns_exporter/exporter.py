@@ -40,6 +40,7 @@ from dns_exporter.metrics import QTIME_LABELS, dnsexp_http_requests_total, dnsex
 from dns_exporter.version import __version__
 
 if TYPE_CHECKING:  # pragma: no cover
+    from dns.message import QueryMessage
     from prometheus_client.registry import RestrictedRegistry
 
 logger = logging.getLogger(f"dns_exporter.{__name__}")
@@ -597,54 +598,8 @@ class DNSExporter(MetricsHandler):
         qs: dict[str, str] = {k: v[0] for k, v in parsed_qs.items()}
         return url, qs
 
-    def handle_query_request(self) -> None:
-        """Handle incoming HTTP GET requests to /query or /config."""
-        logger.debug(
-            f"Got {self.url.path} request from client {self.client_address}",
-        )
-        logger.debug(
-            "Initialising CollectorRegistry dnsexp_registry and fail_registry",
-        )
-        dnsexp_registry = CollectorRegistry()
-        self.fail_registry = CollectorRegistry()
-
-        # begin labels dict
-        self.labels: dict[str, str] = {}
-        for key in QTIME_LABELS:
-            # default all labels to the string "none"
-            self.labels[key] = "none"
-
-        # build and validate configuration for this scrape from defaults, config file and request querystring
-        try:
-            self.build_final_config(qs=self.qs)
-        except ConfigError as E:
-            self.handle_failure(self.fail_registry, str(E), labels=self.labels)
-            # something is wrong with the config, send error response and bail out
-            self.send_metric_response(registry=self.fail_registry, query=self.qs)
-            return
-
-        # if this is a config check return now
-        if self.url.path == "/config":
-            logger.debug("returning config")
-            self.send_response(200)
-            self.end_headers()
-            self.wfile.write(self.config.json().encode("utf-8"))
-            return
-
-        # config is ready for action, begin the labels dict
-        self.labels.update(
-            {
-                "server": str(self.config.server.geturl()),  # type: ignore[union-attr]
-                "ip": str(self.config.ip),
-                "port": str(self.config.server.port),  # type: ignore[union-attr]
-                "protocol": str(self.config.protocol),
-                "family": str(self.config.family),
-                "proxy": str(self.config.proxy.geturl()) if self.config.proxy else "none",
-                "query_name": str(self.config.query_name),
-                "query_type": str(self.config.query_type),
-            }
-        )
-
+    def get_query(self) -> QueryMessage:
+        """Build and return the dns.query.Query object."""
         # prepare query
         qname = dns.name.from_text(str(self.config.query_name))
         q = dns.message.make_query(
@@ -693,6 +648,59 @@ class DNSExporter(MetricsHandler):
             q.flags |= dns.flags.RD
         else:
             q.flags &= ~dns.flags.RD
+
+        # go
+        return q
+
+    def handle_query_request(self) -> None:
+        """Handle incoming HTTP GET requests to /query or /config."""
+        logger.debug(
+            f"Got {self.url.path} request from client {self.client_address}",
+        )
+        logger.debug(
+            "Initialising CollectorRegistry dnsexp_registry and fail_registry",
+        )
+        dnsexp_registry = CollectorRegistry()
+        self.fail_registry = CollectorRegistry()
+
+        # begin labels dict
+        self.labels: dict[str, str] = {}
+        for key in QTIME_LABELS:
+            # default all labels to the string "none"
+            self.labels[key] = "none"
+
+        # build and validate configuration for this scrape from defaults, config file and request querystring
+        try:
+            self.build_final_config(qs=self.qs)
+        except ConfigError as E:
+            self.handle_failure(self.fail_registry, str(E), labels=self.labels)
+            # something is wrong with the config, send error response and bail out
+            self.send_metric_response(registry=self.fail_registry, query=self.qs)
+            return
+
+        # if this is a config check return now
+        if self.url.path == "/config":
+            logger.debug("returning config")
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(self.config.json().encode("utf-8"))
+            return
+
+        # config is ready for action, begin the labels dict
+        self.labels.update(
+            {
+                "server": str(self.config.server.geturl()),  # type: ignore[union-attr]
+                "ip": str(self.config.ip),
+                "port": str(self.config.server.port),  # type: ignore[union-attr]
+                "protocol": str(self.config.protocol),
+                "family": str(self.config.family),
+                "proxy": str(self.config.proxy.geturl()) if self.config.proxy else "none",
+                "query_name": str(self.config.query_name),
+                "query_type": str(self.config.query_type),
+            }
+        )
+
+        q = self.get_query()
 
         # register the DNSCollector in dnsexp_registry
         dns_collector = DNSCollector(config=self.config, query=q, labels=self.labels)
