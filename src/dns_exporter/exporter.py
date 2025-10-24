@@ -407,7 +407,7 @@ class DNSExporter(MetricsHandler):
         # prepare config dict
         config = self.prepare_config(config)
         # the final config has the name "final"
-        del config["name"]
+        del config["name"]  # type: ignore[typeddict-item]
 
         # create the config object
         try:
