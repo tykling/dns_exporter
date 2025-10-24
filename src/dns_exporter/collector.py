@@ -425,6 +425,7 @@ class DNSCollector(Collector):
 
     def get_dns_response_dot(  # noqa: PLR0913
         self,
+        *,
         query: Message,
         ip: str,
         port: int,
@@ -454,6 +455,7 @@ class DNSCollector(Collector):
 
     def get_dns_response_doh(  # noqa: PLR0913
         self,
+        *,
         query: Message,
         ip: str,
         port: int,
@@ -473,7 +475,7 @@ class DNSCollector(Collector):
                 port=port,
                 timeout=timeout,
                 # https://github.com/rthalley/dnspython/issues/1172
-                verify=verify,
+                verify=verify,  # type: ignore[arg-type]
                 one_rr_per_rrset=True,
                 http_version=http_version,
             )
@@ -496,6 +498,7 @@ class DNSCollector(Collector):
 
     def get_dns_response_doq(  # noqa: PLR0913
         self,
+        *,
         query: Message,
         ip: str,
         port: int,
@@ -590,7 +593,8 @@ class DNSCollector(Collector):
     ) -> None:
         """Loop over response RRs and check for regex matches."""
         logger.debug(
-            f"{validator} validating {len(rrs)} rrs from {section} section with {len(getattr(validators, validator))} regexes..."
+            f"{validator} validating {len(rrs)} rrs from {section} section "
+            f"with {len(getattr(validators, validator))} regexes..."
         )
 
         num_matches_per_rrs = {str(rr): 0 for rr in rrs}
