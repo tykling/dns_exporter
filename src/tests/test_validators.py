@@ -368,6 +368,9 @@ def test_validate_rrs_fail_if_none_matches_regexp_3(dns_exporter_example_config,
         ([".*127.0.0.1", ".*CNAME\\sabc.dscc.exampleedge.net"], pytest.raises(ValidationError)),
         ([".*127.0.0.1"], does_not_raise()),
         ([".*127.0.0.1", "192.168.32.42"], does_not_raise()),
+        ([".*beef.*"], pytest.raises(ValidationError)),
+        ([".*BEEF.*"], pytest.raises(ValidationError)),
+        ([".*c0DE.*"], does_not_raise()),
     ],
 )
 def test_fail_if_matches_regexp(regex_list, expectation, caplog):
@@ -425,7 +428,7 @@ def test_fail_if_all_match_regexp(regex_list, expectation, caplog):
     [
         ([".*"], does_not_raise()),
         ([".*10.8.23.42"], pytest.raises(ValidationError)),
-        ([".*10.8.23.42", ".*CNAME.*", ".*beef.*", ".*BEEF.*", ".*C0De.*"], does_not_raise()),
+        ([".*10.8.23.42", ".*CNAME.*", ".*beef.*", ".*BEEF.*"], does_not_raise()),
         ([".*10.8.23.42", ".*127.0.0.1"], pytest.raises(ValidationError)),
         ([".*127.0.0.1"], pytest.raises(ValidationError)),
     ],
