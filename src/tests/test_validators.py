@@ -22,6 +22,7 @@ www.example.com. 1800 IN CNAME www.example.com.edgekey.net.
 www.example.com.edgekey.net. 18416 IN CNAME www.example.com.edgekey.net.globalredir.exampledns.net.
 www.example.com.edgekey.net.globalredir.exampledns.net. 900 IN CNAME abc.dscc.exampleedge.net.
 abc.dscc.exampleedge.net. 20 IN A 10.8.23.42
+abc.dscc.exampleedge.net. 20 IN AAAA fd00:dead:beef::23:42
 ;AUTHORITY
 ;ADDITIONAL
 """)
@@ -363,7 +364,7 @@ def test_validate_rrs_fail_if_none_matches_regexp_3(dns_exporter_example_config,
     ("regex_list", "expectation"),
     [
         ([".*"], pytest.raises(ValidationError)),
-        ([".*10.8.23.42"], pytest.raises(ValidationError)),
+        ([".*10.8.23.42$"], pytest.raises(ValidationError)),
         ([".*127.0.0.1", ".*CNAME\\sabc.dscc.exampleedge.net"], pytest.raises(ValidationError)),
         ([".*127.0.0.1"], does_not_raise()),
         ([".*127.0.0.1", "192.168.32.42"], does_not_raise()),
@@ -393,7 +394,7 @@ def test_fail_if_matches_regexp(regex_list, expectation, caplog):
     ("regex_list", "expectation"),
     [
         ([".*"], pytest.raises(ValidationError)),
-        ([".*10.8.23.42", ".*CNAME.*"], pytest.raises(ValidationError)),
+        ([".*10.8.23.42", ".*CNAME.*", ".*BEEF.*"], pytest.raises(ValidationError)),
         ([".*10.8.23.42"], does_not_raise()),
         ([".*127.0.0.1"], does_not_raise()),
         ([".*127.0.0.1", ".*CNAME.*"], does_not_raise()),
@@ -424,7 +425,7 @@ def test_fail_if_all_match_regexp(regex_list, expectation, caplog):
     [
         ([".*"], does_not_raise()),
         ([".*10.8.23.42"], pytest.raises(ValidationError)),
-        ([".*10.8.23.42", ".*CNAME.*"], does_not_raise()),
+        ([".*10.8.23.42", ".*CNAME.*", ".*beef.*", ".*BEEF.*", ".*C0De.*"], does_not_raise()),
         ([".*10.8.23.42", ".*127.0.0.1"], pytest.raises(ValidationError)),
         ([".*127.0.0.1"], pytest.raises(ValidationError)),
     ],
@@ -457,7 +458,8 @@ def test_fail_if_not_matches_regexp(regex_list, expectation, caplog):
         ([".*10.8.23.42", ".*CNAME.*"], does_not_raise()),
         ([".*10.8.23.42", ".*127.0.0.1"], does_not_raise()),
         ([".*127.0.0.1"], pytest.raises(ValidationError)),
-        ([".*127.0.0.1", ".*ABC"], pytest.raises(ValidationError)),
+        ([".*127.0.0.1", ".*ABC"], does_not_raise()),
+        ([".*127.0.0.1", ".*XYZ"], pytest.raises(ValidationError)),
     ],
 )
 def test_fail_if_none_matches_regexp(regex_list, expectation, caplog):
