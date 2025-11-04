@@ -599,7 +599,7 @@ class DNSCollector(Collector):
         num_matches_per_rrs = {str(rr): 0 for rr in rrs}
 
         for regex in getattr(validators, validator):
-            p = re.compile(regex, re.IGNORECASE)
+            p = re.compile(regex)
             for rr in rrs:
                 result = p.match(str(rr))
                 log_entry = f"matching '{rr}' against '{regex}': " + ("success" if result else "failed")
