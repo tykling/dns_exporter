@@ -1,5 +1,6 @@
 """pytest fixtures file for the dns_exporter project."""
 
+import os
 import subprocess
 import time
 from http.server import HTTPServer
@@ -91,6 +92,28 @@ def dns_exporter_param_config(request):
     yield
     print(f"Stopping dns_exporter with config {request.param} on 127.0.0.1:15353 ...")
     proc.terminate()
+
+
+@pytest.fixture(scope="module")
+def dns_exporter_example_config_connection_label():
+    """Run a server with main() and with the example config with the connection label feature on."""
+    print("Running server with example config and connection label feature on 127.0.0.1:15353 ...")
+    os.environ["DNSEXP_CONNECTION_LABEL"] = "1"
+    os.environ["COVERAGE_PROCESS_START"] = "1"
+    proc = subprocess.Popen(
+        args=["dns_exporter", "-c", "dns_exporter/dns_exporter_example.yml", "-d"],
+    )
+    time.sleep(1)
+    if proc.poll():
+        # process didn't start properly, bail out
+        pytest.fail(
+            "Unable to create test instance on 127.0.0.1:15353",
+        )
+    yield
+    print("Stopping dns_exporter with connection label feature enabled on 127.0.0.1:15353 ...")
+    proc.terminate()
+    del os.environ["DNSEXP_CONNECTION_LABEL"]
+    del os.environ["COVERAGE_PROCESS_START"]
 
 
 @pytest.fixture
@@ -225,4 +248,13 @@ def mock_dns_query_httpx_connecttimeout(mocker):
     mocker.patch(
         "dns.query.https",
         side_effect=httpx.ConnectTimeout("mocked"),
+    )
+
+
+@pytest.fixture
+def mock_get_dns_response_tcp_eoferror(mocker):
+    """Monkeypatch DNSCollector.get_dns_response_tcp() to raise EOFError."""
+    mocker.patch(
+        "dns_exporter.collector.DNSCollector.get_dns_response_tcp",
+        side_effect=EOFError("EOF"),
     )

@@ -13,6 +13,13 @@ import requests
     [
         ("udp", "dns.google"),
         ("tcp", "dns.google"),
+        pytest.param(
+            "dot",
+            "anycast.uncensoreddns.org",
+            marks=pytest.mark.xfail(
+                reason="Proxy not yet supported for DoT, see https://github.com/tykling/dns_exporter/issues/76"
+            ),
+        ),
         ("doh", "anycast.uncensoreddns.org"),
         ("doq", "dns-unfiltered.adguard.com"),
         ("doh3", "dns-unfiltered.adguard.com"),
@@ -27,7 +34,7 @@ def test_proxy(dns_exporter_example_config, proxy_server, protocol, server):
             "server": server,
             "family": "ipv4",
             "protocol": protocol,
-            "proxy": "socks5://127.0.0.1:1080",
+            "proxy": "socks5://127.0.0.1",
         },
     )
     assert 'proxy="socks5://127.0.0.1:1080"' in r.text
@@ -37,7 +44,7 @@ def test_proxy(dns_exporter_example_config, proxy_server, protocol, server):
 ###################################################################################
 
 
-@pytest.mark.parametrize("protocol", ["udp", "tcp", "doh", "doh3", "doq"])
+@pytest.mark.parametrize("protocol", ["udp", "tcp", "dot", "doh", "doh3", "doq"])
 def test_proxy_fail(dns_exporter_example_config, proxy_server, protocol):
     """Test proxy failure for all protocols."""
     r = requests.get(

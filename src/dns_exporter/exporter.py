@@ -37,6 +37,7 @@ from dns_exporter.collector import DNSCollector, FailCollector
 from dns_exporter.config import Config, ConfigDict, RFValidator, RRValidator
 from dns_exporter.exceptions import ConfigError
 from dns_exporter.metrics import QTIME_LABELS, dnsexp_http_requests_total, dnsexp_http_responses_total
+from dns_exporter.socket_cache import SocketCache
 from dns_exporter.version import __version__
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -44,6 +45,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from prometheus_client.registry import RestrictedRegistry
 
 logger = logging.getLogger(f"dns_exporter.{__name__}")
+socket_cache = SocketCache()
 
 INDEX = """<!DOCTYPE html>
 <html lang="en">
@@ -76,6 +78,9 @@ class DNSExporter(MetricsHandler):
 
     # the modules key is populated by configure() before the class is initialised
     modules: dict[str, Config] | None = None
+
+    # bool to control the inclusion of the connection label
+    connection_label: bool = False
 
     @classmethod
     def prepare_config_rrvalidators(
@@ -188,7 +193,7 @@ class DNSExporter(MetricsHandler):
         try:
             for key in [timeout]:
                 if key in config:
-                    if isinstance(config[key], str):
+                    if isinstance(config[key], str | int):
                         tmp[key] = float(config[key])
                     elif isinstance(config[key], float):
                         # use as-is
@@ -210,12 +215,13 @@ class DNSExporter(MetricsHandler):
         tmp: ConfigDict = {}
         # use literals for TypedDict keys to make mypy happy
         collect_ttl: Literal["collect_ttl"] = "collect_ttl"
+        connection_reuse: Literal["connection_reuse"] = "connection_reuse"
         edns: Literal["edns"] = "edns"
         edns_do: Literal["edns_do"] = "edns_do"
         recursion_desired: Literal["recursion_desired"] = "recursion_desired"
         verify_certificate: Literal["verify_certificate"] = "verify_certificate"
         try:
-            for key in [collect_ttl, edns, edns_do, recursion_desired, verify_certificate]:
+            for key in [collect_ttl, connection_reuse, edns, edns_do, recursion_desired, verify_certificate]:
                 if key not in config:
                     continue
                 if isinstance(config[key], str):
@@ -646,6 +652,7 @@ class DNSExporter(MetricsHandler):
             }
         )
 
+        # get query message
         q = get_query(config=self.config)
 
         # register the DNSCollector in dnsexp_registry
@@ -672,6 +679,7 @@ class DNSExporter(MetricsHandler):
         # this endpoint exposes metrics about the exporter itself and the python process
         elif self.url.path == "/metrics":
             logger.debug("Returning exporter metrics for request to /metrics")
+            socket_cache.update_metrics()
             self.send_metric_response(registry=self.registry, query=self.qs)
 
         # the root just returns a bit of informational html

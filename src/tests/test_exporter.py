@@ -298,6 +298,25 @@ def test_udptcp(dns_exporter_example_config, caplog):
     assert "dnsexp_dns_query_success 1.0" in r.text
 
 
+def test_udptcp_fallback(dns_exporter_example_config, caplog):
+    """Test udptcp fallback to TCP functionality."""
+    caplog.clear()
+    caplog.set_level(logging.DEBUG)
+    r = requests.get(
+        "http://127.0.0.1:25353/query",
+        params={
+            "server": "dns.google",
+            "query_name": ".",
+            "protocol": "udptcp",
+            "family": "ipv4",
+            "query_type": "RRSIG",
+        },
+    )
+    assert 'transport="TCP"' in r.text
+    assert "Protocol udptcp got a DNS query response over TCP" in caplog.text
+    assert "dnsexp_dns_query_success 1.0" in r.text
+
+
 def test_dot(dns_exporter_example_config, caplog):
     """Test basic DoT functionality."""
     caplog.clear()

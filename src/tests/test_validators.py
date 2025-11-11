@@ -378,7 +378,7 @@ def test_fail_if_matches_regexp(regex_list, expectation, caplog):
 
     expected_exception = "Response validator fail_if_matches_regexp failed with reason invalid_response_answer_rrs"
 
-    c = DNSCollector(Config.create(**test_config), 2, 3)
+    c = DNSCollector(Config.create(**test_config), 2, [])
 
     caplog.clear()
     caplog.set_level(logging.DEBUG)
@@ -408,7 +408,7 @@ def test_fail_if_all_match_regexp(regex_list, expectation, caplog):
 
     expected_exception = "Response validator fail_if_all_match_regexp failed with reason invalid_response_answer_rrs"
 
-    c = DNSCollector(Config.create(**test_config), 2, 3)
+    c = DNSCollector(Config.create(**test_config), 2, [])
 
     caplog.clear()
     caplog.set_level(logging.DEBUG)
@@ -438,7 +438,7 @@ def test_fail_if_not_matches_regexp(regex_list, expectation, caplog):
 
     expected_exception = "Response validator fail_if_not_matches_regexp failed with reason invalid_response_answer_rrs"
 
-    c = DNSCollector(Config.create(**test_config), 2, 3)
+    c = DNSCollector(Config.create(**test_config), 2, [])
 
     caplog.clear()
     caplog.set_level(logging.DEBUG)
@@ -469,7 +469,7 @@ def test_fail_if_none_matches_regexp(regex_list, expectation, caplog):
 
     expected_exception = "Response validator fail_if_none_matches_regexp failed with reason invalid_response_answer_rrs"
 
-    c = DNSCollector(Config.create(**test_config), 2, 3)
+    c = DNSCollector(Config.create(**test_config), 2, [])
 
     caplog.clear()
     caplog.set_level(logging.DEBUG)

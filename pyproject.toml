@@ -124,6 +124,7 @@ exclude = [
 ########### COVERAGE.PY ###############
 [tool.coverage.run]
 omit = ["_version.py"]
+patch = ["subprocess"]
 
 
 ########### PYTEST ####################

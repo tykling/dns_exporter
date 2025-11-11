@@ -12,6 +12,10 @@ def test_nonbool_bool(exporter):
     """Test a bool which is not a bool."""
     with pytest.raises(ConfigError):
         exporter.prepare_config(ConfigDict(edns_do=42))
+    prepared = exporter.prepare_config(ConfigDict(edns_do=True))
+    prepared["edns_do"] = 42
+    with pytest.raises(ConfigError):
+        Config.create(name="test", **prepared)
 
 
 def test_negative_int(exporter):
@@ -62,6 +66,8 @@ def test_invalid_rfvalidator(exporter):
 
 def test_invalid_rcode(exporter):
     """Test with an invalid RCODE."""
+    with pytest.raises(ConfigError):
+        prepared = exporter.prepare_config(ConfigDict(valid_rcodes=42))
     prepared = exporter.prepare_config(ConfigDict(valid_rcodes="YESERROR"))
     with pytest.raises(ConfigError):
         Config.create(name="test", **prepared)
@@ -102,15 +108,6 @@ def test_rd_false(exporter):
     assert c.recursion_desired is False
 
 
-def test_proxy_for_unsupported_protocol(exporter):
-    """Test proxy with a protocol not supported."""
-    prepared = exporter.prepare_config(
-        ConfigDict(protocol="dot", proxy="socks5://127.0.0.1"),
-    )
-    with pytest.raises(ConfigError):
-        Config.create(name="test", **prepared)
-
-
 def test_prepare_config_ip_real_ipaddress(caplog, exporter):
     """Make sure a ConfigDict with a real ipaddress.IPv4Address or ipaddress.IPv6Address object works as intended."""
     indict = ConfigDict(ip=IPv4Address("127.0.0.1"))
@@ -149,14 +146,6 @@ def test_int_proxy(exporter, caplog):
     """Test when proxy is set to a wrong type."""
     with pytest.raises(ConfigError):
         exporter.prepare_config(ConfigDict(proxy=42))
-
-
-def test_wrongtype_bool(exporter):
-    """Test a bool of wrong type."""
-    prepared = exporter.prepare_config(ConfigDict(edns_do=True))
-    prepared["edns_do"] = 42
-    with pytest.raises(ConfigError):
-        Config.create(name="test", **prepared)
 
 
 # test querystring configuration
