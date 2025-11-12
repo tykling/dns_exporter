@@ -249,6 +249,8 @@ The default value is ``5.0``.
 ~~~~~~~~~~~~~~~~~~~~~~~
 This setting defines validation rules for the ``ANSWER`` section of the DNS response. ``validate_answer_rrs`` can do the following validations:
 
+To use case insensitive matching in the regex expression, it is necessary to use the prefix ``(?i)`` in the regular expression.
+
 ``fail_if_matches_regexp``
    A list of regular expressions. Each RR in the ``ANSWER`` section is checked against each regular expression in the list. The query is considered failed if a match is found.
 
