@@ -42,6 +42,7 @@ from dns_exporter.socket_cache import SocketCache
 from dns_exporter.version import __version__
 
 if TYPE_CHECKING:  # pragma: no cover
+    import threading
     import urllib.parse
     from collections.abc import Iterator
     from ipaddress import IPv4Address, IPv6Address
@@ -73,6 +74,9 @@ class DNSCollector(Collector):
 
     # set the version on the class
     __version__: str = __version__
+
+    # used to store the socket lock during queries
+    socket_lock: contextlib.nullcontext[None] | threading.Lock
 
     def __init__(
         self,
@@ -405,11 +409,11 @@ class DNSCollector(Collector):
         # get reusable socket?
         if self.config.connection_reuse:
             sock = socket_cache.get_plaintext_socket(config=self.config)
-            lock = sock.lock
+            self.socket_lock = sock.lock
         else:
-            lock = contextlib.nullcontext()
+            self.socket_lock = contextlib.nullcontext()
         # do the query
-        with lock:
+        with self.socket_lock:
             r = dns.query.udp(
                 q=query,
                 where=ip,
@@ -430,11 +434,11 @@ class DNSCollector(Collector):
         # get reusable socket?
         if self.config.connection_reuse:
             sock = socket_cache.get_plaintext_socket(config=self.config)
-            lock = sock.lock
+            self.socket_lock = sock.lock
         else:
-            lock = contextlib.nullcontext()
+            self.socket_lock = contextlib.nullcontext()
         # do the query
-        with lock:
+        with self.socket_lock:
             r = dns.query.tcp(
                 q=query,
                 where=ip,
@@ -454,11 +458,11 @@ class DNSCollector(Collector):
         """Perform a DNS query with the udptcp protocol (with fallback to TCP)."""
         if self.config.connection_reuse:
             sock = socket_cache.get_plaintext_socket(config=self.config, force_protocol="tcp")
-            lock = sock.lock
+            self.socket_lock = sock.lock
         else:
-            lock = contextlib.nullcontext()
+            self.socket_lock = contextlib.nullcontext()
         # do the query
-        with lock:
+        with self.socket_lock:
             r, tcp = dns.query.udp_with_fallback(
                 q=query,
                 where=ip,
@@ -491,11 +495,11 @@ class DNSCollector(Collector):
         """Perform a DNS query with the dot protocol and catch protocol specific exceptions."""
         if self.config.connection_reuse:
             sock = socket_cache.get_dot_socket(config=self.config, verify=verify)
-            lock = sock.lock
+            self.socket_lock = sock.lock
         else:
-            lock = contextlib.nullcontext()
+            self.socket_lock = contextlib.nullcontext()
         try:
-            with lock:
+            with self.socket_lock:
                 # DoT query, use the ip for where= and set tls hostname with server_hostname=
                 r = dns.query.tls(
                     q=query,
@@ -533,13 +537,13 @@ class DNSCollector(Collector):
         """Perform a DNS query with the doh protocol (tcp+http1/2), catch protocol specific exceptions."""
         if self.config.connection_reuse:
             sock = socket_cache.get_doh_socket(config=self.config, verify=verify)
-            lock = sock.lock
+            self.socket_lock = sock.lock
         else:
-            lock = contextlib.nullcontext()
+            self.socket_lock = contextlib.nullcontext()
         try:
             # DoH query, use the url for where= and use bootstrap_address= for the ip
             url = f"https://{server.hostname}{server.path}"
-            with lock:
+            with self.socket_lock:
                 r = dns.query.https(
                     q=query,
                     where=url,
@@ -585,12 +589,12 @@ class DNSCollector(Collector):
         """Perform a DNS query with the doh3 protocol."""
         if self.config.connection_reuse:
             sock = socket_cache.get_quic_socket(config=self.config, verify=verify)
-            lock = sock.lock
+            self.socket_lock = sock.lock
         else:
-            lock = contextlib.nullcontext()
+            self.socket_lock = contextlib.nullcontext()
         # DoH3 query, use the url for where= and use bootstrap_address= for the ip
         url = f"https://{server.hostname}{server.path}"
-        with lock:
+        with self.socket_lock:
             r = dns.query.https(
                 q=query,
                 where=url,
@@ -621,10 +625,10 @@ class DNSCollector(Collector):
         # DoQ query, use the IP for where= and use server_hostname for the hostname
         if self.config.connection_reuse:
             sock = socket_cache.get_quic_socket(config=self.config, verify=verify)
-            lock = sock.lock
+            self.socket_lock = sock.lock
         else:
-            lock = contextlib.nullcontext()
-        with lock:
+            self.socket_lock = contextlib.nullcontext()
+        with self.socket_lock:
             r = dns.query.quic(
                 q=query,
                 where=ip,
