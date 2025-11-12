@@ -3,6 +3,7 @@
 import logging
 import socket
 import ssl
+from concurrent.futures import ThreadPoolExecutor
 
 import httpx
 import pytest
@@ -329,3 +330,27 @@ def test_cache_metrics(exporter, caplog):
     socket_cache.get_plaintext_socket(config=config)
     socket_cache.update_metrics()
     assert "Updating SocketCache metrics for 1 plain_sockets" in caplog.text
+
+
+def test_socket_locking(dns_exporter_example_config_connection_label):
+    """Test socket locking under parallel use."""
+    qnames = ["example.com", "example.net", "example.org"]
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        results = list(executor.map(tcp_query, qnames))
+    for r in results:
+        assert "dnsexp_dns_query_success 1.0" in r.text
+
+
+def tcp_query(qname) -> requests.get:
+    """Do a TCP query."""
+    return requests.get(
+        "http://127.0.0.1:15353/query",
+        params={
+            "query_name": qname,
+            "server": "dns.google",
+            "family": "ipv4",
+            "protocol": "tcp",
+            "connection_reuse": True,
+            "ip": "8.8.8.8",
+        },
+    )

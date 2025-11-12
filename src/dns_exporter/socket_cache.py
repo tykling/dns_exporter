@@ -91,6 +91,7 @@ class BaseSocket:
     use_count: int = 0
     bytes_sent: int = 0
     bytes_received: int = 0
+    lock = threading.Lock()
 
     def __post_init__(self) -> None:
         """Set socket creation time."""

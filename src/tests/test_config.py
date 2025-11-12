@@ -108,6 +108,15 @@ def test_rd_false(exporter):
     assert c.recursion_desired is False
 
 
+def test_proxy_for_unsupported_protocol(exporter):
+    """Test proxy with a protocol not supported."""
+    prepared = exporter.prepare_config(
+        ConfigDict(protocol="dot", proxy="socks5://127.0.0.1"),
+    )
+    with pytest.raises(ConfigError):
+        Config.create(name="test", **prepared)
+
+
 def test_prepare_config_ip_real_ipaddress(caplog, exporter):
     """Make sure a ConfigDict with a real ipaddress.IPv4Address or ipaddress.IPv6Address object works as intended."""
     indict = ConfigDict(ip=IPv4Address("127.0.0.1"))

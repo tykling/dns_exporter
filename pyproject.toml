@@ -145,7 +145,7 @@ addopts = "--cov=dns_exporter/ --cov-report=xml --cov-report=html --cov-config=.
 
 ########### TOX #######################
 [tool.tox]
-envlist = ["py310", "py311", "py312", "py313"]
+envlist = ["py310", "py311", "py312", "py313", "py314"]
 skipsdist = true
 
 [tool.tox.env_run_base]
