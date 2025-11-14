@@ -48,6 +48,8 @@ QTIME_LABELS = [
 if not os.getenv("DNSEXP_CONNECTION_LABEL"):
     logger.info("DNSEXP_CONNECTION_LABEL unset - disabling 'connection' label feature")
     del QTIME_LABELS[-1]
+else:
+    logger.info("DNSEXP_CONNECTION_LABEL set - enabling 'connection' label feature")
 
 # additional labels used in the per-RR TTL metrics
 TTL_LABELS = [
@@ -320,15 +322,12 @@ dnsexp_socket_age_seconds = Gauge(
 """``dnsexp_socket_cache_age_seconds`` is a Gauge keeping track of the age of each of
 the reusable sockets in the internal socket cache in the exporter.
 
-This metric has eight labels:
+This metric has five labels:
         - ``protocol``
-        - ``family``
-        - ``transport`` TCP/UDP
+        - ``server``
         - ``ip``
-        - ``port``
-        - ``tls_server_name`` Hostname for TLS servername verification
-        - ``verify`` True/False/CA Path
-        - ``proxy`` Proxy URL
+        - ``verify`` TLS verify setting, ``True``/``False``/CA Path
+        - ``proxy`` Proxy URL or ``none``
 
 The placeholder ``none`` is used for cases where there is no suitable value for the label.
 """
@@ -342,15 +341,12 @@ dnsexp_socket_transmit_bytes_total = Gauge(
 transmitted to servers by each socket. Only the raw query size is counted, excluding
 TCP/UDP/TLS/IP overhead.
 
-This metric has eight labels:
+This metric has five labels:
         - ``protocol``
-        - ``family``
-        - ``transport`` TCP/UDP
+        - ``server``
         - ``ip``
-        - ``port``
-        - ``tls_server_name`` Hostname for TLS servername verification
-        - ``verify`` "True"/"False"/CA Path
-        - ``proxy`` Proxy URL
+        - ``verify`` TLS verify setting, ``True``/``False``/CA Path
+        - ``proxy`` Proxy URL or ``none``
 
 The placeholder ``none`` is used for cases where there is no suitable value for the label.
 """
@@ -364,15 +360,12 @@ dnsexp_socket_receive_bytes_total = Gauge(
 received by each socket. Only the raw response size is counted, excluding
 TCP/UDP/TLS/IP overhead.
 
-This metric has eight labels:
+This metric has five labels:
         - ``protocol``
-        - ``family``
-        - ``transport`` TCP/UDP
+        - ``server``
         - ``ip``
-        - ``port``
-        - ``tls_server_name`` Hostname for TLS servername verification
-        - ``verify`` "True"/"False"/CA Path
-        - ``proxy`` Proxy URL
+        - ``verify`` TLS verify setting, ``True``/``False``/CA Path
+        - ``proxy`` Proxy URL or ``none``
 
 The placeholder ``none`` is used for cases where there is no suitable value for the label.
 """
@@ -385,14 +378,11 @@ dnsexp_socket_uses_total = Gauge(
 """``dnsexp_socket_uses_total`` is a Gauge keeping track of the number of times
 each socket has been used.
 
-This metric has eight labels:
+This metric has five labels:
         - ``protocol``
-        - ``family``
-        - ``transport`` TCP/UDP
+        - ``server``
         - ``ip``
-        - ``port``
-        - ``tls_server_name`` Hostname for TLS servername verification
-        - ``verify`` "True"/"False"/CA Path
+        - ``verify`` TLS verify setting, ``True``/``False``/CA Path
         - ``proxy`` Proxy URL
 
 The placeholder ``none`` is used for cases where there is no suitable value for the label.

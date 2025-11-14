@@ -72,7 +72,7 @@ class SocketCacheKey:
             self.protocol,
             self.server,
             self.ip,
-            self.verify,
+            "none" if self.verify is None else self.verify,
             self.proxy,
         )
 
