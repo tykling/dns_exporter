@@ -8,28 +8,44 @@ Changelog <https://keepachangelog.com/en/1.0.0/>`__, and this project
 adheres to `Semantic
 Versioning <https://semver.org/spec/v2.0.0.html>`__.
 
-Unreleased
-----------
+v1.2.0-alpha1 - 2025-11-14
+--------------------------
 
-This release adds a new ``connection_reuse`` config option which (if set to true) will try to reuse the socket/connection when doing lookups. This means that TCP/TLS/QUIC handshakes no longer need to be done every time (depending on how aggressively the server harvests idle connections of course).
+This release adds a new ``connection_reuse`` config option which (if set to true) will
+try to reuse the socket/connection when doing DNS lookups. This means that TCP/TLS/QUIC
+handshakes no longer need to be done every time (depending on how aggressively the DNS
+server harvests idle connections of course).
 
-The new connection reuse feature is disabled by default, so unless you set ``connection_reuse`` to true in your config module or scrape jobs there should be no difference at all.
+The new connection reuse feature is disabled by default, so unless you set
+``connection_reuse`` to true in your config module or scrape jobs there should
+be no difference at all.
 
-A new ``connection`` label can be used to determine if the connection was reused. The label will have the value ``new`` or ``reused``. To avoid breaking existing dashboards the ``connection`` label is disabled by default and must be explicitly enabled by setting the environment variable ``DNSEXP_CONNECTION_LABEL`` to any value before starting ``dns_exporter``.
+A new ``connection`` label can be used to determine if the connection was reused.
+The label will have the value ``new`` or ``reused``. To avoid breaking existing
+dashboards the ``connection`` label is disabled by default and must be explicitly
+enabled by setting the environment variable ``DNSEXP_CONNECTION_LABEL`` to any value
+before starting ``dns_exporter``.
 
 
 Added
 ~~~~~
 -  New ``connection_reuse`` configuration option (see above). Defaults to ``False``.
--  New metrics for the socket cache (related to the connection reuse feature): ``dnsexp_socket_age_seconds``, ``dnsexp_socket_transmit_bytes_total``, ``dnsexp_socket_receive_bytes_total``, ``dnsexp_socket_uses_total``. All four metrics are gauges with the following labels: ``protocol``, ``server``, ``ip``, ``verify``, ``proxy``
+-  New metrics for the socket cache (related to the connection reuse feature):
+   ``dnsexp_socket_age_seconds``, ``dnsexp_socket_transmit_bytes_total``,
+   ``dnsexp_socket_receive_bytes_total``, ``dnsexp_socket_uses_total``.
+   All four metrics are gauges with the following labels: ``protocol``,
+   ``server``, ``ip``, ``verify``, ``proxy``
 -  A Docker compose file is now included in the root of the project.
 
 Fixed
 ~~~~~
 
--  Specifying ``valid_rcodes`` as a URL querystring parameter did not work, bug fixed and regression test added.
--  The ``fail_if_none_matches`` RR validator was broken for non-failing cases. Fixed in #174, thanks @bb-Ricardo!
--  The ``recursion_desired`` option did not actually disable ``RD`` when set to false. Fixed in #176, thanks @hp0724!
+-  Specifying ``valid_rcodes`` as a URL querystring parameter did not work,
+   bug fixed and regression test added.
+-  The ``fail_if_none_matches`` RR validator was broken for non-failing cases.
+   Fixed in #174, thanks @bb-Ricardo!
+-  The ``recursion_desired`` option did not actually disable ``RD`` when set to false.
+   Fixed in #176, thanks @hp0724!
 
 Changed
 ~~~~~~~
