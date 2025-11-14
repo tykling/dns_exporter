@@ -137,8 +137,8 @@ class DNSCollector(Collector):
             assert isinstance(self.config.server, urllib.parse.SplitResult)
             assert isinstance(self.config.server.port, int)
 
-        # mark the start time and do the request
         r = None
+        # mark the start time and do the request
         start = time.time()
         try:
             r = self.get_dns_response(query=self.query)
