@@ -275,18 +275,6 @@ def config(exporter):
 
 
 @pytest.fixture
-def config(exporter):
-    """Return a dns_exporter.config.Config object."""
-    prepared = exporter.prepare_config(
-        ConfigDict(
-            server="dns.google",
-            query_name="example.com",
-        )
-    )
-    return Config.create(name="test", **prepared)
-
-
-@pytest.fixture
 def query():
     """Return a QueryMessage."""
     return dns.message.QueryMessage(id=42)
