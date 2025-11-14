@@ -199,7 +199,7 @@ class Config:
     """int: Limits the length of the ``rr_value`` label when collecing per-RR TTL metrics. Default is ``50``"""
 
     connection_reuse: bool
-    """bool: Set this bool to ``True`` to re-use connections for TCP and (D)TLS based protocols. Default is ``False``"""
+    """bool: Set this bool to ``True`` to keep and re-use sockets and sessions when possible. Note that connection reuse is not supported for the UDP part of ``udptcp`` lookups. Default is ``False``"""
 
     edns: bool
     """bool: Set this bool to ``True`` to enable ``EDNS0`` for the DNS query, ``False`` to not use ``EDNS0``.
@@ -345,9 +345,6 @@ class Config:
 
     def __post_init__(self) -> None:
         """Validate as much as possible."""
-        # validate proxy
-        self.validate_proxy()
-
         # validate bools
         self.validate_bools()
 
@@ -370,6 +367,9 @@ class Config:
 
         # validate valid_rcodes
         self.validate_valid_rcodes()
+
+        # validate proxy
+        self.validate_proxy()
 
         # validate ca path
         if self.verify_certificate_path:

@@ -552,6 +552,7 @@ class DNSCollector(Collector):
                     timeout=self.config.timeout,
                     verify=verify,
                     one_rr_per_rrset=True,
+                    # https://github.com/tykling/dns_exporter/issues/201
                     http_version=http_version,
                     session=sock.socket if self.config.connection_reuse else None,
                 )
