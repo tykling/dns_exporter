@@ -466,7 +466,7 @@ class Config:
         return json.dumps(conf)
 
     def get_tls_context(self) -> ssl.SSLContext | bool:
-        """Return a bool or ssl.SSLContext instance. Used by DoH2 (httpx)."""
+        """Return a bool or ssl.SSLContext instance. Only used by protocol doh (which uses httpx)."""
         # is there a custom verify_certificate_path?
         if self.verify_certificate_path and self.verify_certificate:
             # verify with custom ca path, determine dir or file
