@@ -8,6 +8,7 @@ import re
 import socket
 import ssl
 import time
+import traceback
 import urllib
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -405,21 +406,22 @@ class DNSCollector(Collector):
             # EOFError can happen when reusing an old socket that has been closed from
             # the remote end, but might also in rare cases happen for new sockets.
             # OSError happens under circumstances I don't fully understand. Retry those too.
+            ex = "".join(traceback.format_exception_only(e)).strip()
             if not self.config.connection_reuse:
                 logger.debug(
-                    f"Protocol {self.config.protocol} raised {e}, returning socket_error",
+                    f"Protocol {self.config.protocol} raised {ex}, returning socket_error",
                 )
                 raise ProtocolSpecificError("socket_error") from e
 
             # if this is the second attempt then bail out now
             if retry:
                 logger.debug(
-                    "Protocol {self.config.protocol} raised {e} on new socket, returning socket_error",
+                    "Protocol {self.config.protocol} raised {ex} after retry with new socket, returning socket_error",
                 )
                 raise ProtocolSpecificError("socket_error") from e
 
             logger.debug(
-                f"Protocol {self.config.protocol} raised {e} with existing socket, retrying with new socket...",
+                f"Protocol {self.config.protocol} raised {ex} with existing socket, retrying with new socket...",
             )
             # first attempt failed, delete existing socket
             socket_cache.delete_socket(config=self.config)

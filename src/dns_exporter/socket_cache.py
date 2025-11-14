@@ -188,13 +188,23 @@ class SocketCache(Singleton):
         """Delete a socket from cache."""
         cachekey = self.get_cache_key(config=config)
         if config.protocol in ["tcp", "udp", "udptcp"] and cachekey in self.plain_sockets:
-            self.plain_sockets[cachekey].socket.shutdown(socket.SHUT_RDWR)
-            self.plain_sockets[cachekey].socket.close()
+            try:
+                # be nice and close sockets right
+                self.plain_sockets[cachekey].socket.shutdown(socket.SHUT_RDWR)
+                self.plain_sockets[cachekey].socket.close()
+            except OSError:
+                # Ignore OSErrors here (socket might be closed already) and delete the socket anyway
+                pass
             del self.plain_sockets[cachekey]
 
         if config.protocol == "dot" and cachekey in self.dot_sockets:
-            self.dot_sockets[cachekey].socket.shutdown(how=socket.SHUT_RDWR)
-            self.dot_sockets[cachekey].socket.close()
+            try:
+                # be nice and close sockets right
+                self.dot_sockets[cachekey].socket.shutdown(how=socket.SHUT_RDWR)
+                self.dot_sockets[cachekey].socket.close()
+            except OSError:
+                # Ignore OSErrors here (socket might be closed already) and delete the socket anyway
+                pass
             del self.dot_sockets[cachekey]
 
         if config.protocol in ["doh3", "doq"] and cachekey in self.quic_sockets:
