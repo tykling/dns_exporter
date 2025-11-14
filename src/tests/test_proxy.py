@@ -4,6 +4,7 @@ import logging
 
 import pytest
 import requests
+import sys
 
 ###################################################################################
 
@@ -25,6 +26,7 @@ import requests
         ("doh3", "dns-unfiltered.adguard.com"),
     ],
 )
+@pytest.mark.xfail(sys.version_info[:2] == (3, 14), reason="Skip under Python 3.14 https://github.com/tykling/dns_exporter/issues/202")
 def test_proxy(dns_exporter_example_config, proxy_server, protocol, server):
     """Test proxy functionality for all protocols."""
     r = requests.get(
@@ -44,6 +46,7 @@ def test_proxy(dns_exporter_example_config, proxy_server, protocol, server):
 ###################################################################################
 
 
+@pytest.mark.xfail(sys.version_info[:2] == (3, 14), reason="Skip under Python 3.14 https://github.com/tykling/dns_exporter/issues/202")
 @pytest.mark.parametrize("protocol", ["udp", "tcp", "dot", "doh", "doh3", "doq"])
 def test_proxy_fail(dns_exporter_example_config, proxy_server, protocol):
     """Test proxy failure for all protocols."""
@@ -97,6 +100,7 @@ def test_exporter_modules_none(caplog, exporter):
     assert "0 module(s) loaded OK, total modules: 0." in caplog.text
 
 
+@pytest.mark.xfail(sys.version_info[:2] == (3, 14), reason="Skip under Python 3.14 https://github.com/tykling/dns_exporter/issues/202")
 def test_proxy_module(dns_exporter_example_config, proxy_server):
     """Test proxy functionality for udp protocol."""
     r = requests.get(
