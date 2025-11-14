@@ -18,10 +18,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Update Docker image digests
-        uses: chainguard-dev/digestabot@v1.2.2
+        uses: chainguard-dev/digestabot@v1.2.3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 ...
