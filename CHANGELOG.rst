@@ -8,12 +8,18 @@ Changelog <https://keepachangelog.com/en/1.0.0/>`__, and this project
 adheres to `Semantic
 Versioning <https://semver.org/spec/v2.0.0.html>`__.
 
-Unreleased
-----------
+v1.2.0-alpha2 - 2025-11-14
+--------------------------
 
 Added
 ~~~~~
-- Python 3.14 support.
+- Python 3.14 Tox runs.
+- pytest-rerunfailures test dependency added to retry failing tests
+
+Fixed
+~~~~~
+- Fix a few corner cases in socket handling revealed on github runners
+- Skip proxy tests under python 3.14 pending https://github.com/tykling/dns_exporter/issues/202
 
 
 v1.2.0-alpha1 - 2025-11-14
