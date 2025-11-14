@@ -24,10 +24,19 @@ import dns.rdatatype
 import dns.resolver
 import httpx
 import socks  # type: ignore[import-untyped]
+from dns.message import Message, QueryMessage
 from prometheus_client.core import CounterMetricFamily, GaugeMetricFamily
 from prometheus_client.registry import Collector
 
-from dns_exporter.exceptions import ProtocolSpecificError, UnknownFailureReasonError, ValidationError
+from dns_exporter.config import Config
+from dns_exporter.exceptions import (
+    ConfigTypeError,
+    LabelsTypeError,
+    ProtocolSpecificError,
+    QueryTypeError,
+    UnknownFailureReasonError,
+    ValidationError,
+)
 from dns_exporter.metrics import (
     FAILURE_REASONS,
     TTL_LABELS,
@@ -47,9 +56,9 @@ if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import Iterator
     from ipaddress import IPv4Address, IPv6Address
 
-    from dns.message import Message, QueryMessage
+    from dns.message import Message
 
-    from dns_exporter.config import Config, RRValidator
+    from dns_exporter.config import RRValidator
 
 logger = logging.getLogger(f"dns_exporter.{__name__}")
 
@@ -85,9 +94,24 @@ class DNSCollector(Collector):
         labels: dict[str, str],
     ) -> None:
         """Save config and q object as class attributes for use later."""
-        self.config = config
-        self.query = query
-        self.labels = labels
+        # make sure config is valid
+        if isinstance(config, Config):
+            self.config = config
+        else:
+            raise ConfigTypeError
+
+        # make sure query is valid
+        if isinstance(query, QueryMessage):
+            self.query = query
+        else:
+            raise QueryTypeError
+
+        # make sure labels is a list of strings
+        if isinstance(labels, dict):
+            self.labels = {k: str(v) for k, v in labels.items()}
+        else:
+            raise LabelsTypeError
+
         # set proxy?
         if self.config.proxy:
             socks.set_default_proxy(

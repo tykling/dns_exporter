@@ -23,3 +23,15 @@ class UnknownFailureReasonError(RuntimeError):
 
 class ProtocolSpecificError(Exception):
     """Exception class used when DNS lookup fails with a protocol specific exception."""
+
+
+class ConfigTypeError(TypeError):
+    """Exception used when DNSCollector is initialised with a config that is not a dns_exporter.config.Config object."""
+
+
+class QueryTypeError(TypeError):
+    """Exception used when DNSCollector is initialised with a query that is not a dns.query.QueryMessage object."""
+
+
+class LabelsTypeError(TypeError):
+    """Exception used when DNSCollector is initialised with a labels arg that is not a list."""

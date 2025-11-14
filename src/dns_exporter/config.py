@@ -199,7 +199,7 @@ class Config:
     """int: Limits the length of the ``rr_value`` label when collecing per-RR TTL metrics. Default is ``50``"""
 
     connection_reuse: bool
-    """bool: Set this bool to ``True`` to keep and re-use sockets and sessions when possible. Note that connection reuse is not supported for the UDP part of ``udptcp`` lookups. Default is ``False``"""
+    """bool: Set this bool to ``True`` to keep and re-use sockets and sessions when possible. Default is ``False``"""
 
     edns: bool
     """bool: Set this bool to ``True`` to enable ``EDNS0`` for the DNS query, ``False`` to not use ``EDNS0``.

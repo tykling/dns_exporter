@@ -373,7 +373,7 @@ def test_validate_rrs_fail_if_none_matches_regexp_3(dns_exporter_example_config,
         ([".*c0DE.*"], does_not_raise()),
     ],
 )
-def test_fail_if_matches_regexp(regex_list, expectation, caplog):
+def test_fail_if_matches_regexp(regex_list, expectation, caplog, query):
     """Call DNSCollector.validate_response_rrs() with config for fail_if_matches_regexp.
 
     consider request failed if any answer rr matches one of these regexes
@@ -382,7 +382,7 @@ def test_fail_if_matches_regexp(regex_list, expectation, caplog):
 
     expected_exception = "Response validator fail_if_matches_regexp failed with reason invalid_response_answer_rrs"
 
-    c = DNSCollector(Config.create(**test_config), 2, [])
+    c = DNSCollector(Config.create(**test_config), query, {})
 
     caplog.clear()
     caplog.set_level(logging.DEBUG)
@@ -403,7 +403,7 @@ def test_fail_if_matches_regexp(regex_list, expectation, caplog):
         ([".*127.0.0.1", ".*CNAME.*"], does_not_raise()),
     ],
 )
-def test_fail_if_all_match_regexp(regex_list, expectation, caplog):
+def test_fail_if_all_match_regexp(regex_list, expectation, caplog, query):
     """Call DNSCollector.validate_response_rrs() with config for fail_if_all_match_regexp.
 
     consider request failed if all answer rrs match one of these regexes
@@ -412,7 +412,7 @@ def test_fail_if_all_match_regexp(regex_list, expectation, caplog):
 
     expected_exception = "Response validator fail_if_all_match_regexp failed with reason invalid_response_answer_rrs"
 
-    c = DNSCollector(Config.create(**test_config), 2, [])
+    c = DNSCollector(Config.create(**test_config), query, {})
 
     caplog.clear()
     caplog.set_level(logging.DEBUG)
@@ -433,7 +433,7 @@ def test_fail_if_all_match_regexp(regex_list, expectation, caplog):
         ([".*127.0.0.1"], pytest.raises(ValidationError)),
     ],
 )
-def test_fail_if_not_matches_regexp(regex_list, expectation, caplog):
+def test_fail_if_not_matches_regexp(regex_list, expectation, caplog, query):
     """Call DNSCollector.validate_response_rrs() with config for fail_if_not_matches_regexp.
 
     consider request failed if any answer rr does not match one of these regexes
@@ -442,7 +442,7 @@ def test_fail_if_not_matches_regexp(regex_list, expectation, caplog):
 
     expected_exception = "Response validator fail_if_not_matches_regexp failed with reason invalid_response_answer_rrs"
 
-    c = DNSCollector(Config.create(**test_config), 2, [])
+    c = DNSCollector(Config.create(**test_config), query, {})
 
     caplog.clear()
     caplog.set_level(logging.DEBUG)
@@ -466,7 +466,7 @@ def test_fail_if_not_matches_regexp(regex_list, expectation, caplog):
         ([".*127.0.0.1", ".*XYZ"], pytest.raises(ValidationError)),
     ],
 )
-def test_fail_if_none_matches_regexp(regex_list, expectation, caplog):
+def test_fail_if_none_matches_regexp(regex_list, expectation, caplog, query):
     """Call DNSCollector.validate_response_rrs() with config for fail_if_none_matches_regexp.
 
     consider request failed if none of the answer rrs match one of these regexes
@@ -475,7 +475,7 @@ def test_fail_if_none_matches_regexp(regex_list, expectation, caplog):
 
     expected_exception = "Response validator fail_if_none_matches_regexp failed with reason invalid_response_answer_rrs"
 
-    c = DNSCollector(Config.create(**test_config), 2, [])
+    c = DNSCollector(Config.create(**test_config), query, {})
 
     caplog.clear()
     caplog.set_level(logging.DEBUG)

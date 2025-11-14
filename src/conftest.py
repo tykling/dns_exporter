@@ -10,9 +10,11 @@ from threading import Thread
 import httpx
 import pytest
 import yaml
+import dns.message
 
 from dns_exporter.entrypoint import main
 from dns_exporter.exporter import DNSExporter
+from dns_exporter.config import Config, ConfigDict
 
 
 @pytest.fixture
@@ -258,3 +260,31 @@ def mock_get_dns_response_tcp_eoferror(mocker):
         "dns_exporter.collector.DNSCollector.get_dns_response_tcp",
         side_effect=EOFError("EOF"),
     )
+
+
+@pytest.fixture
+def config(exporter):
+    """Return a dns_exporter.config.Config object."""
+    prepared = exporter.prepare_config(
+        ConfigDict(
+            server="dns.google",
+            query_name="example.com",
+        )
+    )
+    return Config.create(name="test", **prepared)
+
+@pytest.fixture
+def config(exporter):
+    """Return a dns_exporter.config.Config object."""
+    prepared = exporter.prepare_config(
+        ConfigDict(
+            server="dns.google",
+            query_name="example.com",
+        )
+    )
+    return Config.create(name="test", **prepared)
+
+@pytest.fixture
+def query():
+    """Return a QueryMessage."""
+    return dns.message.QueryMessage(id=42)
