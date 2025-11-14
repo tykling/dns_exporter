@@ -105,7 +105,7 @@ def dns_exporter_example_config_connection_label():
     proc = subprocess.Popen(
         args=["dns_exporter", "-c", "dns_exporter/dns_exporter_example.yml", "-d"],
     )
-    time.sleep(1)
+    time.sleep(2)
     if proc.poll():
         # process didn't start properly, bail out
         pytest.fail(
