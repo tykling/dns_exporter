@@ -401,7 +401,7 @@ class DNSCollector(Collector):
                     verify=self.config.get_tls_verify(),
                 )
 
-        except (EOFError,OSError) as e:
+        except (EOFError, OSError) as e:
             # EOFError can happen when reusing an old socket that has been closed from
             # the remote end, but might also in rare cases happen for new sockets.
             # OSError happens under circumstances I don't fully understand. Retry those too.
