@@ -8,6 +8,14 @@ Changelog <https://keepachangelog.com/en/1.0.0/>`__, and this project
 adheres to `Semantic
 Versioning <https://semver.org/spec/v2.0.0.html>`__.
 
+Unreleased
+----------
+
+Added
+~~~~~
+- Python 3.14 support.
+
+
 v1.2.0-alpha1 - 2025-11-14
 --------------------------
 
