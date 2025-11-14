@@ -10,6 +10,7 @@ from dns_exporter.version import __version__
 
 # run this test last
 @pytest.mark.order(-1)
+@pytest.mark.xfail(reason="Fails on pytest retries (which sometimes happen when testing with real-world servers)")
 def test_internal_metrics(dns_exporter_example_config, tmp_path, caplog):
     """Test the internal metrics and make sure aggregated counts of all unit tests are there.
 
