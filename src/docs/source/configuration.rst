@@ -21,6 +21,8 @@ Settings
 +=================================+=================+=====================================================================+
 | ``module``                      | No default      | A module from the config file.                                      |
 +---------------------------------+-----------------+---------------------------------------------------------------------+
+| ``connection_reuse``            | ``false``       | When ``true`` attempt to re-use existing connection.                |
++---------------------------------+-----------------+---------------------------------------------------------------------+
 | ``collect_ttl``                 | ``true``        | Toggles collection of per-RR TTL metrics.                           |
 +---------------------------------+-----------------+---------------------------------------------------------------------+
 | ``collect_ttl_rr_value_length`` | ``50``          | Limits the length of the ``rr_value`` label in TTL metrics          |
@@ -81,9 +83,46 @@ The following section describes each setting.
 Setting ``module`` in the scrape querystring makes ``dns_exporter`` use the named module to change the default settings. Modules are read from the ``dns_exporter.yml`` when the exporter is started.
 
 
+``connection_reuse``
+~~~~~~~~~~~~~~~~~~~~
+This bool toggles the connection reuse feature. Reusing connections is what many resolvers do in the real world, so enabling this may yield more accurate lookup times.
+
+If this is ``True`` ``dns_exporter`` will maintain a socket/connection cache and attempt to reuse connections when doing repeat queries to the same server. All protocols support connection reuse, with the exception of the ``UDP`` part of the ``udptcp`` protocol (this is due to a limitation in the design around socket locking for thread safety).
+
+If ``connection_reuse`` is ``False`` all queries will do the full TCP/TLS/QUIC handshake dance on every lookup. This is the default.
+
+A new ``connection`` label can be used to determine if the connection was reused. The label will have the value ``new`` or ``reused``. To avoid breaking existing dashboards the ``connection`` label is disabled by default and must be explicitly enabled by setting the environment variable ``DNSEXP_CONNECTION_LABEL`` to any value before starting ``dns_exporter``. A message will be logged on startup saying whether the connection label is enabled or not. The ``connection`` label will be part of the standard set of labels starting from version 2.0.
+
+``dns_exporter`` includes metrics about sockets/connections in the cache:
+
+-  ``dnsexp_socket_age_seconds`` (gauge) The number of seconds since the socket/connection was created.
+-  ``dnsexp_socket_transmit_bytes_total`` (gauge) The number of bytes transmitted to the DNS server on the socket. Only the raw query size is counted, excluding any TCP/UDP/QUIC/IP overhead.
+-  ``dnsexp_socket_receive_bytes_total`` (gauge) The number of bytes received from the DNS server on the socket. Only the raw reply size is counted, excluding any TCP/UDP/QUIC/IP overhead.
+-  ``dnsexp_socket_uses_total`` (gauge) The number of times the socket has been used.
+
+All four metrics are gauges with the following labels:
+
+-  ``protocol`` The protocol used, for example ``dot``
+-  ``server`` The server used, for example ``dot://dns.google:853``
+-  ``ip`` The IP address of the server used, for example ``8.8.8.8``
+-  ``verify`` The TLS verify setting, ``True`` for system CA verification, ``False`` for no verification, or path to CA dir.
+-  ``proxy`` The proxy URL or ``none`` if no proxy is used.
+
+The socket cache metrics look like this (per socket)::
+
+    dnsexp_socket_cache_age_seconds{ip="8.8.8.8",protocol="dot",proxy="none",server="dot://dns.google:853",verify="True"} 6.238637447357178
+    dnsexp_socket_transmit_bytes_total{ip="8.8.8.8",protocol="dot",proxy="none",server="dot://dns.google:853",verify="True"} 172.0
+    dnsexp_socket_receive_bytes_total{ip="8.8.8.8",protocol="dot",proxy="none",server="dot://dns.google:853",verify="True"} 272.0
+    dnsexp_socket_uses_total{ip="8.8.8.8",protocol="dot",proxy="none",server="dot://dns.google:853",verify="True"} 4.0
+
+.. Note:: Some DNS servers are very aggressive in harvesting idle connections. If you never see ``dnsexp_socket_uses_total`` go higher than 1 then maybe the DNS servers you are querying is closing the connection faster than you are querying it.
+
+The default value is ``False``.
+
+
 ``collect_ttl``
 ~~~~~~~~~~~~~~~
-This bool toggles collection of per-RR TTL metrics from the response. The ``dnsexp_dns_response_rr_ttl_seconds`` metric includes the first a label with the value of each RR which in some cases can result in too high cardinality. If this is a problem in your usecase the per-RR TTL metrics can be disabled entirely with this setting.
+This bool toggles collection of per-RR TTL metrics from the response. The ``dnsexp_dns_response_rr_ttl_seconds`` metric includes a label with the value of each RR, which in some cases can result in too high cardinality. If this is a problem in your usecase the per-RR TTL metrics can be disabled entirely with this setting.
 
 The default value is ``True``.
 
