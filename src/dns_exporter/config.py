@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import json
 import logging
+import socket
+import ssl
 import typing as t
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -196,6 +198,9 @@ class Config:
     collect_ttl_rr_value_length: int
     """int: Limits the length of the ``rr_value`` label when collecing per-RR TTL metrics. Default is ``50``"""
 
+    connection_reuse: bool
+    """bool: Set this bool to ``True`` to keep and re-use sockets and sessions when possible. Default is ``False``"""
+
     edns: bool
     """bool: Set this bool to ``True`` to enable ``EDNS0`` for the DNS query, ``False`` to not use ``EDNS0``.
     Default is ``True``"""
@@ -281,7 +286,15 @@ class Config:
 
     def validate_bools(self) -> None:
         """Validate bools."""
-        for key in ["collect_ttl", "edns", "edns_do", "edns_nsid", "recursion_desired", "verify_certificate"]:
+        for key in [
+            "collect_ttl",
+            "connection_reuse",
+            "edns",
+            "edns_do",
+            "edns_nsid",
+            "recursion_desired",
+            "verify_certificate",
+        ]:
             # validate bools
             if not isinstance(getattr(self, key), bool):
                 logger.error(f"Not a bool: {key}")
@@ -323,14 +336,16 @@ class Config:
         """Validate proxy."""
         if self.proxy and self.protocol in ["dot"]:
             # proxy support doesn't work for DoT for now
-            # https://github.com/tykling/dns_exporter/issues/76
-            logger.error(f"proxy not valid for protocol {self.protocol}")
+            logger.error(
+                f"proxy not valid for protocol {self.protocol} see https://github.com/tykling/dns_exporter/issues/76"
+            )
             raise ConfigError(
                 "invalid_request_config",
             )
 
     def __post_init__(self) -> None:
         """Validate as much as possible."""
+        # validate bools
         self.validate_bools()
 
         # validate integers
@@ -369,6 +384,7 @@ class Config:
         name: str,
         collect_ttl: bool = True,
         collect_ttl_rr_value_length: int = 50,
+        connection_reuse: bool = False,
         edns: bool = True,
         edns_do: bool = False,
         edns_nsid: bool = True,
@@ -414,6 +430,7 @@ class Config:
             name=name,
             collect_ttl=collect_ttl,
             collect_ttl_rr_value_length=collect_ttl_rr_value_length,
+            connection_reuse=connection_reuse,
             edns=edns,
             edns_do=edns_do,
             edns_nsid=edns_nsid,
@@ -448,6 +465,48 @@ class Config:
             conf["proxy"] = conf["proxy"].geturl()
         return json.dumps(conf)
 
+    def get_tls_context(self) -> ssl.SSLContext | bool:
+        """Return a bool or ssl.SSLContext instance. Only used by protocol doh (which uses httpx)."""
+        # is there a custom verify_certificate_path?
+        if self.verify_certificate_path and self.verify_certificate:
+            # verify with custom ca path, determine dir or file
+            certpath = Path(self.verify_certificate_path)
+            if certpath.is_dir():
+                return ssl.create_default_context(capath=str(certpath), cafile=None, cadata=None)
+            if certpath.is_file():
+                return ssl.create_default_context(capath=None, cafile=str(certpath), cadata=None)
+            # verify_certificate_path is neither dir or file, do not return a context
+        # do cert verification?
+        return self.verify_certificate
+
+    def get_tls_verify(self) -> bool | str:
+        """Return a bool or str for TLS verify args. Used by DoT, DoQ, DoH3."""
+        if self.verify_certificate_path and self.verify_certificate:
+            return self.verify_certificate_path
+        return self.verify_certificate
+
+    @property
+    def verify(self) -> str | bool | ssl.SSLContext | None:
+        """Get verify value suitable for different protocols."""
+        if self.protocol == "doh":
+            return self.get_tls_context()
+        if self.protocol in ["dot", "doq", "doh3"]:
+            return self.get_tls_verify()
+        return None
+
+    @property
+    def dest(self) -> tuple[str, int]:
+        """Return an IP, port tuple."""
+        if t.TYPE_CHECKING:  # pragma: no cover
+            assert self.server is not None
+            assert isinstance(self.server.port, int)
+        return (str(self.ip), self.server.port)
+
+    @property
+    def socket_family(self) -> socket.AddressFamily:
+        """Return the socket family."""
+        return socket.AF_INET if self.family == "ipv4" else socket.AF_INET6
+
 
 class ConfigDict(t.TypedDict, total=False):
     """A TypedDict to help hold config dicts before they become Config objects.
@@ -461,6 +520,7 @@ class ConfigDict(t.TypedDict, total=False):
 
     collect_ttl: bool
     collect_ttl_rr_value_length: bool
+    connection_reuse: bool
     edns: bool
     edns_do: bool
     edns_nsid: bool
