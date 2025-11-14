@@ -3,7 +3,6 @@
 import pytest
 
 from dns_exporter.collector import DNSCollector
-import dns.message
 
 
 def test_invalid_failure_reason(config, query, caplog):

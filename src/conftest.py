@@ -7,14 +7,14 @@ from http.server import HTTPServer
 from pathlib import Path
 from threading import Thread
 
+import dns.message
 import httpx
 import pytest
 import yaml
-import dns.message
 
+from dns_exporter.config import Config, ConfigDict
 from dns_exporter.entrypoint import main
 from dns_exporter.exporter import DNSExporter
-from dns_exporter.config import Config, ConfigDict
 
 
 @pytest.fixture
@@ -273,6 +273,7 @@ def config(exporter):
     )
     return Config.create(name="test", **prepared)
 
+
 @pytest.fixture
 def config(exporter):
     """Return a dns_exporter.config.Config object."""
@@ -283,6 +284,7 @@ def config(exporter):
         )
     )
     return Config.create(name="test", **prepared)
+
 
 @pytest.fixture
 def query():
