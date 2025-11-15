@@ -44,12 +44,12 @@ def test_socket_reuse_enabled(dns_exporter_example_config, protocol, server):
 
 
 def test_socket_reuse_enabled_udptcp_large_reply(dns_exporter_example_config):
-    """Test fallback to TCP with a large reply."""
+    """Test fallback to TCP with a large reply (dr.dk TXT is around 4kb)."""
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "query_name": ".",
-            "query_type": "RRSIG",
+            "query_name": "dr.dk",
+            "query_type": "txt",
             "server": "dns.google",
             "family": "ipv4",
             "protocol": "udptcp",
