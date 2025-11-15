@@ -591,8 +591,8 @@ class DNSCollector(Collector):
             reason = "timeout"
             logger.debug(f"Protocol doh raised exception, returning {reason}")
             raise ProtocolSpecificError(reason) from e
-        except httpx.WriteError as e:
-            # raised by doh when the connection is closed by the server
+        except (httpx.WriteError, httpx.RemoteProtocolError) as e:
+            # raised by doh when the connection is closed by the remote server
             reason = "connection_error"
             logger.debug(f"Protocol doh raised exception, returning {reason}")
             raise ProtocolSpecificError(reason) from e
