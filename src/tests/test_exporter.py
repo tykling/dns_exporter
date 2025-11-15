@@ -306,10 +306,10 @@ def test_udptcp_fallback(dns_exporter_example_config, caplog):
         "http://127.0.0.1:25353/query",
         params={
             "server": "dns.google",
-            "query_name": ".",
+            "query_name": "dr.dk",
             "protocol": "udptcp",
             "family": "ipv4",
-            "query_type": "RRSIG",
+            "query_type": "TXT",
         },
     )
     assert 'transport="TCP"' in r.text
