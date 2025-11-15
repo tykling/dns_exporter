@@ -141,7 +141,7 @@ filterwarnings = [
     "ignore::ResourceWarning",
     "ignore::DeprecationWarning:aioquic.*",
 ]
-addopts = "--cov=dns_exporter/ --cov-report=xml --cov-report=html --cov-config=../pyproject.toml --reruns 2"
+addopts = "--cov=dns_exporter/ --cov-report=xml --cov-report=html --cov-config=../pyproject.toml --reruns 2 --reruns-delay 1"
 
 
 ########### TOX #######################
