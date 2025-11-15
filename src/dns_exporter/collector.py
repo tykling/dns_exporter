@@ -166,7 +166,7 @@ class DNSCollector(Collector):
         # mark the start time and do the request
         start = time.time()
         try:
-            r = self.get_dns_response(query=self.query)
+            r = self.get_dns_response()
             logger.debug(
                 f"Protocol {self.config.protocol} got a DNS query response over {r.transport}",
             )
@@ -316,7 +316,6 @@ class DNSCollector(Collector):
     def get_dns_response(  # noqa: PLR0911 C901
         self,
         *,
-        query: Message,
         retry: bool = False,
     ) -> DNSResponse:
         """Perform a DNS query with the configured server and protocol."""
@@ -337,7 +336,7 @@ class DNSCollector(Collector):
         port = int(self.config.server.port)
 
         logger.debug(
-            f"Doing DNS query {query.question} with server {self.config.server.geturl()} "
+            f"Doing DNS query {self.query.question} with server {self.config.server.geturl()} "
             f"(using IP {self.config.ip}) and proxy {proxy}"
         )
 
@@ -345,7 +344,6 @@ class DNSCollector(Collector):
             if self.config.protocol == "udp":
                 # plain UDP lookup, nothing fancy here
                 return self.get_dns_response_udp(
-                    query=query,
                     ip=ip,
                     port=port,
                 )
@@ -353,7 +351,6 @@ class DNSCollector(Collector):
             if self.config.protocol == "tcp":
                 # plain TCP lookup, nothing fancy here
                 return self.get_dns_response_tcp(
-                    query=query,
                     ip=ip,
                     port=port,
                 )
@@ -361,14 +358,12 @@ class DNSCollector(Collector):
             if self.config.protocol == "udptcp":
                 # plain UDP lookup with fallback to TCP lookup
                 return self.get_dns_response_udptcp(
-                    query=query,
                     ip=ip,
                     port=port,
                 )
 
             if self.config.protocol == "dot":
                 return self.get_dns_response_dot(
-                    query=query,
                     ip=ip,
                     port=port,
                     server=self.config.server,
@@ -377,7 +372,6 @@ class DNSCollector(Collector):
 
             if self.config.protocol == "doh":
                 return self.get_dns_response_doh(
-                    query=query,
                     ip=ip,
                     port=port,
                     server=self.config.server,
@@ -386,7 +380,6 @@ class DNSCollector(Collector):
 
             if self.config.protocol == "doh3":
                 return self.get_dns_response_doh3(
-                    query=query,
                     ip=ip,
                     port=port,
                     server=self.config.server,
@@ -395,7 +388,6 @@ class DNSCollector(Collector):
 
             if self.config.protocol == "doq":
                 return self.get_dns_response_doq(
-                    query=query,
                     ip=ip,
                     port=port,
                     server=self.config.server,
@@ -426,12 +418,12 @@ class DNSCollector(Collector):
             # first attempt failed, delete existing socket
             socket_cache.delete_socket(config=self.config)
             # try again
-            return self.get_dns_response(query=query, retry=True)
+            return self.get_dns_response(retry=True)
 
         # unknown protocol, we will never get here, but mypy wants a return statement
         return DNSResponse(message=None, transport="", socket_reused=False)  # pragma: no cover
 
-    def get_dns_response_udp(self, *, query: Message, ip: str, port: int) -> DNSResponse:
+    def get_dns_response_udp(self, *, ip: str, port: int) -> DNSResponse:
         """Perform a DNS query with the udp protocol."""
         # get reusable socket?
         if self.config.connection_reuse:
@@ -442,7 +434,7 @@ class DNSCollector(Collector):
         # do the query
         with self.socket_lock:
             r = dns.query.udp(
-                q=query,
+                q=self.query,
                 where=ip,
                 port=port,
                 timeout=self.config.timeout,
@@ -451,12 +443,12 @@ class DNSCollector(Collector):
             )
         if self.config.connection_reuse:
             # update the socket stats
-            sock.register_use(bytes_sent=len(query.to_wire()), bytes_received=len(r.to_wire()))
+            sock.register_use(bytes_sent=len(self.query.to_wire()), bytes_received=len(r.to_wire()))
         return DNSResponse(
             message=r, transport="UDP", socket_reused=sock.use_count > 1 if self.config.connection_reuse else False
         )
 
-    def get_dns_response_tcp(self, *, query: Message, ip: str, port: int) -> DNSResponse:
+    def get_dns_response_tcp(self, *, ip: str, port: int) -> DNSResponse:
         """Perform a DNS query with the tcp protocol."""
         # get reusable socket?
         if self.config.connection_reuse:
@@ -467,7 +459,7 @@ class DNSCollector(Collector):
         # do the query
         with self.socket_lock:
             r = dns.query.tcp(
-                q=query,
+                q=self.query,
                 where=ip,
                 port=port,
                 timeout=self.config.timeout,
@@ -476,12 +468,12 @@ class DNSCollector(Collector):
             )
         if self.config.connection_reuse:
             # update the socket stats
-            sock.register_use(bytes_sent=len(query.to_wire()), bytes_received=len(r.to_wire()))
+            sock.register_use(bytes_sent=len(self.query.to_wire()), bytes_received=len(r.to_wire()))
         return DNSResponse(
             message=r, transport="TCP", socket_reused=sock.use_count > 1 if self.config.connection_reuse else False
         )
 
-    def get_dns_response_udptcp(self, *, query: Message, ip: str, port: int) -> DNSResponse:
+    def get_dns_response_udptcp(self, *, ip: str, port: int) -> DNSResponse:
         """Perform a DNS query with the udptcp protocol (with fallback to TCP)."""
         if self.config.connection_reuse:
             sock = socket_cache.get_plaintext_socket(config=self.config, force_protocol="tcp")
@@ -491,7 +483,7 @@ class DNSCollector(Collector):
         # do the query
         with self.socket_lock:
             r, tcp = dns.query.udp_with_fallback(
-                q=query,
+                q=self.query,
                 where=ip,
                 port=port,
                 timeout=self.config.timeout,
@@ -503,7 +495,7 @@ class DNSCollector(Collector):
             # increase the query counter by one extra since tcp fallback was done
             dnsexp_dns_queries_total.inc()
             if self.config.connection_reuse:
-                sock.register_use(bytes_sent=len(query.to_wire()), bytes_received=len(r.to_wire()))
+                sock.register_use(bytes_sent=len(self.query.to_wire()), bytes_received=len(r.to_wire()))
         return DNSResponse(
             message=r,
             transport="TCP" if tcp else "UDP",
@@ -513,7 +505,6 @@ class DNSCollector(Collector):
     def get_dns_response_dot(
         self,
         *,
-        query: Message,
         ip: str,
         port: int,
         server: urllib.parse.SplitResult,
@@ -529,7 +520,7 @@ class DNSCollector(Collector):
             with self.socket_lock:
                 # DoT query, use the ip for where= and set tls hostname with server_hostname=
                 r = dns.query.tls(
-                    q=query,
+                    q=self.query,
                     where=ip,
                     port=port,
                     server_hostname=server.hostname if verify else None,
@@ -540,7 +531,7 @@ class DNSCollector(Collector):
                 )
             if self.config.connection_reuse:
                 # update the socket stats
-                sock.register_use(bytes_sent=len(query.to_wire()), bytes_received=len(r.to_wire()))
+                sock.register_use(bytes_sent=len(self.query.to_wire()), bytes_received=len(r.to_wire()))
             return DNSResponse(
                 message=r, transport="TCP", socket_reused=sock.use_count > 1 if self.config.connection_reuse else False
             )
@@ -551,10 +542,9 @@ class DNSCollector(Collector):
             )
             raise ProtocolSpecificError("certificate_error") from e
 
-    def get_dns_response_doh(  # noqa: PLR0913
+    def get_dns_response_doh(
         self,
         *,
-        query: Message,
         ip: str,
         port: int,
         http_version: dns.query.HTTPVersion = dns.query.HTTPVersion.HTTP_2,
@@ -572,7 +562,7 @@ class DNSCollector(Collector):
             url = f"https://{server.hostname}{server.path}"
             with self.socket_lock:
                 r = dns.query.https(
-                    q=query,
+                    q=self.query,
                     where=url,
                     bootstrap_address=ip,
                     port=port,
@@ -583,6 +573,9 @@ class DNSCollector(Collector):
                     http_version=http_version,
                     session=sock.socket if self.config.connection_reuse else None,
                 )
+            if self.config.connection_reuse:
+                # update the socket stats
+                sock.register_use(bytes_sent=len(self.query.to_wire()), bytes_received=len(r.to_wire()))
             return DNSResponse(
                 message=r,
                 transport="TCP",
@@ -598,6 +591,11 @@ class DNSCollector(Collector):
             reason = "timeout"
             logger.debug(f"Protocol doh raised exception, returning {reason}")
             raise ProtocolSpecificError(reason) from e
+        except httpx.WriteError as e:
+            # raised by doh when the connection is closed by the server
+            reason = "connection_error"
+            logger.debug(f"Protocol doh raised exception, returning {reason}")
+            raise ProtocolSpecificError(reason) from e
         except ValueError as e:
             # raised by doh when the server response with a non-2XX HTTP status code
             logger.debug(
@@ -608,7 +606,6 @@ class DNSCollector(Collector):
     def get_dns_response_doh3(
         self,
         *,
-        query: Message,
         ip: str,
         port: int,
         server: urllib.parse.SplitResult,
@@ -624,7 +621,7 @@ class DNSCollector(Collector):
         url = f"https://{server.hostname}{server.path}"
         with self.socket_lock:
             r = dns.query.https(
-                q=query,
+                q=self.query,
                 where=url,
                 bootstrap_address=ip,
                 port=port,
@@ -634,6 +631,9 @@ class DNSCollector(Collector):
                 http_version=dns.query.HTTPVersion.HTTP_3,
                 session=sock.socket if self.config.connection_reuse else None,
             )
+            if self.config.connection_reuse:
+                # update the socket stats
+                sock.register_use(bytes_sent=len(self.query.to_wire()), bytes_received=len(r.to_wire()))
         return DNSResponse(
             message=r,
             transport="QUIC",
@@ -643,7 +643,6 @@ class DNSCollector(Collector):
     def get_dns_response_doq(
         self,
         *,
-        query: Message,
         ip: str,
         port: int,
         server: urllib.parse.SplitResult,
@@ -658,7 +657,7 @@ class DNSCollector(Collector):
             self.socket_lock = contextlib.nullcontext()
         with self.socket_lock:
             r = dns.query.quic(
-                q=query,
+                q=self.query,
                 where=ip,
                 port=port,
                 server_hostname=server.hostname if verify else None,
@@ -667,6 +666,9 @@ class DNSCollector(Collector):
                 one_rr_per_rrset=True,
                 connection=sock.socket if self.config.connection_reuse else None,
             )
+            if self.config.connection_reuse:
+                # update the socket stats
+                sock.register_use(bytes_sent=len(self.query.to_wire()), bytes_received=len(r.to_wire()))
         return DNSResponse(
             message=r, transport="QUIC", socket_reused=sock.use_count > 1 if self.config.connection_reuse else False
         )
