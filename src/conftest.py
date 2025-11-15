@@ -15,6 +15,7 @@ import yaml
 from dns_exporter.config import Config, ConfigDict
 from dns_exporter.entrypoint import main
 from dns_exporter.exporter import DNSExporter
+from dns_exporter.metrics import QTIME_LABELS
 
 
 @pytest.fixture
@@ -278,3 +279,48 @@ def config(exporter):
 def query():
     """Return a QueryMessage."""
     return dns.message.QueryMessage(id=42)
+
+
+@pytest.fixture
+def labels():
+    """Return a dict of labels."""
+    labels: dict[str, str] = {}
+    for key in QTIME_LABELS + ["server", "ip", "port", "protocol", "family", "proxy", "query_name", "query_type"]:
+        labels[key] = "none"
+    return labels
+
+
+@pytest.fixture
+def mock_get_dns_response_connectionrefusederror(mocker):
+    """Monkeypatch DNSCollector.get_dns_response() to raise ConnectionRefusedError."""
+    mocker.patch(
+        "dns_exporter.collector.DNSCollector.get_dns_response",
+        side_effect=ConnectionRefusedError("mocked"),
+    )
+
+
+@pytest.fixture
+def mock_get_dns_response_oserror(mocker):
+    """Monkeypatch DNSCollector.get_dns_response() to raise OSError."""
+    mocker.patch(
+        "dns_exporter.collector.DNSCollector.get_dns_response",
+        side_effect=OSError("mocked"),
+    )
+
+
+@pytest.fixture
+def mock_dns_query_https_httx_writeerror(mocker):
+    """Monkeypatch dns.query.https() to raise httpx.WriteError."""
+    mocker.patch(
+        "dns.query.https",
+        side_effect=httpx.WriteError("mocked"),
+    )
+
+
+@pytest.fixture
+def mock_socket_close_oserror(mocker):
+    """Monkeypatch dns.query.https() to raise httpx.WriteError."""
+    mocker.patch(
+        "socket.socket.close",
+        side_effect=OSError("mocked"),
+    )

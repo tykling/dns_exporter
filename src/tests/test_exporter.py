@@ -354,6 +354,23 @@ def test_doh(dns_exporter_example_config, caplog):
     assert "dnsexp_dns_query_success 1.0" in r.text
 
 
+def test_doh_httpx_writeerror(dns_exporter_example_config, caplog, mock_dns_query_https_httx_writeerror):
+    """Test DoH error handling for httpx.WriteError."""
+    caplog.clear()
+    caplog.set_level(logging.DEBUG)
+    r = requests.get(
+        "http://127.0.0.1:25353/query",
+        params={
+            "server": "dns.google",
+            "query_name": "example.com",
+            "protocol": "doh",
+            "family": "ipv4",
+        },
+    )
+    assert "Protocol doh raised exception, returning connection_error" in caplog.text
+    assert "dnsexp_dns_query_success 0.0" in r.text
+
+
 def test_doh3(dns_exporter_example_config, caplog):
     """Test basic DoH3 functionality."""
     caplog.clear()

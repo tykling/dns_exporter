@@ -354,3 +354,45 @@ def tcp_query(qname) -> requests.get:
             "ip": "8.8.8.8",
         },
     )
+
+
+def test_plain_socket_cache_delete_oserror(exporter, caplog, mock_socket_close_oserror):
+    """Make sure deleting from the plain socket cache handles OSErrors."""
+    socket_cache = SocketCache()
+    prepared = exporter.prepare_config(
+        ConfigDict(
+            protocol="tcp",
+            server="dns.google",
+            query_name="example.com",
+            ip="8.8.8.8",
+            family="ipv4",
+        )
+    )
+    config = Config.create(name="test", **prepared)
+    sock = socket_cache.get_plaintext_socket(config=config)
+    assert isinstance(sock, PlainSocket)
+    assert isinstance(sock.socket, socket.socket)
+    assert len(socket_cache.plain_sockets) == 1
+    socket_cache.delete_socket(config=config)
+    assert len(socket_cache.plain_sockets) == 0
+
+
+def test_dot_socket_cache_delete_oserror(exporter, caplog, mock_socket_close_oserror):
+    """Make sure deleting from the dot socket cache handles OSErrors."""
+    socket_cache = SocketCache()
+    prepared = exporter.prepare_config(
+        ConfigDict(
+            protocol="dot",
+            server="dns.google",
+            query_name="example.com",
+            ip="8.8.8.8",
+            family="ipv4",
+        )
+    )
+    config = Config.create(name="test", **prepared)
+    sock = socket_cache.get_dot_socket(config=config, verify=True)
+    assert isinstance(sock, DoTSocket)
+    assert isinstance(sock.socket, ssl.SSLSocket)
+    assert len(socket_cache.dot_sockets) == 1
+    socket_cache.delete_socket(config=config)
+    assert len(socket_cache.dot_sockets) == 0
