@@ -46,10 +46,7 @@ QTIME_LABELS = [
     "connection",
 ]
 if not os.getenv("DNSEXP_CONNECTION_LABEL"):
-    logger.info("DNSEXP_CONNECTION_LABEL unset - disabling 'connection' label feature")
     del QTIME_LABELS[-1]
-else:
-    logger.info("DNSEXP_CONNECTION_LABEL set - enabling 'connection' label feature")  # pragma: no cover
 
 # additional labels used in the per-RR TTL metrics
 TTL_LABELS = [

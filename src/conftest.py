@@ -285,7 +285,7 @@ def query():
 def labels():
     """Return a dict of labels."""
     labels: dict[str, str] = {}
-    for key in QTIME_LABELS + ["server", "ip", "port", "protocol", "family", "proxy", "query_name", "query_type"]:
+    for key in [*QTIME_LABELS, "server", "ip", "port", "protocol", "family", "proxy", "query_name", "query_type"]:
         labels[key] = "none"
     return labels
 

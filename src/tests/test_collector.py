@@ -1,4 +1,5 @@
 """Unit tests for DNSCollector and other collector.py code."""
+
 import logging
 
 import pytest
@@ -33,7 +34,9 @@ def test_invalid_labels_type(config, query):
         DNSCollector(config, query, 42)
 
 
-def test_get_dns_response_connectionrefusederror(config, query, labels, mock_get_dns_response_connectionrefusederror, caplog):
+def test_get_dns_response_connectionrefusederror(
+    config, query, labels, mock_get_dns_response_connectionrefusederror, caplog
+):
     """Test exception when get_dns_response() raises ConnectionRefusedError."""
     caplog.set_level(logging.DEBUG)
     c = DNSCollector(config, query, labels)

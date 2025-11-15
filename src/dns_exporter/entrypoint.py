@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
 import warnings
 from http.server import ThreadingHTTPServer
@@ -158,6 +159,11 @@ def main(mockargs: list[str] | None = None) -> None:
         logger.debug(
             "No -c / --config-file found so a config file will not be used. No modules loaded.",
         )
+
+    if os.getenv("DNSEXP_CONNECTION_LABEL"):
+        logger.info("DNSEXP_CONNECTION_LABEL set - enabling 'connection' label feature")  # pragma: no cover
+    else:
+        logger.info("DNSEXP_CONNECTION_LABEL unset - disabling 'connection' label feature")
 
     # configure DNSExporter handler and start HTTPServer
     handler = DNSExporter
