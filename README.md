@@ -25,6 +25,8 @@ There is also a Docker image so you can get your container on:
 
 There is also a Kubernetes Helm Chart (maintained by @christianhuth) available on [ArtifactHUB](https://artifacthub.io/packages/helm/christianhuth/dns-exporter).
 
+# Python Support
+Python 3.10, 3.11, 3.12, 3.13 and 3.14 are fully supported. `dns_exporter` aims to follow the [officially supported](https://devguide.python.org/versions/) Python versions.
 
 # Documentation
 The documentation is available on [ReadTheDocs](https://dns-exporter.readthedocs.io/latest/)
