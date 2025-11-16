@@ -8,6 +8,14 @@ Changelog <https://keepachangelog.com/en/1.0.0/>`__, and this project
 adheres to `Semantic
 Versioning <https://semver.org/spec/v2.0.0.html>`__.
 
+Unreleased
+----------
+
+Fixed
+~~~~~
+- Log message at ``INFO`` level instead of ``WARNING`` when a DNS response is not received from a server
+
+
 v1.2.0-beta1 - 2025-11-15
 -------------------------
 

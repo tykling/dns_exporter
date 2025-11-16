@@ -212,7 +212,7 @@ class DNSCollector(Collector):
 
         # did we get a response?
         if not r or r.message is None:
-            logger.warning(
+            logger.info(
                 f"No DNS response received from server {self.config.server.geturl()} - failure reason is '{reason}'..."
             )
             yield from (
