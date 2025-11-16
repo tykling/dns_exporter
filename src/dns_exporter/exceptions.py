@@ -35,3 +35,7 @@ class QueryTypeError(TypeError):
 
 class LabelsTypeError(TypeError):
     """Exception used when DNSCollector is initialised with a labels arg that is not a list."""
+
+
+class CleanupAndExit(Exception):  # noqa: N818
+    """Exception raised to ask main loop to clean up and exit."""

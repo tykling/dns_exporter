@@ -312,18 +312,42 @@ The placeholder ``none`` is used for cases where there is no suitable value for 
 # socket cache stats
 
 dnsexp_socket_age_seconds = Gauge(
-    name="dnsexp_socket_cache_age_seconds",
-    documentation="Gauge: The age in seconds of each reusable socket in the internal SocketCache by protocol, family, transport (TCP/UDP), destination ip, destination port, verify, and proxy.",  # noqa: E501
+    name="dnsexp_socket_age_seconds",
+    documentation=(
+        "Gauge: The age in seconds of each reusable socket in the internal SocketCache by protocol, "
+        "family, transport (TCP/UDP), destination ip, destination port, verify, and proxy."
+    ),
     labelnames=SOCKET_LABELS,
 )
-"""``dnsexp_socket_cache_age_seconds`` is a Gauge keeping track of the age of each of
+"""``dnsexp_socket_age_seconds`` is a Gauge keeping track of the age of each of
 the reusable sockets in the internal socket cache in the exporter.
 
 This metric has five labels:
         - ``protocol``
         - ``server``
         - ``ip``
-        - ``verify`` TLS verify setting, ``True``/``False``/CA Path
+        - ``verify`` TLS verify setting, ``True``/``False``/CA Path/``none``
+        - ``proxy`` Proxy URL or ``none``
+
+The placeholder ``none`` is used for cases where there is no suitable value for the label.
+"""
+
+dnsexp_socket_idle_seconds = Gauge(
+    name="dnsexp_socket_idle_seconds",
+    documentation=(
+        "Gauge: The time in seconds since the socket was last used, by protocol, family, "
+        "transport (TCP/UDP), destination ip, destination port, verify, and proxy."
+    ),
+    labelnames=SOCKET_LABELS,
+)
+"""``dnsexp_socket_idle_seconds`` is a Gauge keeping track of idle time of each of
+the reusable sockets in the internal socket cache in the exporter.
+
+This metric has five labels:
+        - ``protocol``
+        - ``server``
+        - ``ip``
+        - ``verify`` TLS verify setting, ``True``/``False``/CA Path/``none``
         - ``proxy`` Proxy URL or ``none``
 
 The placeholder ``none`` is used for cases where there is no suitable value for the label.

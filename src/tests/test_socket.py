@@ -3,6 +3,8 @@
 import logging
 import socket
 import ssl
+import subprocess
+import time
 from concurrent.futures import ThreadPoolExecutor
 
 import httpx
@@ -198,7 +200,7 @@ def test_plain_socket_cache_delete(exporter, caplog):
     assert isinstance(sock, PlainSocket)
     assert isinstance(sock.socket, socket.socket)
     assert len(socket_cache.plain_sockets) == 1
-    socket_cache.delete_socket(config=config)
+    socket_cache.delete_socket(socket_cache.get_cache_key(config=config))
     assert len(socket_cache.plain_sockets) == 0
 
 
@@ -219,7 +221,7 @@ def test_dot_socket_cache_delete(exporter, caplog):
     assert isinstance(sock, DoTSocket)
     assert isinstance(sock.socket, ssl.SSLSocket)
     assert len(socket_cache.dot_sockets) == 1
-    socket_cache.delete_socket(config=config)
+    socket_cache.delete_socket(socket_cache.get_cache_key(config=config))
     assert len(socket_cache.dot_sockets) == 0
 
 
@@ -240,7 +242,7 @@ def test_doh_socket_cache_delete(exporter, caplog):
     assert isinstance(sock, DoHSocket)
     assert isinstance(sock.socket, httpx.Client)
     assert len(socket_cache.doh_sockets) == 1
-    socket_cache.delete_socket(config=config)
+    socket_cache.delete_socket(socket_cache.get_cache_key(config=config))
     assert len(socket_cache.doh_sockets) == 0
 
 
@@ -269,7 +271,7 @@ def test_quic_socket_cache_delete(exporter, caplog):
     sock = socket_cache.get_quic_socket(config=config, verify=True)
     assert "Deleting stale QUIC socket" in caplog.text
     assert len(socket_cache.quic_sockets) == 1
-    socket_cache.delete_socket(config=config)
+    socket_cache.delete_socket(socket_cache.get_cache_key(config=config))
     assert len(socket_cache.quic_sockets) == 0
 
 
@@ -373,7 +375,7 @@ def test_plain_socket_cache_delete_oserror(exporter, caplog, mock_socket_close_o
     assert isinstance(sock, PlainSocket)
     assert isinstance(sock.socket, socket.socket)
     assert len(socket_cache.plain_sockets) == 1
-    socket_cache.delete_socket(config=config)
+    socket_cache.delete_socket(socket_cache.get_cache_key(config=config))
     assert len(socket_cache.plain_sockets) == 0
 
 
@@ -394,5 +396,119 @@ def test_dot_socket_cache_delete_oserror(exporter, caplog, mock_socket_close_ose
     assert isinstance(sock, DoTSocket)
     assert isinstance(sock.socket, ssl.SSLSocket)
     assert len(socket_cache.dot_sockets) == 1
-    socket_cache.delete_socket(config=config)
+    socket_cache.delete_socket(socket_cache.get_cache_key(config=config))
     assert len(socket_cache.dot_sockets) == 0
+
+
+def test_socket_cache_cleanup_thread_age():
+    """Make sure socket cache housekeeping works for old sockets."""
+    with subprocess.Popen(
+        args=[
+            "dns_exporter",
+            "-p",
+            "15354",
+            "--socket-cache-cleanup-interval",
+            "1",
+            "--socket-cache-age-max",
+            "1",
+            "--debug",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    ) as proc:
+        time.sleep(1)
+        if proc.poll():
+            # process didn't start properly, bail out
+            pytest.fail(
+                "Unable to create test instance on 127.0.0.1:15354",
+            )
+        ######################################
+        requests.get(
+            "http://127.0.0.1:15354/query",
+            params={
+                "query_name": "example.com",
+                "server": "dns.google",
+                "family": "ipv4",
+                "ip": "8.8.8.8",
+                "connection_reuse": "true",
+            },
+        )
+        r = requests.get(
+            "http://127.0.0.1:15354/metrics",
+        )
+        assert (
+            'dnsexp_socket_uses_total{ip="8.8.8.8",protocol="udp",proxy="none",server="udp://dns.google:53",verify="none"} 1.0'
+            in r.text
+        )
+        time.sleep(3)
+        r = requests.get(
+            "http://127.0.0.1:15354/metrics",
+        )
+        assert (
+            'dnsexp_socket_uses_total{ip="8.8.8.8",protocol="udp",proxy="none",server="udp://dns.google:53",verify="none"} 1.0'
+            not in r.text
+        )
+        ######################################
+        proc.terminate()
+        output = proc.stderr.read().decode()
+        assert (
+            "Deleting socket SocketCacheKey(protocol='udp', server='udp://dns.google:53', ip='8.8.8.8', verify='none', proxy='none') due to age"
+            in output
+        )
+
+
+def test_socket_cache_cleanup_thread_idle():
+    """Make sure socket cache housekeeping works for idle sockets."""
+    with subprocess.Popen(
+        args=[
+            "dns_exporter",
+            "-p",
+            "15354",
+            "--socket-cache-cleanup-interval",
+            "1",
+            "--socket-cache-idle-max",
+            "1",
+            "--debug",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    ) as proc:
+        time.sleep(1)
+        if proc.poll():
+            # process didn't start properly, bail out
+            pytest.fail(
+                "Unable to create test instance on 127.0.0.1:15354",
+            )
+        ######################################
+        requests.get(
+            "http://127.0.0.1:15354/query",
+            params={
+                "query_name": "example.com",
+                "server": "dns.google",
+                "family": "ipv4",
+                "ip": "8.8.8.8",
+                "connection_reuse": "true",
+            },
+        )
+        r = requests.get(
+            "http://127.0.0.1:15354/metrics",
+        )
+        assert (
+            'dnsexp_socket_uses_total{ip="8.8.8.8",protocol="udp",proxy="none",server="udp://dns.google:53",verify="none"} 1.0'
+            in r.text
+        )
+        time.sleep(3)
+        r = requests.get(
+            "http://127.0.0.1:15354/metrics",
+        )
+        assert (
+            'dnsexp_socket_uses_total{ip="8.8.8.8",protocol="udp",proxy="none",server="udp://dns.google:53",verify="none"} 1.0'
+            not in r.text
+        )
+        ######################################
+        proc.terminate()
+        output = proc.stderr.read().decode()
+        assert (
+            "Deleting socket SocketCacheKey(protocol='udp', server='udp://dns.google:53', ip='8.8.8.8', verify='none', proxy='none') with idle time"
+            in output
+        )

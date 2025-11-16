@@ -416,7 +416,7 @@ class DNSCollector(Collector):
                 f"Protocol {self.config.protocol} raised {ex} with existing socket, retrying with new socket...",
             )
             # first attempt failed, delete existing socket
-            socket_cache.delete_socket(config=self.config)
+            socket_cache.delete_socket(cachekey=socket_cache.get_cache_key(config=self.config))
             # try again
             return self.get_dns_response(retry=True)
 

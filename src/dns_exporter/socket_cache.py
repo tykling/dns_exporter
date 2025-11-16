@@ -21,6 +21,7 @@ from typing_extensions import Self
 
 from dns_exporter.metrics import (
     dnsexp_socket_age_seconds,
+    dnsexp_socket_idle_seconds,
     dnsexp_socket_receive_bytes_total,
     dnsexp_socket_transmit_bytes_total,
     dnsexp_socket_uses_total,
@@ -29,6 +30,7 @@ from dns_exporter.metrics import (
 if TYPE_CHECKING:
     import ssl
     import urllib.parse
+    from collections.abc import Mapping
 
     from dns.quic._sync import SyncQuicConnection
 
@@ -72,7 +74,7 @@ class SocketCacheKey:
             self.protocol,
             self.server,
             self.ip,
-            "none" if self.verify is None else self.verify,
+            self.verify,
             self.proxy,
         )
 
@@ -170,6 +172,13 @@ class SocketCache(Singleton):
         self.dot_sockets = {}
         self.doh_sockets = {}
         self.quic_sockets = {}
+        # max. socket age
+        self.socket_max_age_seconds: int = 0
+        # max. socket idle time
+        self.socket_max_idle_seconds: int = 3600
+        # housekeeping interval
+        self.housekeeping_interval: int = 600
+        self.exit_event = threading.Event()
 
     def get_cache_key(self, config: Config, force_protocol: str = "") -> SocketCacheKey:
         """Return a SocketCacheKey for identifying a socket."""
@@ -180,40 +189,9 @@ class SocketCache(Singleton):
             protocol=protocol,
             server=config.server.geturl(),
             ip=str(config.ip),
-            verify=str(config.verify),
+            verify="none" if config.verify is None else str(config.verify),
             proxy=config.proxy.geturl() if config.proxy else "none",
         )
-
-    def delete_socket(self, config: Config) -> None:
-        """Delete a socket from cache."""
-        cachekey = self.get_cache_key(config=config)
-        if config.protocol in ["tcp", "udp", "udptcp"] and cachekey in self.plain_sockets:
-            try:
-                # be nice and close sockets right
-                self.plain_sockets[cachekey].socket.shutdown(socket.SHUT_RDWR)
-                self.plain_sockets[cachekey].socket.close()
-            except OSError:
-                # Ignore OSErrors here (socket might be closed already) and delete the socket anyway
-                pass
-            del self.plain_sockets[cachekey]
-
-        if config.protocol == "dot" and cachekey in self.dot_sockets:
-            try:
-                # be nice and close sockets right
-                self.dot_sockets[cachekey].socket.shutdown(how=socket.SHUT_RDWR)
-                self.dot_sockets[cachekey].socket.close()
-            except OSError:
-                # Ignore OSErrors here (socket might be closed already) and delete the socket anyway
-                pass
-            del self.dot_sockets[cachekey]
-
-        if config.protocol in ["doh3", "doq"] and cachekey in self.quic_sockets:
-            self.quic_sockets[cachekey].socket.close()
-            del self.quic_sockets[cachekey]
-
-        if config.protocol == "doh" and cachekey in self.doh_sockets:
-            self.doh_sockets[cachekey].socket.close()
-            del self.doh_sockets[cachekey]
 
     def get_plaintext_socket(self, *, config: Config, force_new: bool = False, force_protocol: str = "") -> PlainSocket:
         """Create+connect new or return existing TCP or UDP PlainSocket."""
@@ -273,7 +251,7 @@ class SocketCache(Singleton):
         sockets = self.quic_sockets
         if cachekey in sockets and sockets[cachekey].socket._done:
             logger.debug(f"Deleting stale QUIC socket {cachekey}")
-            self.delete_socket(config=config)
+            self.delete_socket(cachekey=cachekey)
         if force_new or cachekey not in sockets:
             # create+connect+handshake new QUIC socket/connection for DoQ/DoH3
             manager = dns.quic.SyncQuicManager(
@@ -303,6 +281,129 @@ class SocketCache(Singleton):
             logger.debug(f"Updating SocketCache metrics for {len(sockets)} {sockettype}")
             for key, dnssocket in sockets.items():
                 dnsexp_socket_age_seconds.labels(*key.labels).set(time.time() - dnssocket.create_timestamp)
+                if dnssocket.last_use_timestamp:
+                    dnsexp_socket_idle_seconds.labels(*key.labels).set(time.time() - dnssocket.last_use_timestamp)
                 dnsexp_socket_transmit_bytes_total.labels(*key.labels).set(dnssocket.bytes_sent)
                 dnsexp_socket_receive_bytes_total.labels(*key.labels).set(dnssocket.bytes_received)
                 dnsexp_socket_uses_total.labels(*key.labels).set(dnssocket.use_count)
+
+    def delete_socket(self, cachekey: SocketCacheKey) -> None:
+        """Delete a socket from cache."""
+        if cachekey.protocol in ["tcp", "udp", "udptcp"] and cachekey in self.plain_sockets:
+            try:
+                # be nice and close sockets right
+                self.plain_sockets[cachekey].socket.shutdown(socket.SHUT_RDWR)
+                self.plain_sockets[cachekey].socket.close()
+            except OSError:
+                # Ignore OSErrors here (socket might be closed already) and delete the socket anyway
+                pass
+            del self.plain_sockets[cachekey]
+
+        if cachekey.protocol == "dot" and cachekey in self.dot_sockets:
+            try:
+                # be nice and close sockets right
+                self.dot_sockets[cachekey].socket.shutdown(how=socket.SHUT_RDWR)
+                self.dot_sockets[cachekey].socket.close()
+            except OSError:
+                # Ignore OSErrors here (socket might be closed already) and delete the socket anyway
+                pass
+            del self.dot_sockets[cachekey]
+
+        if cachekey.protocol in ["doh3", "doq"] and cachekey in self.quic_sockets:
+            self.quic_sockets[cachekey].socket.close()
+            del self.quic_sockets[cachekey]
+
+        if cachekey.protocol == "doh" and cachekey in self.doh_sockets:
+            self.doh_sockets[cachekey].socket.close()
+            del self.doh_sockets[cachekey]
+
+        self.delete_metric(cachekey=cachekey)
+
+    def delete_all_sockets(self) -> None:
+        """Delete all sockets from socket cache."""
+        for key in [*self.plain_sockets, *self.dot_sockets, *self.doh_sockets, *self.quic_sockets]:
+            self.delete_socket(cachekey=key)
+
+    def delete_metric(self, cachekey: SocketCacheKey) -> None:
+        """Delete metrics for a socketcache entry."""
+        try:
+            dnsexp_socket_age_seconds.remove(*cachekey.labels)
+            dnsexp_socket_idle_seconds.remove(*cachekey.labels)
+            dnsexp_socket_transmit_bytes_total.remove(*cachekey.labels)
+            dnsexp_socket_receive_bytes_total.remove(*cachekey.labels)
+            dnsexp_socket_uses_total.remove(*cachekey.labels)
+        except KeyError:
+            # metrics don't exist until /metrics is scraped, ignore errors
+            pass
+
+    def housekeeping(self) -> None:
+        """Housekeeping method to clean old or idle sockets."""
+        # loop forever
+        while True:
+            # start by waiting the configured interval
+            if self.exit_event.wait(timeout=self.housekeeping_interval):
+                # exit was requested, break out of the loop
+                break
+            # do the housekeeping
+            logger.debug("SocketCache cleanup task running...")
+            self.cleanup_sockets(sockets=self.plain_sockets)
+            self.cleanup_sockets(sockets=self.dot_sockets)
+            self.cleanup_sockets(sockets=self.doh_sockets)
+            self.cleanup_sockets(sockets=self.quic_sockets)
+            # log a message and retart the loop
+            logger.debug(f"SocketCache cleanup task done, will run again in {self.housekeeping_interval} seconds.")
+
+    def cleanup_sockets(
+        self, sockets: Mapping[SocketCacheKey, PlainSocket | DoTSocket | DoHSocket | QUICSocket]
+    ) -> None:
+        """Do housekeeping for a dict of sockets."""
+        now = time.time()
+        keys = list(sockets.keys())
+        for cachekey in keys:
+            dnssocket = sockets[cachekey]
+            if TYPE_CHECKING:
+                assert dnssocket.create_timestamp is not None
+                assert dnssocket.last_use_timestamp is not None
+            # check socket age?
+            if self.socket_max_age_seconds:
+                socket_age = int(now - dnssocket.create_timestamp)
+                if socket_age > self.socket_max_age_seconds:
+                    logger.debug(
+                        f"Deleting socket {cachekey} due to age {socket_age} "
+                        f"seconds > max. age {self.socket_max_age_seconds}"
+                    )
+                    self.delete_socket(cachekey=cachekey)
+
+            # check socket idle time?
+            if self.socket_max_idle_seconds and dnssocket.last_use_timestamp:
+                socket_idle = now - dnssocket.last_use_timestamp
+                if socket_idle > self.socket_max_idle_seconds:
+                    logger.debug(
+                        f"Deleting socket {cachekey} with idle time {socket_idle} "
+                        f"seconds > max. idle {self.socket_max_idle_seconds}"
+                    )
+                    self.delete_socket(cachekey=cachekey)
+
+
+def cleanup_socket_cache(socket_cache: SocketCache, housekeeping_thread: threading.Thread) -> None:
+    """Close and delete all sockets and stop the housekeeping thread. Used on exit."""
+    logger.debug("SocketCache cleanup running, asking housekeeping thread to exit...")
+    socket_cache.exit_event.set()
+    logger.debug("Waiting for SocketCache housekeeping thread to exit...")
+    housekeeping_thread.join()
+    logger.debug("The SocketCache housekeeping thread exited cleanly.")
+    if (
+        len(socket_cache.plain_sockets)
+        + len(socket_cache.dot_sockets)
+        + len(socket_cache.doh_sockets)
+        + len(socket_cache.quic_sockets)
+    ):
+        logger.debug(
+            "Closing and deleting "
+            f"{len(socket_cache.plain_sockets)} plain sockets, "
+            f"{len(socket_cache.dot_sockets)} DoT sockets, "
+            f"{len(socket_cache.doh_sockets)} DoH sockets, and "
+            f"{len(socket_cache.quic_sockets)} QUIC sockets in the SocketCache..."
+        )
+        socket_cache.delete_all_sockets()
+    logger.debug("SocketCache cleanup done.")

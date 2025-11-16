@@ -10,7 +10,9 @@ from dns_exporter.version import __version__
 
 # run this test last
 @pytest.mark.order(-1)
-@pytest.mark.xfail(reason="Fails on pytest retries (which sometimes happen when testing with real-world servers)")
+@pytest.mark.xfail(
+    reason="This test is expected to fail whenever any test is rerun (which sometimes happen when testing with real-world servers)"
+)
 def test_internal_metrics(dns_exporter_example_config, tmp_path, caplog):
     """Test the internal metrics and make sure aggregated counts of all unit tests are there.
 
@@ -30,14 +32,14 @@ def test_internal_metrics(dns_exporter_example_config, tmp_path, caplog):
     assert "Returning exporter metrics for request to /metrics" in caplog.text
     for metric in [
         'dnsexp_http_requests_total{path="/notfound"} 1.0',
-        'dnsexp_http_requests_total{path="/query"} 116.0',
+        'dnsexp_http_requests_total{path="/query"} 117.0',
         'dnsexp_http_requests_total{path="/config"} 4.0',
         'dnsexp_http_requests_total{path="/"} 1.0',
         'dnsexp_http_requests_total{path="/metrics"} 1.0',
         'dnsexp_http_responses_total{path="/notfound",response_code="404"} 1.0',
-        'dnsexp_http_responses_total{path="/query",response_code="200"} 116.0',
+        'dnsexp_http_responses_total{path="/query",response_code="200"} 117.0',
         'dnsexp_http_responses_total{path="/",response_code="200"} 1.0',
-        "dnsexp_dns_queries_total 99.0",
+        "dnsexp_dns_queries_total 100.0",
         'dnsexp_dns_responsetime_seconds_bucket{additional="0",answer="6",authority="0",family="ipv4",flags="QR RA RD",ip="8.8.4.4",le="2.5",nsid="no_nsid",opcode="QUERY",port="53",protocol="udp",proxy="none",query_name="example.com",query_type="A",rcode="NOERROR",server="udp://dns.google:53",transport="UDP"}',
         'dnsexp_scrape_failures_total{additional="none",answer="none",authority="none",family="none",flags="none",ip="none",nsid="none",opcode="none",port="none",protocol="none",proxy="none",query_name="none",query_type="none",rcode="none",reason="invalid_request_config",server="none",transport="none"} 4.0',
         'dnsexp_scrape_failures_total{additional="none",answer="none",authority="none",family="none",flags="none",ip="none",nsid="none",opcode="none",port="none",protocol="none",proxy="none",query_name="none",query_type="none",rcode="none",reason="invalid_request_server",server="none",transport="none"} 2.0',
