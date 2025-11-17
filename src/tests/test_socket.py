@@ -414,7 +414,7 @@ def test_socket_cache_cleanup_thread_age():
             "15354",
             "--connection-cleanup-interval-seconds",
             "1",
-            "--connection-max-idle-seconds",
+            "--connection-max-age-seconds",
             "1",
             "--debug",
         ],
