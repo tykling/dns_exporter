@@ -11,6 +11,10 @@ Versioning <https://semver.org/spec/v2.0.0.html>`__.
 Unreleased
 ----------
 
+Added
+~~~~~
+- Socket cache housekeeping background thread
+
 Fixed
 ~~~~~
 - Log message at ``INFO`` level instead of ``WARNING`` when a DNS response is not received from a server

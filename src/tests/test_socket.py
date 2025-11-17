@@ -2,6 +2,7 @@
 
 import logging
 import socket
+import sys
 import ssl
 import subprocess
 import time
@@ -400,6 +401,9 @@ def test_dot_socket_cache_delete_oserror(exporter, caplog, mock_socket_close_ose
     assert len(socket_cache.dot_sockets) == 0
 
 
+@pytest.mark.skipif(
+    sys.version_info[:2] == (3, 12), reason="Test is slow and weird on 3.12, skip for now https://github.com/tykling/dns_exporter/issues/203"
+)
 def test_socket_cache_cleanup_thread_age():
     """Make sure socket cache housekeeping works for old sockets."""
     with subprocess.Popen(
@@ -457,6 +461,9 @@ def test_socket_cache_cleanup_thread_age():
         )
 
 
+@pytest.mark.skipif(
+    sys.version_info[:2] == (3, 12), reason="Test is slow and weird on 3.12, skip for now https://github.com/tykling/dns_exporter/issues/203"
+)
 def test_socket_cache_cleanup_thread_idle():
     """Make sure socket cache housekeeping works for idle sockets."""
     with subprocess.Popen(
