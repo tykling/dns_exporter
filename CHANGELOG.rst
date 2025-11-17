@@ -13,11 +13,11 @@ Unreleased
 
 Added
 ~~~~~
-- Socket cache housekeeping background thread
+- A socket cache housekeeping background thread now takes care of deleting old or unused sockets. Three new command-line options were introduced for this, ``--connection-max-age-seconds`` to control when to delete a socket from the socket cache based on age (regardless of when it was last used), ``--connection-max-idle-seconds`` to control when to delete a socket from the socket cache based on when it was last used (regardless of age), and finally ``--connection-cleanup-interval-seconds`` to control the interval in seconds between cleanups.
 
 Fixed
 ~~~~~
-- Log message at ``INFO`` level instead of ``WARNING`` when a DNS response is not received from a server
+- Log message at ``DEBUG`` level instead of ``WARNING`` when a DNS response is not received from a server
 
 
 v1.2.0-beta1 - 2025-11-15

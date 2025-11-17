@@ -33,21 +33,21 @@ def test_version(capsys):
 
 
 def test_socket_cache_max_age_option(dns_exporter_example_config, caplog):
-    """Make sure the --socket-cache-age-max command-line option works."""
+    """Make sure the --connection-max-age-seconds command-line option works."""
     with pytest.raises(SystemExit):
-        main([*mockargs, "--socket-cache-age-max", "1234"])
+        main([*mockargs, "--connection-max-age-seconds", "1234"])
     assert "SocketCache initialised with max. age 1234 seconds" in caplog.text
 
 
 def test_socket_cache_max_idle_option(dns_exporter_example_config, caplog):
-    """Make sure the --socket-cache-idle-max command-line option works."""
+    """Make sure the --connection-max-idle-seconds command-line option works."""
     with pytest.raises(SystemExit):
-        main([*mockargs, "--socket-cache-idle-max", "1234"])
+        main([*mockargs, "--connection-max-idle-seconds", "1234"])
     assert "and max. idle 1234 seconds" in caplog.text
 
 
 def test_socket_cache_cleanup_interval_option(dns_exporter_example_config, caplog):
-    """Make sure the --socket-cache-cleanup-interval command-line option works."""
+    """Make sure the --connection-cleanup-interval-seconds command-line option works."""
     with pytest.raises(SystemExit):
-        main([*mockargs, "--socket-cache-cleanup-interval", "1234"])
+        main([*mockargs, "--connection-cleanup-interval-seconds", "1234"])
     assert "and housekeeping interval 1234 seconds" in caplog.text

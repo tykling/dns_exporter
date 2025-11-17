@@ -86,7 +86,7 @@ def get_parser() -> argparse.ArgumentParser:
         default=argparse.SUPPRESS,
     )
     parser.add_argument(
-        "--socket-cache-age-max",
+        "--connection-max-age-seconds",
         type=int,
         help=(
             "The maximum age in seconds for connection reuse entries. "
@@ -95,19 +95,19 @@ def get_parser() -> argparse.ArgumentParser:
         default=0,
     )
     parser.add_argument(
-        "--socket-cache-cleanup-interval",
-        type=int,
-        help="The interval in seconds between connection reuse housekeeping. Default: 600",
-        default=600,
-    )
-    parser.add_argument(
-        "--socket-cache-idle-max",
+        "--connection-max-idle-seconds",
         type=int,
         help=(
-            "The maximum idle time seconds for connection reuse entries. "
+            "The maximum idle time in seconds for connection reuse entries. "
             "0 means never destroy connections due to idle time. Default: 3600"
         ),
         default=3600,
+    )
+    parser.add_argument(
+        "--connection-cleanup-interval-seconds",
+        type=int,
+        help="The interval in seconds between connection reuse housekeeping. Default: 600",
+        default=600,
     )
     parser.add_argument(
         "-v",
@@ -159,9 +159,9 @@ def initialise_socket_cache(args: argparse.Namespace) -> tuple[SocketCache, thre
     """Initialise socket cache and socket cache housekeeping thread."""
     socket_cache = SocketCache()
     # configure socket cache
-    socket_cache.socket_max_age_seconds = args.socket_cache_age_max
-    socket_cache.socket_max_idle_seconds = args.socket_cache_idle_max
-    socket_cache.housekeeping_interval = args.socket_cache_cleanup_interval
+    socket_cache.socket_max_age_seconds = args.connection_max_age_seconds
+    socket_cache.socket_max_idle_seconds = args.connection_max_idle_seconds
+    socket_cache.housekeeping_interval = args.connection_cleanup_interval_seconds
     socket_cache.exit_event = threading.Event()
     logger.debug(
         f"SocketCache initialised with max. age {socket_cache.socket_max_age_seconds} "
