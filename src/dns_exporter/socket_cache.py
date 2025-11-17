@@ -326,15 +326,12 @@ class SocketCache(Singleton):
 
     def delete_metric(self, cachekey: SocketCacheKey) -> None:
         """Delete metrics for a socketcache entry."""
-        try:
-            dnsexp_socket_age_seconds.remove(*cachekey.labels)
-            dnsexp_socket_idle_seconds.remove(*cachekey.labels)
-            dnsexp_socket_transmit_bytes_total.remove(*cachekey.labels)
-            dnsexp_socket_receive_bytes_total.remove(*cachekey.labels)
-            dnsexp_socket_uses_total.remove(*cachekey.labels)
-        except KeyError:
-            # metrics don't exist until /metrics is scraped, ignore errors
-            pass
+        logger.debug(f"Deleting metrics for socket {cachekey}")
+        dnsexp_socket_age_seconds.remove(*cachekey.labels)
+        dnsexp_socket_idle_seconds.remove(*cachekey.labels)
+        dnsexp_socket_transmit_bytes_total.remove(*cachekey.labels)
+        dnsexp_socket_receive_bytes_total.remove(*cachekey.labels)
+        dnsexp_socket_uses_total.remove(*cachekey.labels)
 
     def housekeeping(self) -> None:
         """Housekeeping method to clean old or idle sockets."""
