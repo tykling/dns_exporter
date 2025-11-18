@@ -287,7 +287,7 @@ class SocketCache(Singleton):
                 dnsexp_socket_receive_bytes_total.labels(*key.labels).set(dnssocket.bytes_received)
                 dnsexp_socket_uses_total.labels(*key.labels).set(dnssocket.use_count)
 
-    def delete_socket(self, cachekey: SocketCacheKey) -> None:
+    def delete_socket(self, cachekey: SocketCacheKey, delete_metrics: bool=True) -> None:
         """Delete a socket from cache."""
         if cachekey.protocol in ["tcp", "udp", "udptcp"] and cachekey in self.plain_sockets:
             try:
@@ -317,16 +317,16 @@ class SocketCache(Singleton):
             self.doh_sockets[cachekey].socket.close()
             del self.doh_sockets[cachekey]
 
-        self.delete_metric(cachekey=cachekey)
+        if delete_metrics:
+            self.delete_metric(cachekey=cachekey)
 
-    def delete_all_sockets(self) -> None:
+    def delete_all_sockets(self, delete_metrics: bool=True) -> None:
         """Delete all sockets from socket cache."""
         for key in [*self.plain_sockets, *self.dot_sockets, *self.doh_sockets, *self.quic_sockets]:
-            self.delete_socket(cachekey=key)
+            self.delete_socket(cachekey=key, delete_metrics=delete_metrics)
 
     def delete_metric(self, cachekey: SocketCacheKey) -> None:
         """Delete metrics for a socketcache entry."""
-        logger.debug(f"Deleting metrics for socket {cachekey}")
         dnsexp_socket_age_seconds.remove(*cachekey.labels)
         dnsexp_socket_idle_seconds.remove(*cachekey.labels)
         dnsexp_socket_transmit_bytes_total.remove(*cachekey.labels)
@@ -402,5 +402,6 @@ def cleanup_socket_cache(socket_cache: SocketCache, housekeeping_thread: threadi
             f"{len(socket_cache.doh_sockets)} DoH sockets, and "
             f"{len(socket_cache.quic_sockets)} QUIC sockets in the SocketCache..."
         )
-        socket_cache.delete_all_sockets()
+        # do not waste time deleting metrics before exiting, just close sockets
+        socket_cache.delete_all_sockets(delete_metrics=False)
     logger.debug("SocketCache cleanup done.")
