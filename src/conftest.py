@@ -42,6 +42,9 @@ def dns_exporter_no_main_no_config():
         pytest.fail("Unable to create test instance on 127.0.0.1:45353")
     yield
     print("Beginning teardown")
+    # give pytest some time to flush logging from background threads,
+    # so it doesn't occationally leak to stdout after the pytest result summary
+    time.sleep(1)
 
 
 @pytest.fixture(scope="session")
@@ -59,6 +62,9 @@ def dns_exporter_example_config():
         pytest.fail("Unable to create test instance on 127.0.0.1:25353")
     yield
     print("Beginning teardown")
+    # give pytest some time to flush logging from background threads,
+    # so it doesn't occationally leak to stdout after the pytest result summary
+    time.sleep(1)
 
 
 @pytest.fixture(scope="session")
@@ -76,6 +82,9 @@ def dns_exporter_main_no_config_no_debug():
         pytest.fail("Unable to create test instance on 127.0.0.1:35353")
     yield
     print("Beginning teardown")
+    # give pytest some time to flush logging from background threads,
+    # so it doesn't occationally leak to stdout after the pytest result summary
+    time.sleep(1)
 
 
 @pytest.fixture
