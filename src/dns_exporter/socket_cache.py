@@ -287,7 +287,7 @@ class SocketCache(Singleton):
                 dnsexp_socket_receive_bytes_total.labels(*key.labels).set(dnssocket.bytes_received)
                 dnsexp_socket_uses_total.labels(*key.labels).set(dnssocket.use_count)
 
-    def delete_socket(self, cachekey: SocketCacheKey, delete_metrics: bool=True) -> None:
+    def delete_socket(self, cachekey: SocketCacheKey, delete_metrics: bool = True) -> None:
         """Delete a socket from cache."""
         if cachekey.protocol in ["tcp", "udp", "udptcp"] and cachekey in self.plain_sockets:
             try:
@@ -320,7 +320,7 @@ class SocketCache(Singleton):
         if delete_metrics:
             self.delete_metric(cachekey=cachekey)
 
-    def delete_all_sockets(self, delete_metrics: bool=True) -> None:
+    def delete_all_sockets(self, delete_metrics: bool = True) -> None:
         """Delete all sockets from socket cache."""
         for key in [*self.plain_sockets, *self.dot_sockets, *self.doh_sockets, *self.quic_sockets]:
             self.delete_socket(cachekey=key, delete_metrics=delete_metrics)
