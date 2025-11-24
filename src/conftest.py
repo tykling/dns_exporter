@@ -44,7 +44,7 @@ def dns_exporter_no_main_no_config():
     print("Beginning teardown")
     # give pytest some time to flush logging from background threads,
     # so it doesn't occationally leak to stdout after the pytest result summary
-    time.sleep(1)
+    time.sleep(5)
 
 
 @pytest.fixture(scope="session")
@@ -64,7 +64,7 @@ def dns_exporter_example_config():
     print("Beginning teardown")
     # give pytest some time to flush logging from background threads,
     # so it doesn't occationally leak to stdout after the pytest result summary
-    time.sleep(1)
+    time.sleep(5)
 
 
 @pytest.fixture(scope="session")
@@ -73,7 +73,7 @@ def dns_exporter_main_no_config_no_debug():
     print("Running server with no config on 127.0.0.1:35353 ...")
     thread = Thread(
         target=main,
-        args=(["-p", "35353"],),
+        args=(["-p", "35353", "--connection-cleanup-interval-seconds", "0"],),
     )
     thread.daemon = True
     thread.start()
@@ -84,7 +84,7 @@ def dns_exporter_main_no_config_no_debug():
     print("Beginning teardown")
     # give pytest some time to flush logging from background threads,
     # so it doesn't occationally leak to stdout after the pytest result summary
-    time.sleep(1)
+    time.sleep(5)
 
 
 @pytest.fixture
@@ -106,15 +106,15 @@ def dns_exporter_param_config(request):
     proc.terminate()
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="session")
 def dns_exporter_example_config_connection_label():
     """Run a server with main() and with the example config with the connection label feature on."""
     print("Running server with example config and connection label feature on 127.0.0.1:15353 ...")
     os.environ["DNSEXP_CONNECTION_LABEL"] = "1"
     os.environ["COVERAGE_PROCESS_START"] = "1"
-    proc = subprocess.Popen(
-        args=["dns_exporter", "-c", "dns_exporter/dns_exporter_example.yml", "-d"],
-    )
+    # note: if running with stdout=subprocess.PIPE and debug mode the buffer can
+    # get full which will hang the process with no further explanation.
+    proc = subprocess.Popen(args=["dns_exporter", "-d"])
     time.sleep(2)
     if proc.poll():
         # process didn't start properly, bail out
@@ -267,7 +267,7 @@ def mock_dns_query_httpx_connecttimeout(mocker):
 def mock_get_dns_response_tcp_eoferror(mocker):
     """Monkeypatch DNSCollector.get_dns_response_tcp() to raise EOFError."""
     mocker.patch(
-        "dns_exporter.collector.DNSCollector.get_dns_response_tcp",
+        "dns.query.tcp",
         side_effect=EOFError("EOF"),
     )
 

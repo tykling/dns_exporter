@@ -106,7 +106,10 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--connection-cleanup-interval-seconds",
         type=int,
-        help="The interval in seconds between connection reuse housekeeping. Default: 600",
+        help=(
+            "The interval in seconds between connection reuse housekeeping. "
+            "Set to 0 to disable socket cache housekeeping entirely. Default: 600"
+        ),
         default=600,
     )
     parser.add_argument(
@@ -155,25 +158,29 @@ def configure_logging(args: argparse.Namespace) -> None:
         logger.info("DNSEXP_CONNECTION_LABEL unset - disabling 'connection' label feature")
 
 
-def initialise_socket_cache(args: argparse.Namespace) -> tuple[SocketCache, threading.Thread]:
+def initialise_socket_cache(args: argparse.Namespace) -> tuple[SocketCache, threading.Thread | None]:
     """Initialise socket cache and socket cache housekeeping thread."""
     socket_cache = SocketCache()
     # configure socket cache
     socket_cache.socket_max_age_seconds = args.connection_max_age_seconds
     socket_cache.socket_max_idle_seconds = args.connection_max_idle_seconds
     socket_cache.housekeeping_interval = args.connection_cleanup_interval_seconds
-    socket_cache.exit_event = threading.Event()
+    socket_cache.housekeeping_exit_event = threading.Event()
     logger.debug(
         f"SocketCache initialised with max. age {socket_cache.socket_max_age_seconds} "
         f"seconds and max. idle {socket_cache.socket_max_idle_seconds} seconds "
         f"and housekeeping interval {socket_cache.housekeeping_interval} seconds"
     )
 
-    # start socket housekeeping background thread
-    housekeeping_thread = threading.Thread(target=socket_cache.housekeeping, args=())
-    housekeeping_thread.daemon = True
-    housekeeping_thread.start()
-    logger.debug(f"Started socket housekeeping background thread {housekeeping_thread}")
+    if args.connection_cleanup_interval_seconds > 0:
+        # start socket housekeeping background thread
+        housekeeping_thread = threading.Thread(target=socket_cache.housekeeping, args=())
+        housekeeping_thread.daemon = True
+        housekeeping_thread.start()
+        logger.debug(f"Started socket housekeeping background thread {housekeeping_thread}")
+    else:
+        logger.debug("Not starting housekeeping thread")
+        housekeeping_thread = None
     return socket_cache, housekeeping_thread
 
 

@@ -20,6 +20,7 @@ def test_main_no_config(dns_exporter_main_no_config_no_debug):
             "query_name": "example.com",
             "family": "ipv4",
         },
+        timeout=5,
     )
     assert r.status_code == 200, "non-200 returncode"
     assert "dnsexp_dns_query_success 1.0" in r.text
@@ -34,6 +35,7 @@ def test_noconfig_server(dns_exporter_no_main_no_config):
             "server": "dns.google",
             "family": "ipv4",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 1.0" in r.text
 
@@ -47,6 +49,7 @@ def test_config_server(dns_exporter_example_config):
             "server": "dns.google",
             "family": "ipv4",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 1.0" in r.text
 
@@ -61,6 +64,7 @@ def test_config_endpoint(dns_exporter_example_config):
             "protocol": "tcp",
             "proxy": "socks5://127.0.0.1:1081",
         },
+        timeout=5,
     )
     config = r.json()
     assert config["server"] == "tcp://dns.google:53"
@@ -74,6 +78,7 @@ def test_config_endpoint_2(dns_exporter_example_config):
         params={
             "module": "cf_doh",
         },
+        timeout=5,
     )
     config = r.json()
     assert config["protocol"] == "doh"
@@ -92,6 +97,7 @@ def test_invalid_qs_ip(dns_exporter_example_config):
             "query_name": "example.com",
             "ip": "notanip",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
 
@@ -110,6 +116,7 @@ def test_missing_query_name(dns_exporter_example_config):
         params={
             "server": "dns.google",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
 
@@ -121,6 +128,7 @@ def test_missing_server(dns_exporter_example_config):
         params={
             "query_name": "example.com",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
 
@@ -132,6 +140,7 @@ def test_undefined_module(dns_exporter_example_config, caplog):
         params={
             "module": "notamodule",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
 
@@ -144,6 +153,7 @@ def test_unknown_config_key(dns_exporter_example_config, caplog):
             "server": "dns.google",
             "foo": "bar",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
 
@@ -158,6 +168,7 @@ def test_ip_family_conflict(dns_exporter_example_config, caplog):
             "family": "ipv6",
             "ip": "192.0.2.53",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
 
@@ -172,6 +183,7 @@ def test_ip_conflict(dns_exporter_example_config, caplog):
             "ip": "192.0.2.53",
             "family": "ipv4",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
 
@@ -188,6 +200,7 @@ def test_ip_and_hostname(dns_exporter_example_config, caplog):
             "ip": "8.8.4.4",
             "family": "ipv4",
         },
+        timeout=5,
     )
     assert "Using server IP 8.8.4.4 (from config) for the DNS server connection" in caplog.text
     assert "dnsexp_dns_query_success 1.0" in r.text
@@ -203,6 +216,7 @@ def test_unresolvable_server(dns_exporter_example_config, caplog):
             "server": "notaserver.example",
             "query_name": "example.com",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
 
@@ -219,6 +233,7 @@ def test_ipv6_family(dns_exporter_example_config, caplog):
             "ip": "2001:4860:4860::8888",
             "timeout": 0.1,
         },
+        timeout=5,
     )
     assert "Using server IP 2001:4860:4860::8888 (from config) for the DNS server connection" in caplog.text
 
@@ -234,6 +249,7 @@ def test_ipv7_family(dns_exporter_example_config, caplog):
             "query_name": "example.com",
             "family": "ipv7",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
 
@@ -244,6 +260,7 @@ def test_index(dns_exporter_example_config, caplog):
     caplog.set_level(logging.DEBUG)
     r = requests.get(
         "http://127.0.0.1:25353/",
+        timeout=5,
     )
     assert r.status_code == 200, "non-200 returncode"
     assert "DNS Exporter" in r.text
@@ -256,6 +273,7 @@ def test_404(dns_exporter_example_config, caplog):
     caplog.set_level(logging.DEBUG)
     r = requests.get(
         "http://127.0.0.1:25353/notfound",
+        timeout=5,
     )
     assert r.status_code == 404, "non-404 returncode"
     assert "404 not found" in r.text
@@ -274,6 +292,7 @@ def test_tcp(dns_exporter_example_config, caplog):
             "protocol": "tcp",
             "family": "ipv4",
         },
+        timeout=5,
     )
     assert 'transport="TCP"' in r.text
     assert "Protocol tcp got a DNS query response over TCP" in caplog.text
@@ -292,6 +311,7 @@ def test_udptcp(dns_exporter_example_config, caplog):
             "protocol": "udptcp",
             "family": "ipv4",
         },
+        timeout=5,
     )
     assert 'transport="UDP"' in r.text
     assert "Protocol udptcp got a DNS query response over UDP" in caplog.text
@@ -311,6 +331,7 @@ def test_udptcp_fallback(dns_exporter_example_config, caplog):
             "family": "ipv4",
             "query_type": "TXT",
         },
+        timeout=5,
     )
     assert 'transport="TCP"' in r.text
     assert "Protocol udptcp got a DNS query response over TCP" in caplog.text
@@ -329,6 +350,7 @@ def test_dot(dns_exporter_example_config, caplog):
             "protocol": "dot",
             "family": "ipv4",
         },
+        timeout=5,
     )
     assert 'transport="TCP"' in r.text
     assert "Protocol dot got a DNS query response over TCP" in caplog.text
@@ -347,6 +369,7 @@ def test_doh(dns_exporter_example_config, caplog):
             "protocol": "doh",
             "family": "ipv4",
         },
+        timeout=5,
     )
     assert 'transport="TCP"' in r.text
     assert 'protocol="doh"' in r.text
@@ -366,6 +389,7 @@ def test_doh_httpx_writeerror(dns_exporter_example_config, caplog, mock_dns_quer
             "protocol": "doh",
             "family": "ipv4",
         },
+        timeout=5,
     )
     assert "Protocol doh raised exception, returning connection_error" in caplog.text
     assert "dnsexp_dns_query_success 0.0" in r.text
@@ -383,6 +407,7 @@ def test_doh3(dns_exporter_example_config, caplog):
             "protocol": "doh3",
             "family": "ipv4",
         },
+        timeout=5,
     )
     assert 'transport="QUIC"' in r.text
     assert 'protocol="doh3"' in r.text
@@ -402,6 +427,7 @@ def test_doq(dns_exporter_example_config, caplog, recwarn):
             "protocol": "doq",
             "family": "ipv4",
         },
+        timeout=5,
     )
     assert 'transport="QUIC"' in r.text
     assert 'protocol="doq"' in r.text
@@ -419,6 +445,7 @@ def test_edns_pad(dns_exporter_example_config, caplog):
             "family": "ipv4",
             "edns_pad": 20,
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 1.0" in r.text
 
@@ -434,6 +461,7 @@ def test_no_edns(dns_exporter_example_config, caplog):
             "ip": "8.8.4.4",
             "edns": False,
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 1.0" in r.text
     assert 'nsid="no_nsid"' in r.text
@@ -490,6 +518,7 @@ def test_invalid_integer(dns_exporter_example_config, caplog):
             "query_name": "example.com",
             "edns_bufsize": "foo",
         },
+        timeout=5,
     )
     assert "Unable to validate integer for key edns_bufsize" in caplog.text
     assert "ValueError: invalid literal for int() with base 10: 'foo'" in caplog.text
@@ -552,6 +581,7 @@ def test_catch_unknown_exception(
             "family": "ipv4",
             "protocol": "doh",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
 
@@ -568,6 +598,7 @@ def test_ttl(dns_exporter_example_config, caplog):
             "query_name": "anycast.censurfridns.dk",
             "family": "ipv4",
         },
+        timeout=5,
     )
     assert 'rr_value="91.239.100.100"' in r.text
     assert "dnsexp_dns_query_success 1.0" in r.text
@@ -585,6 +616,7 @@ def test_no_ttl(dns_exporter_no_main_no_config, caplog):
             "family": "ipv4",
             "collect_ttl": False,
         },
+        timeout=5,
     )
     assert 'rr_value="91.239.100.100"' not in r.text
     assert "dnsexp_dns_query_success 1.0" in r.text
@@ -606,6 +638,7 @@ def test_connection_error_server(dns_exporter_example_config, caplog, protocol):
             "query_name": "example.org",
             "timeout": 1,
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
 
@@ -623,6 +656,7 @@ def test_timeout_server(dns_exporter_example_config, caplog, protocol):
             "query_name": "example.org",
             "timeout": 0.00001,
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
 
@@ -639,6 +673,7 @@ def test_collect_ttl_value_length(dns_exporter_example_config, caplog):
             "family": "ipv4",
             "collect_ttl_rr_value_length": 3,
         },
+        timeout=5,
     )
     assert 'rr_value="8.8"' in r.text
     assert "dnsexp_dns_query_success 1.0" in r.text
@@ -657,6 +692,7 @@ def test_doh_bad_statuscode(dns_exporter_example_config, mock_dns_query_https_va
             "protocol": "doh",
             "family": "ipv4",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
     assert "failure reason is 'invalid_response_statuscode'" in caplog.text
@@ -674,6 +710,7 @@ def test_doh_timeout(dns_exporter_example_config, mock_dns_query_httpx_connectti
             "protocol": "doh",
             "family": "ipv4",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
     assert "failure reason is 'timeout'" in caplog.text
@@ -691,6 +728,7 @@ def test_nsid(dns_exporter_example_config, caplog):
             "protocol": "dot",
             "family": "ipv4",
         },
+        timeout=5,
     )
     assert 'transport="TCP"' in r.text
     assert "Protocol dot got a DNS query response over TCP" in caplog.text
@@ -726,3 +764,25 @@ def test_query_rd_false(caplog, exporter):
     config = Config.create(name="test", **prepared)
     q = get_query(config=config)
     assert dns.flags.RD not in q.flags, "RD flag should not be set"
+
+
+def test_udp_truncated(dns_exporter_example_config, caplog):
+    """Test UDP message truncation handling."""
+    caplog.clear()
+    caplog.set_level(logging.DEBUG)
+    r = requests.get(
+        "http://127.0.0.1:25353/query",
+        params={
+            "server": "dns.google",
+            "query_name": "dr.dk",
+            "query_type": "TXT",
+            "protocol": "udp",
+            "family": "ipv4",
+        },
+        timeout=5,
+    )
+    assert (
+        "No DNS response received from server udp://dns.google:53 - failure reason is 'response_truncated'..."
+        in caplog.text
+    )
+    assert "dnsexp_dns_query_success 0.0" in r.text

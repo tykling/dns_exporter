@@ -20,6 +20,7 @@ def test_cert_verify_fail(dns_exporter_example_config, protocol, caplog):
             "protocol": protocol,
             "family": "ipv4",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
 
@@ -38,6 +39,7 @@ def test_cert_verify_fail_custom_ca(dns_exporter_example_config, protocol, caplo
             "family": "ipv4",
             "verify_certificate_path": "tests/certificates/test.crt",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
 
@@ -56,6 +58,7 @@ def test_cert_verify_false(dns_exporter_example_config, protocol, caplog):
             "family": "ipv4",
             "verify_certificate": False,
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 1.0" in r.text
 
@@ -74,6 +77,7 @@ def test_cert_verify_invalid_path(dns_exporter_example_config, protocol, caplog)
             "family": "ipv4",
             "verify_certificate_path": "/nonexistant",
         },
+        timeout=5,
     )
     assert "FailCollector returning failure reason: invalid_request_path" in caplog.text
     assert "dnsexp_dns_query_success 0.0" in r.text
@@ -101,5 +105,6 @@ def test_cert_verify_custom_ca_dir(dns_exporter_example_config, protocol, caplog
             "family": "ipv4",
             "verify_certificate_path": ssl.get_default_verify_paths().capath,
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 1.0" in r.text

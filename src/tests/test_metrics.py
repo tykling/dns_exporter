@@ -22,6 +22,7 @@ def test_internal_metrics(dns_exporter_example_config, tmp_path, caplog):
     caplog.set_level(logging.DEBUG)
     r = requests.get(
         "http://127.0.0.1:25353/metrics",
+        timeout=5,
     )
     # write metrics to file to help debugging failing tests
     p = tmp_path / "metrics.prom"

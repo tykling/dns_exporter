@@ -8,6 +8,24 @@ Changelog <https://keepachangelog.com/en/1.0.0/>`__, and this project
 adheres to `Semantic
 Versioning <https://semver.org/spec/v2.0.0.html>`__.
 
+Unreleased
+----------
+
+Added
+~~~~~
+- The socket cache now keeps a deque (list) of sockets for each destination making it possible to have multiple sockets open for busy servers. A new ``index`` label has been added to the socket metrics, and a new ``dnsexp_socket_count_total`` metric has been introduced to track the number of sockets.
+
+Fixed
+~~~~~
+- Truncated responses are no longer interpreted as successful. A new failure mode ``response_truncated`` has been introduced in the ``dnsexp_failure_reason`` metric to count truncated responses.
+
+Changed
+~~~~~~~
+- Some refactoring was done to ensure sockets are always closed when connection reuse is in use.
+- The ``udptcp`` protocol was refactored to be easier to understand and test.
+- Add timeout to all requests calls in tests.
+
+
 v1.2.0-beta2 - 2025-11-17
 -------------------------
 

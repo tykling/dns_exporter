@@ -48,11 +48,10 @@ from dns_exporter.metrics import (
     get_dns_success_metric,
     get_dns_ttl_metric,
 )
-from dns_exporter.socket_cache import SocketCache
+from dns_exporter.socket_cache import DoHSocket, DoTSocket, PlainSocket, QUICSocket, SocketCache
 from dns_exporter.version import __version__
 
 if TYPE_CHECKING:  # pragma: no cover
-    import threading
     import urllib.parse
     from collections.abc import Iterator
     from ipaddress import IPv4Address, IPv6Address
@@ -85,8 +84,8 @@ class DNSCollector(Collector):
     # set the version on the class
     __version__: str = __version__
 
-    # used to store the socket lock during queries
-    socket_lock: contextlib.nullcontext[None] | threading.Lock
+    # used to store a reference to the socket during queries
+    sock: PlainSocket | DoTSocket | DoHSocket | QUICSocket
 
     def __init__(
         self,
@@ -95,6 +94,7 @@ class DNSCollector(Collector):
         labels: dict[str, str],
     ) -> None:
         """Save config and q object as class attributes for use later."""
+        logger.debug("Initialising DNSCollector...")
         # make sure config is valid
         if isinstance(config, Config):
             self.config = config
@@ -313,7 +313,7 @@ class DNSCollector(Collector):
         logger.debug("yielding ttl metrics")
         yield ttl
 
-    def get_dns_response(  # noqa: PLR0911 C901
+    def get_dns_response(  # noqa: PLR0911 PLR0912 C901
         self,
         *,
         retry: bool = False,
@@ -408,7 +408,7 @@ class DNSCollector(Collector):
             # if this is the second attempt then bail out now
             if retry:
                 logger.debug(
-                    "Protocol {self.config.protocol} raised {ex} after retry with new socket, returning socket_error",
+                    f"Protocol {self.config.protocol} raised {ex} after retry with new socket, returning socket_error",
                 )
                 raise ProtocolSpecificError("socket_error") from e
 
@@ -416,7 +416,8 @@ class DNSCollector(Collector):
                 f"Protocol {self.config.protocol} raised {ex} with existing socket, retrying with new socket...",
             )
             # first attempt failed, delete existing socket
-            socket_cache.delete_socket(cachekey=socket_cache.get_cache_key(config=self.config))
+            if hasattr(self, "sock"):
+                socket_cache.delete_socket(sock=self.sock)
             # try again
             return self.get_dns_response(retry=True)
 
@@ -427,92 +428,63 @@ class DNSCollector(Collector):
         """Perform a DNS query with the udp protocol."""
         # get reusable socket?
         if self.config.connection_reuse:
-            sock = socket_cache.get_plaintext_socket(config=self.config)
-            self.socket_lock = sock.lock
-        else:
-            self.socket_lock = contextlib.nullcontext()
-        # do the query
-        t = time.perf_counter()
-        with self.socket_lock:
-            lock_time = time.perf_counter() - t
-            if lock_time > 0.1:
-                logger.warning(f"Getting a lock for socket {socket_cache.get_cache_key(config=self.config)} took {lock_time} seconds")
+            self.sock, reused = socket_cache.get_plaintext_socket(config=self.config, force_protocol="udp")
+        r = None
+        try:
             r = dns.query.udp(
                 q=self.query,
                 where=ip,
                 port=port,
                 timeout=self.config.timeout,
                 one_rr_per_rrset=True,
-                sock=sock.socket if self.config.connection_reuse else None,
+                raise_on_truncation=True,
+                sock=self.sock.socket if self.config.connection_reuse else None,
             )
-        if self.config.connection_reuse:
-            # update the socket stats
-            sock.register_use(bytes_sent=len(self.query.to_wire()), bytes_received=len(r.to_wire()))
-        return DNSResponse(
-            message=r, transport="UDP", socket_reused=sock.use_count > 1 if self.config.connection_reuse else False
-        )
+        except dns.message.Truncated as e:
+            logger.debug("Protocol udp response truncated, returning response_trucated error")
+            raise ProtocolSpecificError("response_truncated") from e
+        finally:
+            if self.config.connection_reuse:
+                # update the socket stats
+                self.sock.register_use(
+                    bytes_sent=len(self.query.to_wire()), bytes_received=len(r.to_wire()) if r else 0
+                )
+                self.sock.lock.release()
+        return DNSResponse(message=r, transport="UDP", socket_reused=reused if self.config.connection_reuse else False)
 
     def get_dns_response_tcp(self, *, ip: str, port: int) -> DNSResponse:
         """Perform a DNS query with the tcp protocol."""
         # get reusable socket?
         if self.config.connection_reuse:
-            sock = socket_cache.get_plaintext_socket(config=self.config)
-            self.socket_lock = sock.lock
-        else:
-            self.socket_lock = contextlib.nullcontext()
+            self.sock, reused = socket_cache.get_plaintext_socket(config=self.config, force_protocol="tcp")
+        r = None
         # do the query
-        t = time.perf_counter()
-        with self.socket_lock:
-            lock_time = time.perf_counter() - t
-            if lock_time > 0.1:
-                logger.warning(f"Getting a lock for socket {socket_cache.get_cache_key(config=self.config)} took {lock_time} seconds")
+        try:
             r = dns.query.tcp(
                 q=self.query,
                 where=ip,
                 port=port,
                 timeout=self.config.timeout,
                 one_rr_per_rrset=True,
-                sock=sock.socket if self.config.connection_reuse else None,
+                sock=self.sock.socket if self.config.connection_reuse else None,
             )
-        if self.config.connection_reuse:
-            # update the socket stats
-            sock.register_use(bytes_sent=len(self.query.to_wire()), bytes_received=len(r.to_wire()))
-        return DNSResponse(
-            message=r, transport="TCP", socket_reused=sock.use_count > 1 if self.config.connection_reuse else False
-        )
+        finally:
+            if self.config.connection_reuse:
+                self.sock.register_use(
+                    bytes_sent=len(self.query.to_wire()), bytes_received=len(r.to_wire()) if r else 0
+                )
+                self.sock.lock.release()
+        return DNSResponse(message=r, transport="TCP", socket_reused=reused if self.config.connection_reuse else False)
 
     def get_dns_response_udptcp(self, *, ip: str, port: int) -> DNSResponse:
         """Perform a DNS query with the udptcp protocol (with fallback to TCP)."""
-        if self.config.connection_reuse:
-            sock = socket_cache.get_plaintext_socket(config=self.config, force_protocol="tcp")
-            self.socket_lock = sock.lock
-        else:
-            self.socket_lock = contextlib.nullcontext()
-        # do the query
-        t = time.perf_counter()
-        with self.socket_lock:
-            lock_time = time.perf_counter() - t
-            if lock_time > 0.1:
-                logger.warning(f"Getting a lock for socket {socket_cache.get_cache_key(config=self.config)} took {lock_time} seconds")
-            r, tcp = dns.query.udp_with_fallback(
-                q=self.query,
-                where=ip,
-                port=port,
-                timeout=self.config.timeout,
-                one_rr_per_rrset=True,
-                tcp_sock=sock.socket if self.config.connection_reuse else None,
-                udp_sock=None,
-            )
-        if tcp:
-            # increase the query counter by one extra since tcp fallback was done
-            dnsexp_dns_queries_total.inc()
-            if self.config.connection_reuse:
-                sock.register_use(bytes_sent=len(self.query.to_wire()), bytes_received=len(r.to_wire()))
-        return DNSResponse(
-            message=r,
-            transport="TCP" if tcp else "UDP",
-            socket_reused=sock.use_count > 1 if self.config.connection_reuse and tcp else False,
-        )
+        # do the query over UDP first
+        try:
+            return self.get_dns_response_udp(ip=ip, port=port)
+        except ProtocolSpecificError:
+            # fallback to TCP
+            logger.debug("Protocol udptcp response truncated during UDP lookup, trying TCP instead")
+            return self.get_dns_response_tcp(ip=ip, port=port)
 
     def get_dns_response_dot(
         self,
@@ -524,32 +496,19 @@ class DNSCollector(Collector):
     ) -> DNSResponse:
         """Perform a DNS query with the dot protocol and catch protocol specific exceptions."""
         if self.config.connection_reuse:
-            sock = socket_cache.get_dot_socket(config=self.config, verify=verify)
-            self.socket_lock = sock.lock
-        else:
-            self.socket_lock = contextlib.nullcontext()
+            self.sock, reused = socket_cache.get_dot_socket(config=self.config, verify=verify)
+        r = None
         try:
-            t = time.perf_counter()
-            with self.socket_lock:
-                lock_time = time.perf_counter() - t
-                if lock_time > 0.1:
-                    logger.warning(f"Getting a lock for socket {socket_cache.get_cache_key(config=self.config)} took {lock_time} seconds")
-                # DoT query, use the ip for where= and set tls hostname with server_hostname=
-                r = dns.query.tls(
-                    q=self.query,
-                    where=ip,
-                    port=port,
-                    server_hostname=server.hostname if verify else None,
-                    timeout=self.config.timeout,
-                    verify=verify,
-                    one_rr_per_rrset=True,
-                    sock=sock.socket if self.config.connection_reuse else None,
-                )
-            if self.config.connection_reuse:
-                # update the socket stats
-                sock.register_use(bytes_sent=len(self.query.to_wire()), bytes_received=len(r.to_wire()))
-            return DNSResponse(
-                message=r, transport="TCP", socket_reused=sock.use_count > 1 if self.config.connection_reuse else False
+            # DoT query, use the ip for where= and set tls hostname with server_hostname=
+            r = dns.query.tls(
+                q=self.query,
+                where=ip,
+                port=port,
+                server_hostname=server.hostname if verify else None,
+                timeout=self.config.timeout,
+                verify=verify,
+                one_rr_per_rrset=True,
+                sock=self.sock.socket if self.config.connection_reuse else None,  # type: ignore[arg-type]
             )
         except ssl.SSLCertVerificationError as e:
             # raised by dot on certificate verification error
@@ -557,6 +516,13 @@ class DNSCollector(Collector):
                 "Protocol dot raised ssl.SSLCertVerificationError, returning certificate_error",
             )
             raise ProtocolSpecificError("certificate_error") from e
+        finally:
+            if self.config.connection_reuse:
+                self.sock.register_use(
+                    bytes_sent=len(self.query.to_wire()), bytes_received=len(r.to_wire()) if r else 0
+                )
+                self.sock.lock.release()
+        return DNSResponse(message=r, transport="TCP", socket_reused=reused if self.config.connection_reuse else False)
 
     def get_dns_response_doh(
         self,
@@ -569,37 +535,22 @@ class DNSCollector(Collector):
     ) -> DNSResponse:
         """Perform a DNS query with the doh protocol (tcp+http1/2), catch protocol specific exceptions."""
         if self.config.connection_reuse:
-            sock = socket_cache.get_doh_socket(config=self.config, verify=verify)
-            self.socket_lock = sock.lock
-        else:
-            self.socket_lock = contextlib.nullcontext()
+            self.sock, reused = socket_cache.get_doh_socket(config=self.config, verify=verify)
+        r = None
         try:
             # DoH query, use the url for where= and use bootstrap_address= for the ip
             url = f"https://{server.hostname}{server.path}"
-            t = time.perf_counter()
-            with self.socket_lock:
-                lock_time = time.perf_counter() - t
-                if lock_time > 0.1:
-                    logger.warning(f"Getting a lock for socket {socket_cache.get_cache_key(config=self.config)} took {lock_time} seconds")
-                r = dns.query.https(
-                    q=self.query,
-                    where=url,
-                    bootstrap_address=ip,
-                    port=port,
-                    timeout=self.config.timeout,
-                    verify=verify,
-                    one_rr_per_rrset=True,
-                    # https://github.com/tykling/dns_exporter/issues/201
-                    http_version=http_version,
-                    session=sock.socket if self.config.connection_reuse else None,
-                )
-            if self.config.connection_reuse:
-                # update the socket stats
-                sock.register_use(bytes_sent=len(self.query.to_wire()), bytes_received=len(r.to_wire()))
-            return DNSResponse(
-                message=r,
-                transport="TCP",
-                socket_reused=sock.use_count > 1 if self.config.connection_reuse else False,
+            r = dns.query.https(
+                q=self.query,
+                where=url,
+                bootstrap_address=ip,
+                port=port,
+                timeout=self.config.timeout,
+                verify=verify,
+                one_rr_per_rrset=True,
+                # https://github.com/tykling/dns_exporter/issues/201
+                http_version=http_version,
+                session=self.sock.socket if self.config.connection_reuse else None,
             )
         except httpx.ConnectError as e:
             # raised by doh on both certificate errors and other connection issues
@@ -622,6 +573,17 @@ class DNSCollector(Collector):
                 "Protocol doh raised ValueErrror due to non-2XX status_code - returning invalid_response_statuscode"
             )
             raise ProtocolSpecificError("invalid_response_statuscode") from e
+        finally:
+            if self.config.connection_reuse:
+                self.sock.register_use(
+                    bytes_sent=len(self.query.to_wire()), bytes_received=len(r.to_wire()) if r else 0
+                )
+                self.sock.lock.release()
+        return DNSResponse(
+            message=r,
+            transport="TCP",
+            socket_reused=reused if self.config.connection_reuse else False,
+        )
 
     def get_dns_response_doh3(
         self,
@@ -633,17 +595,11 @@ class DNSCollector(Collector):
     ) -> DNSResponse:
         """Perform a DNS query with the doh3 protocol."""
         if self.config.connection_reuse:
-            sock = socket_cache.get_quic_socket(config=self.config, verify=verify)
-            self.socket_lock = sock.lock
-        else:
-            self.socket_lock = contextlib.nullcontext()
+            self.sock, reused = socket_cache.get_quic_socket(config=self.config, verify=verify)
         # DoH3 query, use the url for where= and use bootstrap_address= for the ip
         url = f"https://{server.hostname}{server.path}"
-        t = time.perf_counter()
-        with self.socket_lock:
-            lock_time = time.perf_counter() - t
-            if lock_time > 0.1:
-                logger.warning(f"Getting a lock for socket {socket_cache.get_cache_key(config=self.config)} took {lock_time} seconds")
+        r = None
+        try:
             r = dns.query.https(
                 q=self.query,
                 where=url,
@@ -653,15 +609,19 @@ class DNSCollector(Collector):
                 verify=verify,
                 one_rr_per_rrset=True,
                 http_version=dns.query.HTTPVersion.HTTP_3,
-                session=sock.socket if self.config.connection_reuse else None,
+                session=self.sock.socket if self.config.connection_reuse else None,
             )
+        finally:
             if self.config.connection_reuse:
                 # update the socket stats
-                sock.register_use(bytes_sent=len(self.query.to_wire()), bytes_received=len(r.to_wire()))
+                self.sock.register_use(
+                    bytes_sent=len(self.query.to_wire()), bytes_received=len(r.to_wire()) if r else 0
+                )
+                self.sock.lock.release()
         return DNSResponse(
             message=r,
             transport="QUIC",
-            socket_reused=sock.use_count > 1 if self.config.connection_reuse else False,
+            socket_reused=reused if self.config.connection_reuse else False,
         )
 
     def get_dns_response_doq(
@@ -675,15 +635,9 @@ class DNSCollector(Collector):
         """Perform a DNS query with the doq protocol and catch protocol specific exceptions."""
         # DoQ query, use the IP for where= and use server_hostname for the hostname
         if self.config.connection_reuse:
-            sock = socket_cache.get_quic_socket(config=self.config, verify=verify)
-            self.socket_lock = sock.lock
-        else:
-            self.socket_lock = contextlib.nullcontext()
-        t = time.perf_counter()
-        with self.socket_lock:
-            lock_time = time.perf_counter() - t
-            if lock_time > 0.1:
-                logger.warning(f"Getting a lock for socket {socket_cache.get_cache_key(config=self.config)} took {lock_time} seconds")
+            self.sock, reused = socket_cache.get_quic_socket(config=self.config, verify=verify)
+        r = None
+        try:
             r = dns.query.quic(
                 q=self.query,
                 where=ip,
@@ -692,14 +646,16 @@ class DNSCollector(Collector):
                 timeout=self.config.timeout,
                 verify=verify,
                 one_rr_per_rrset=True,
-                connection=sock.socket if self.config.connection_reuse else None,
+                connection=self.sock.socket if self.config.connection_reuse else None,
             )
+        finally:
             if self.config.connection_reuse:
                 # update the socket stats
-                sock.register_use(bytes_sent=len(self.query.to_wire()), bytes_received=len(r.to_wire()))
-        return DNSResponse(
-            message=r, transport="QUIC", socket_reused=sock.use_count > 1 if self.config.connection_reuse else False
-        )
+                self.sock.register_use(
+                    bytes_sent=len(self.query.to_wire()), bytes_received=len(r.to_wire()) if r else 0
+                )
+                self.sock.lock.release()
+        return DNSResponse(message=r, transport="QUIC", socket_reused=reused if self.config.connection_reuse else False)
 
     def validate_response_rcode(self, response: Message) -> None:
         """Validate response RCODE."""

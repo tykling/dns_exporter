@@ -55,8 +55,6 @@ TTL_LABELS = [
     "rr_type",
     "rr_value",
 ]
-# labels used for socket cache metrics
-SOCKET_LABELS = ["protocol", "server", "ip", "verify", "proxy"]
 
 FAILURE_REASONS = [
     "invalid_request_module",
@@ -73,6 +71,7 @@ FAILURE_REASONS = [
     "invalid_request_query_class",
     "certificate_error",
     "connection_error",
+    "response_truncated",
     "socket_error",
     "timeout",
     "invalid_response_statuscode",
@@ -311,16 +310,18 @@ The placeholder ``none`` is used for cases where there is no suitable value for 
 
 # socket cache stats
 
-dnsexp_socket_age_seconds = Gauge(
-    name="dnsexp_socket_age_seconds",
+# labels used for socket cache metrics
+SOCKET_LABELS = ["protocol", "server", "ip", "verify", "proxy"]
+
+dnsexp_socket_count_total = Gauge(
+    name="dnsexp_socket_count_total",
     documentation=(
-        "Gauge: The age in seconds of each reusable socket in the internal SocketCache by protocol, "
-        "family, transport (TCP/UDP), destination ip, destination port, verify, and proxy."
+        "Gauge: The number of sockets in the internal SocketCache by protocol, server, ip, verify, and proxy."
     ),
     labelnames=SOCKET_LABELS,
 )
-"""``dnsexp_socket_age_seconds`` is a Gauge keeping track of the age of each of
-the reusable sockets in the internal socket cache in the exporter.
+"""``dnsexp_socket_count_total`` is a Gauge keeping track of the number of sockets in
+the internal socket cache.
 
 This metric has five labels:
         - ``protocol``
@@ -328,6 +329,29 @@ This metric has five labels:
         - ``ip``
         - ``verify`` TLS verify setting, ``True``/``False``/CA Path/``none``
         - ``proxy`` Proxy URL or ``none``
+
+The placeholder ``none`` is used for cases where there is no suitable value for the label.
+"""
+
+dnsexp_socket_age_seconds = Gauge(
+    name="dnsexp_socket_age_seconds",
+    documentation=(
+        "Gauge: The age in seconds of each reusable socket in the internal SocketCache by protocol, "
+        "protocol, server, ip, verify, and proxy."
+        "family, transport (TCP/UDP), destination ip, destination port, verify, proxy, and index."
+    ),
+    labelnames=[*SOCKET_LABELS, "index"],
+)
+"""``dnsexp_socket_age_seconds`` is a Gauge keeping track of the age of each of
+the reusable sockets in the internal socket cache in the exporter.
+
+This metric has six labels:
+        - ``protocol``
+        - ``server``
+        - ``ip``
+        - ``verify`` TLS verify setting, ``True``/``False``/CA Path/``none``
+        - ``proxy`` Proxy URL or ``none``
+        - ``index`` Socket index
 
 The placeholder ``none`` is used for cases where there is no suitable value for the label.
 """
@@ -336,75 +360,91 @@ dnsexp_socket_idle_seconds = Gauge(
     name="dnsexp_socket_idle_seconds",
     documentation=(
         "Gauge: The time in seconds since the socket was last used, by protocol, family, "
-        "transport (TCP/UDP), destination ip, destination port, verify, and proxy."
+        "protocol, server, ip, verify, and proxy."
+        "transport (TCP/UDP), destination ip, destination port, verify, proxy, and index."
     ),
-    labelnames=SOCKET_LABELS,
+    labelnames=[*SOCKET_LABELS, "index"],
 )
 """``dnsexp_socket_idle_seconds`` is a Gauge keeping track of idle time of each of
 the reusable sockets in the internal socket cache in the exporter.
 
-This metric has five labels:
+This metric has six labels:
         - ``protocol``
         - ``server``
         - ``ip``
         - ``verify`` TLS verify setting, ``True``/``False``/CA Path/``none``
         - ``proxy`` Proxy URL or ``none``
+        - ``index`` Socket index
 
 The placeholder ``none`` is used for cases where there is no suitable value for the label.
 """
 
 dnsexp_socket_transmit_bytes_total = Gauge(
     name="dnsexp_socket_transmit_bytes_total",
-    documentation="Gauge: The number of bytes transmitted to DNS servers by each socket. Only the raw query size is counted, excluding TCP/UDP/TLS/IP overhead. Labels for this metric include protocol, family, transport (TCP/UDP), destination ip, destination port, verify, and proxy.",  # noqa: E501
-    labelnames=SOCKET_LABELS,
+    documentation=(
+        "Gauge: The number of bytes transmitted to DNS servers by each socket. "
+        "Only the raw query size is counted, excluding TCP/UDP/TLS/IP overhead. "
+        "Labels for this metric are protocol, server, ip, verify, proxy, and index."
+    ),
+    labelnames=[*SOCKET_LABELS, "index"],
 )
 """``dnsexp_socket_transmit_bytes_total`` is a Gauge keeping track of the number of bytes
 transmitted to servers by each socket. Only the raw query size is counted, excluding
 TCP/UDP/TLS/IP overhead.
 
-This metric has five labels:
+This metric has six labels:
         - ``protocol``
         - ``server``
         - ``ip``
-        - ``verify`` TLS verify setting, ``True``/``False``/CA Path
+        - ``verify`` TLS verify setting, ``True``/``False``/CA Path/``none``
         - ``proxy`` Proxy URL or ``none``
+        - ``index`` Socket index
 
 The placeholder ``none`` is used for cases where there is no suitable value for the label.
 """
 
 dnsexp_socket_receive_bytes_total = Gauge(
     name="dnsexp_socket_receive_bytes_total",
-    documentation="Gauge: The number of bytes received from DNS servers by each socket. Only the raw response size is counted, excluding any TCP/UDP/TLS/IP overhead. Labels for this metric include protocol, family, transport (TCP/UDP), destination ip, destination port, verify, and proxy.",  # noqa: E501
-    labelnames=SOCKET_LABELS,
+    documentation=(
+        "Gauge: The number of bytes received from DNS servers by each socket. "
+        "Only the raw response size is counted, excluding any TCP/UDP/TLS/IP overhead. "
+        "Labels for this metric are protocol, server, ip, verify, proxy, and index."
+    ),
+    labelnames=[*SOCKET_LABELS, "index"],
 )
 """``dnsexp_socket_receive_bytes_total`` is a Gauge keeping track of the number of bytes
 received by each socket. Only the raw response size is counted, excluding
 TCP/UDP/TLS/IP overhead.
 
-This metric has five labels:
+This metric has six labels:
         - ``protocol``
         - ``server``
         - ``ip``
         - ``verify`` TLS verify setting, ``True``/``False``/CA Path
         - ``proxy`` Proxy URL or ``none``
+        - ``index`` Socket index
 
 The placeholder ``none`` is used for cases where there is no suitable value for the label.
 """
 
 dnsexp_socket_uses_total = Gauge(
     name="dnsexp_socket_uses_total",
-    documentation="Gauge: The number of times each socket has been used. Labels for this metric include protocol, family, transport (TCP/UDP), destination ip, destination port, verify, and proxy.",  # noqa: E501
-    labelnames=SOCKET_LABELS,
+    documentation=(
+        "Gauge: The number of times each socket has been used. "
+        "Labels for this metric are protocol, server, ip, verify, proxy, and index."
+    ),
+    labelnames=[*SOCKET_LABELS, "index"],
 )
 """``dnsexp_socket_uses_total`` is a Gauge keeping track of the number of times
 each socket has been used.
 
-This metric has five labels:
+This metric has six labels:
         - ``protocol``
         - ``server``
         - ``ip``
         - ``verify`` TLS verify setting, ``True``/``False``/CA Path
         - ``proxy`` Proxy URL
+        - ``index`` Socket index
 
 The placeholder ``none`` is used for cases where there is no suitable value for the label.
 """

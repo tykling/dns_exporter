@@ -11,8 +11,9 @@ import logging
 import socket
 import threading
 import time
+from collections import deque
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 import dns.query
 import dns.quic
@@ -21,6 +22,7 @@ from typing_extensions import Self
 
 from dns_exporter.metrics import (
     dnsexp_socket_age_seconds,
+    dnsexp_socket_count_total,
     dnsexp_socket_idle_seconds,
     dnsexp_socket_receive_bytes_total,
     dnsexp_socket_transmit_bytes_total,
@@ -90,10 +92,12 @@ class BaseSocket:
 
     create_timestamp: float | None = None
     last_use_timestamp: float | None = None
+    serial: int
+    cachekey: SocketCacheKey
+    lock: threading.Lock
     use_count: int = 0
     bytes_sent: int = 0
     bytes_received: int = 0
-    lock = threading.Lock()
 
     def __post_init__(self) -> None:
         """Set socket creation time."""
@@ -115,11 +119,25 @@ class PlainSocket(BaseSocket):
     socket: socket.socket
 
 
+class PlainSockLock(NamedTuple):
+    """Tuple of a deque() of PlainSockets and a lock to use when adding/reordering/deleting sockets in the deque()."""
+
+    sockets: deque[PlainSocket]
+    lock: threading.Lock
+
+
 @dataclass
 class DoTSocket(BaseSocket):
     """DoT v4 or v6 reusable socket."""
 
     socket: ssl.SSLSocket
+
+
+class DoTSockLock(NamedTuple):
+    """Tuple of a deque() of DoTSockets and a lock to use when adding/reordering/deleting sockets in the deque()."""
+
+    sockets: deque[DoTSocket]
+    lock: threading.Lock
 
 
 @dataclass
@@ -129,11 +147,25 @@ class DoHSocket(BaseSocket):
     socket: httpx.Client
 
 
+class DoHSockLock(NamedTuple):
+    """Tuple of a deque() of DoHSockets and a lock to use when adding/reordering/deleting sockets in the deque()."""
+
+    sockets: deque[DoHSocket]
+    lock: threading.Lock
+
+
 @dataclass
 class QUICSocket(BaseSocket):
     """DoQ or DoH3 v4 or v6 reusable socket."""
 
     socket: SyncQuicConnection
+
+
+class QUICSockLock(NamedTuple):
+    """Tuple of a deque() of QUICSockets and a lock to use when adding/reordering/deleting sockets in the deque()."""
+
+    sockets: deque[QUICSocket]
+    lock: threading.Lock
 
 
 class Singleton:
@@ -158,13 +190,13 @@ class SocketCache(Singleton):
     """Singleton socket cache."""
 
     # protocols tcp+udp
-    plain_sockets: dict[SocketCacheKey, PlainSocket]
+    plain_sockets: dict[SocketCacheKey, PlainSockLock]
     # protocol dot
-    dot_sockets: dict[SocketCacheKey, DoTSocket]
+    dot_sockets: dict[SocketCacheKey, DoTSockLock]
     # protocol doh
-    doh_sockets: dict[SocketCacheKey, DoHSocket]
+    doh_sockets: dict[SocketCacheKey, DoHSockLock]
     # protocols doq+doh3
-    quic_sockets: dict[SocketCacheKey, QUICSocket]
+    quic_sockets: dict[SocketCacheKey, QUICSockLock]
 
     def __init__(self) -> None:
         """Initialise socket cache."""
@@ -178,7 +210,8 @@ class SocketCache(Singleton):
         self.socket_max_idle_seconds: int = 3600
         # housekeeping interval
         self.housekeeping_interval: int = 600
-        self.exit_event = threading.Event()
+        # set this to ask the socketcache to exit the housekeeping loop
+        self.housekeeping_exit_event = threading.Event()
 
     def get_cache_key(self, config: Config, force_protocol: str = "") -> SocketCacheKey:
         """Return a SocketCacheKey for identifying a socket."""
@@ -187,52 +220,121 @@ class SocketCache(Singleton):
             assert isinstance(config.server, urllib.parse.SplitResult)
         return SocketCacheKey(
             protocol=protocol,
-            server=config.server.geturl(),
+            server=config.server.geturl().replace("udptcp://", f"{protocol}://", 1),
             ip=str(config.ip),
             verify="none" if config.verify is None else str(config.verify),
             proxy=config.proxy.geturl() if config.proxy else "none",
         )
 
-    def get_plaintext_socket(self, *, config: Config, force_new: bool = False, force_protocol: str = "") -> PlainSocket:
-        """Create+connect new or return existing TCP or UDP PlainSocket."""
+    def get_plaintext_socket(self, *, config: Config, force_protocol: str = "") -> tuple[PlainSocket, bool]:
+        """Create+connect new/return existing locked+connected TCP or UDP PlainSocket object."""
         protocol = force_protocol if force_protocol else config.protocol
         cachekey = self.get_cache_key(config=config, force_protocol=protocol)
-        sockets = self.plain_sockets
-        if force_new or cachekey not in sockets:
-            # create new socket
-            sockets[cachekey] = PlainSocket(socket=dns.query.make_socket(af=config.socket_family, type=cachekey.kind))
-            if protocol == "tcp":
-                self.connect_tcp_socket(config=config, sock=sockets[cachekey].socket)
-        return sockets[cachekey]
+        # check for existing socket
+        if cachekey not in self.plain_sockets:
+            self.plain_sockets[cachekey] = PlainSockLock(sockets=deque(), lock=threading.Lock())
+        sock_lock: PlainSockLock = self.plain_sockets[cachekey]
 
-    def get_dot_socket(self, *, config: Config, verify: str | bool, force_new: bool = False) -> DoTSocket:
+        # loop over existing sockets
+        for sock in list(sock_lock.sockets):
+            # looking for an unlocked socket
+            if sock.lock.acquire(blocking=False):
+                # socket lock acquired, lock the deque and move this socket to the end
+                with sock_lock.lock:
+                    sock_lock.sockets.remove(sock)
+                    sock_lock.sockets.append(sock)
+                return sock, True
+
+        # no available socket found, lock the deque and add a new socket
+        with sock_lock.lock:
+            # sockets are numbered from 0 and up, find an unused serial
+            i = 0
+            while i in [s.serial for s in sock_lock.sockets]:
+                i += 1
+            # create and lock socket
+            sock = PlainSocket(
+                socket=dns.query.make_socket(af=config.socket_family, type=cachekey.kind),
+                serial=i,
+                cachekey=cachekey,
+                lock=threading.Lock(),
+            )
+            sock.lock.acquire()
+            # append new socket to the end of the deque
+            sock_lock.sockets.append(sock)
+        if protocol == "tcp":
+            self.connect_tcp_socket(config=config, sock=sock.socket)
+        return sock, False
+
+    def get_dot_socket(self, *, config: Config, verify: str | bool) -> tuple[DoTSocket, bool]:
         """Create+connect new or return existing DoTSocket."""
         cachekey = self.get_cache_key(config=config)
-        sockets = self.dot_sockets
-        if force_new or cachekey not in sockets:
-            # create TLS context
+        if cachekey not in self.dot_sockets:
+            # this is the first time this cachekey is seen, initialise deque and lock
+            self.dot_sockets[cachekey] = DoTSockLock(sockets=deque(), lock=threading.Lock())
+        sock_lock: DoTSockLock = self.dot_sockets[cachekey]
+
+        # loop over existing sockets
+        for sock in list(sock_lock.sockets):
+            # looking for an unlocked socket
+            if sock.lock.acquire(blocking=False):
+                # socket lock acquired, lock the deque and move this socket to the end
+                with sock_lock.lock:
+                    sock_lock.sockets.remove(sock)
+                    sock_lock.sockets.append(sock)
+                return sock, True
+
+        # no available socket found, lock the deque and add a new socket
+        with sock_lock.lock:
+            # sockets are numbered from 0 and up, find an unused serial
+            i = 0
+            while i in [s.serial for s in sock_lock.sockets]:
+                i += 1
+            # create and lock socket
             context = dns.query.make_ssl_context(verify=verify, check_hostname=bool(verify), alpns=["dot"])
-            # create new ssl.SSLSocket
-            sockets[cachekey] = DoTSocket(
+            sock = DoTSocket(
                 socket=dns.query.make_ssl_socket(
                     af=config.socket_family,
                     type=socket.SOCK_STREAM,
                     ssl_context=context,
                     server_hostname=config.server.hostname if config.server and verify else None,
-                )
+                ),
+                serial=i,
+                cachekey=cachekey,
+                lock=threading.Lock(),
             )
-            # connect and TLS handshake new socket
-            self.connect_tcp_socket(config=config, sock=sockets[cachekey].socket)
-            dns.query._tls_handshake(s=sockets[cachekey].socket, expiration=time.time() + config.timeout)
-        return sockets[cachekey]
+            sock.lock.acquire()
+            # append new socket to the end of the deque
+            sock_lock.sockets.append(sock)
+        # connect and TLS handshake socket and return
+        self.connect_tcp_socket(config=config, sock=sock.socket)
+        dns.query._tls_handshake(s=sock.socket, expiration=time.time() + config.timeout)
+        return sock, False
 
-    def get_doh_socket(
-        self, *, config: Config, verify: str | ssl.SSLContext | bool, force_new: bool = False
-    ) -> DoHSocket:
+    def get_doh_socket(self, *, config: Config, verify: str | ssl.SSLContext | bool) -> tuple[DoHSocket, bool]:
         """Create+connect new or return existing DoHSocket."""
         cachekey = self.get_cache_key(config=config)
-        sockets = self.doh_sockets
-        if force_new or cachekey not in sockets:
+        if cachekey not in self.doh_sockets:
+            # this is the first time this cachekey is seen, initialise deque and lock
+            self.doh_sockets[cachekey] = DoHSockLock(sockets=deque(), lock=threading.Lock())
+        sock_lock = self.doh_sockets[cachekey]
+
+        # loop over existing sockets
+        for sock in list(sock_lock.sockets):
+            # looking for an unlocked socket
+            if sock.lock.acquire(blocking=False):
+                # socket lock acquired, lock the deque and move this socket to the end
+                with sock_lock.lock:
+                    sock_lock.sockets.remove(sock)
+                    sock_lock.sockets.append(sock)
+                return sock, True
+
+        # no available socket found, lock the deque and add a new socket
+        with sock_lock.lock:
+            # sockets are numbered from 0 and up, find an unused serial
+            i = 0
+            while i in [s.serial for s in sock_lock.sockets]:
+                i += 1
+            # create and lock socket
             transport = dns.query._HTTPTransport(
                 http1=False,
                 http2=True,
@@ -240,30 +342,61 @@ class SocketCache(Singleton):
                 bootstrap_address=str(config.ip),
                 family=config.family,
             )
-            sockets[cachekey] = DoHSocket(
-                socket=httpx.Client(http1=False, http2=True, verify=verify, transport=transport)
+            sock = DoHSocket(
+                socket=httpx.Client(http1=False, http2=True, verify=verify, transport=transport),
+                serial=i,
+                cachekey=cachekey,
+                lock=threading.Lock(),
             )
-        return sockets[cachekey]
+            sock.lock.acquire()
+            # append new socket to the end of the deque
+            sock_lock.sockets.append(sock)
+        return sock, False
 
-    def get_quic_socket(self, *, config: Config, verify: str | bool, force_new: bool = False) -> QUICSocket:
+    def get_quic_socket(self, *, config: Config, verify: str | bool) -> tuple[QUICSocket, bool]:
         """Create+connect new or return existing QUIC connection for doq or doh3."""
         cachekey = self.get_cache_key(config=config)
-        sockets = self.quic_sockets
-        if cachekey in sockets and sockets[cachekey].socket._done:
-            logger.debug(f"Deleting stale QUIC socket {cachekey}")
-            self.delete_socket(cachekey=cachekey)
-        if force_new or cachekey not in sockets:
-            # create+connect+handshake new QUIC socket/connection for DoQ/DoH3
+        if cachekey not in self.quic_sockets:
+            # this is the first time this cachekey is seen, initialise deque and lock
+            self.quic_sockets[cachekey] = QUICSockLock(sockets=deque(), lock=threading.Lock())
+        logger.debug(f"Inside get_quic_socket with cachekey {cachekey}")
+        sock_lock: QUICSockLock = self.quic_sockets[cachekey]
+
+        # loop over existing sockets
+        for sock in list(sock_lock.sockets):
+            if sock.socket._done:
+                # this socket has been closed by remote end, delete and continue
+                logger.debug(f"Deleting stale QUIC socket {sock}")
+                self.delete_socket(sock=sock)
+                continue
+            # looking for an unlocked socket
+            if sock.lock.acquire(blocking=False):
+                # socket lock acquired, lock the deque and move this socket to the end
+                with sock_lock.lock:
+                    sock_lock.sockets.remove(sock)
+                    sock_lock.sockets.append(sock)
+                return sock, True
+
+        # no available socket found, lock the deque and add a new socket
+        with sock_lock.lock:
+            # sockets are numbered from 0 and up, find an unused serial
+            i = 0
+            while i in [s.serial for s in sock_lock.sockets]:
+                i += 1
+            # create and lock a new socket
             manager = dns.quic.SyncQuicManager(
                 verify_mode=verify,
                 server_name=config.server.hostname if config.server else None,
                 h3=config.protocol == "doh3",
             )
-            sockets[cachekey] = QUICSocket(socket=manager.connect(*config.dest))
-        return sockets[cachekey]
+            sock = QUICSocket(socket=manager.connect(*config.dest), serial=i, cachekey=cachekey, lock=threading.Lock())
+            sock.lock.acquire()
+            # append new socket to the end of the deque
+            sock_lock.sockets.append(sock)
+        return sock, False
 
     def connect_tcp_socket(self, config: Config, sock: socket.socket | ssl.SSLSocket) -> None:
-        """Connect and handshake TCP sockets."""
+        """Connect and handshake TCP sockets. Used for protocols tcp and dot."""
         cachekey = self.get_cache_key(config=config)
         logger.debug(f"Connecting {cachekey} socket to {config.dest} ...")
         dns.query._connect(
@@ -279,66 +412,90 @@ class SocketCache(Singleton):
         for sockettype in ["plain_sockets", "dot_sockets", "quic_sockets", "doh_sockets"]:
             sockets = getattr(self, sockettype)
             logger.debug(f"Updating SocketCache metrics for {len(sockets)} {sockettype}")
-            for key, dnssocket in sockets.items():
-                dnsexp_socket_age_seconds.labels(*key.labels).set(time.time() - dnssocket.create_timestamp)
-                if dnssocket.last_use_timestamp:
-                    dnsexp_socket_idle_seconds.labels(*key.labels).set(time.time() - dnssocket.last_use_timestamp)
-                dnsexp_socket_transmit_bytes_total.labels(*key.labels).set(dnssocket.bytes_sent)
-                dnsexp_socket_receive_bytes_total.labels(*key.labels).set(dnssocket.bytes_received)
-                dnsexp_socket_uses_total.labels(*key.labels).set(dnssocket.use_count)
+            for key, sock_lock in sockets.items():
+                # get the number of identical sockets
+                dnsexp_socket_count_total.labels(*key.labels).set(len(sock_lock.sockets))
+                # loop over each and get metrics for the specific socket
+                for sock in list(sock_lock.sockets):
+                    # include sock.serial in labels for the rest of the metrics
+                    labels = [*key.labels, str(sock.serial)]
+                    dnsexp_socket_age_seconds.labels(*labels).set(time.time() - sock.create_timestamp)
+                    if sock.last_use_timestamp:
+                        dnsexp_socket_idle_seconds.labels(*labels).set(time.time() - sock.last_use_timestamp)
+                    dnsexp_socket_transmit_bytes_total.labels(*labels).set(sock.bytes_sent)
+                    dnsexp_socket_receive_bytes_total.labels(*labels).set(sock.bytes_received)
+                    dnsexp_socket_uses_total.labels(*labels).set(sock.use_count)
 
-    def delete_socket(self, cachekey: SocketCacheKey, delete_metrics: bool=True) -> None:
-        """Delete a socket from cache."""
-        if cachekey.protocol in ["tcp", "udp", "udptcp"] and cachekey in self.plain_sockets:
+    def delete_socket(
+        self, *, sock: PlainSocket | DoTSocket | DoHSocket | QUICSocket, delete_metrics: bool = True
+    ) -> None:
+        """Delete a socket from the cache."""
+        if isinstance(sock, PlainSocket):
             try:
-                # be nice and close sockets right
-                self.plain_sockets[cachekey].socket.shutdown(socket.SHUT_RDWR)
-                self.plain_sockets[cachekey].socket.close()
+                # be nice and close sockets properly
+                sock.socket.shutdown(socket.SHUT_RDWR)
+                sock.socket.close()
             except OSError:
                 # Ignore OSErrors here (socket might be closed already) and delete the socket anyway
                 pass
-            del self.plain_sockets[cachekey]
+            # remove socket from deque
+            with self.plain_sockets[sock.cachekey].lock:
+                self.plain_sockets[sock.cachekey].sockets.remove(sock)
 
-        if cachekey.protocol == "dot" and cachekey in self.dot_sockets:
+        if isinstance(sock, DoTSocket):
             try:
                 # be nice and close sockets right
-                self.dot_sockets[cachekey].socket.shutdown(how=socket.SHUT_RDWR)
-                self.dot_sockets[cachekey].socket.close()
+                sock.socket.shutdown(how=socket.SHUT_RDWR)
+                sock.socket.close()
             except OSError:
                 # Ignore OSErrors here (socket might be closed already) and delete the socket anyway
                 pass
-            del self.dot_sockets[cachekey]
+            # remove socket from deque
+            with self.dot_sockets[sock.cachekey].lock:
+                self.dot_sockets[sock.cachekey].sockets.remove(sock)
 
-        if cachekey.protocol in ["doh3", "doq"] and cachekey in self.quic_sockets:
-            self.quic_sockets[cachekey].socket.close()
-            del self.quic_sockets[cachekey]
+        if isinstance(sock, DoHSocket):
+            sock.socket.close()
+            # remove socket from deque
+            with self.doh_sockets[sock.cachekey].lock:
+                self.doh_sockets[sock.cachekey].sockets.remove(sock)
 
-        if cachekey.protocol == "doh" and cachekey in self.doh_sockets:
-            self.doh_sockets[cachekey].socket.close()
-            del self.doh_sockets[cachekey]
+        if isinstance(sock, QUICSocket):
+            sock.socket.close()
+            # remove socket from deque
+            with self.quic_sockets[sock.cachekey].lock:
+                self.quic_sockets[sock.cachekey].sockets.remove(sock)
 
         if delete_metrics:
-            self.delete_metric(cachekey=cachekey)
+            self.delete_metric(sock=sock)
 
-    def delete_all_sockets(self, delete_metrics: bool=True) -> None:
+    def delete_all_sockets(self, *, delete_metrics: bool = True) -> None:
         """Delete all sockets from socket cache."""
-        for key in [*self.plain_sockets, *self.dot_sockets, *self.doh_sockets, *self.quic_sockets]:
-            self.delete_socket(cachekey=key, delete_metrics=delete_metrics)
+        for socklock in [
+            *self.plain_sockets.values(),
+            *self.dot_sockets.values(),
+            *self.doh_sockets.values(),
+            *self.quic_sockets.values(),
+        ]:
+            for sock in list(socklock.sockets):  # type: ignore[attr-defined]
+                self.delete_socket(sock=sock, delete_metrics=delete_metrics)
 
-    def delete_metric(self, cachekey: SocketCacheKey) -> None:
+    def delete_metric(self, sock: PlainSocket | DoTSocket | DoHSocket | QUICSocket) -> None:
         """Delete metrics for a socketcache entry."""
-        dnsexp_socket_age_seconds.remove(*cachekey.labels)
-        dnsexp_socket_idle_seconds.remove(*cachekey.labels)
-        dnsexp_socket_transmit_bytes_total.remove(*cachekey.labels)
-        dnsexp_socket_receive_bytes_total.remove(*cachekey.labels)
-        dnsexp_socket_uses_total.remove(*cachekey.labels)
+        dnsexp_socket_count_total.remove(*sock.cachekey.labels)
+        labels = [*sock.cachekey.labels, sock.serial]
+        dnsexp_socket_age_seconds.remove(*labels)
+        dnsexp_socket_idle_seconds.remove(*labels)
+        dnsexp_socket_transmit_bytes_total.remove(*labels)
+        dnsexp_socket_receive_bytes_total.remove(*labels)
+        dnsexp_socket_uses_total.remove(*labels)
 
     def housekeeping(self) -> None:
         """Housekeeping method to clean old or idle sockets."""
         # loop forever
         while True:
             # start by waiting the configured interval
-            if self.exit_event.wait(timeout=self.housekeeping_interval):
+            if self.housekeeping_exit_event.wait(timeout=self.housekeeping_interval):
                 # exit was requested, break out of the loop
                 break
             # do the housekeeping
@@ -351,44 +508,49 @@ class SocketCache(Singleton):
             logger.debug(f"SocketCache cleanup task done, will run again in {self.housekeeping_interval} seconds.")
 
     def cleanup_sockets(
-        self, sockets: Mapping[SocketCacheKey, PlainSocket | DoTSocket | DoHSocket | QUICSocket]
+        self, sockets: Mapping[SocketCacheKey, PlainSockLock | DoTSockLock | DoHSockLock | QUICSockLock]
     ) -> None:
         """Do housekeeping for a dict of sockets."""
         now = time.time()
         keys = list(sockets.keys())
         for cachekey in keys:
-            dnssocket = sockets[cachekey]
-            if TYPE_CHECKING:
-                assert dnssocket.create_timestamp is not None
-                assert dnssocket.last_use_timestamp is not None
-            # check socket age?
-            if self.socket_max_age_seconds:
-                socket_age = int(now - dnssocket.create_timestamp)
-                if socket_age > self.socket_max_age_seconds:
-                    logger.debug(
-                        f"Deleting socket {cachekey} due to age {socket_age} "
-                        f"seconds > max. age {self.socket_max_age_seconds}"
-                    )
-                    self.delete_socket(cachekey=cachekey)
+            for dnssocket in list(sockets[cachekey].sockets):
+                if TYPE_CHECKING:
+                    assert dnssocket.create_timestamp is not None
+                    assert dnssocket.last_use_timestamp is not None
+                    assert isinstance(dnssocket, PlainSocket | DoTSocket | DoHSocket | QUICSocket)
+                # check socket age?
+                if self.socket_max_age_seconds:
+                    socket_age = int(now - dnssocket.create_timestamp)
+                    if socket_age > self.socket_max_age_seconds:
+                        logger.debug(
+                            f"Deleting socket {cachekey} index {dnssocket.serial} due to age "
+                            f"{socket_age} seconds > max. age {self.socket_max_age_seconds} seconds"
+                        )
+                        self.delete_socket(sock=dnssocket)
+                        continue
 
-            # check socket idle time?
-            if self.socket_max_idle_seconds and dnssocket.last_use_timestamp:
-                socket_idle = now - dnssocket.last_use_timestamp
-                if socket_idle > self.socket_max_idle_seconds:
-                    logger.debug(
-                        f"Deleting socket {cachekey} with idle time {socket_idle} "
-                        f"seconds > max. idle {self.socket_max_idle_seconds}"
-                    )
-                    self.delete_socket(cachekey=cachekey)
+                # check socket idle time?
+                if self.socket_max_idle_seconds and dnssocket.last_use_timestamp:
+                    socket_idle = now - dnssocket.last_use_timestamp
+                    if socket_idle > self.socket_max_idle_seconds:
+                        logger.debug(
+                            f"Deleting socket {cachekey} index {dnssocket.serial} with "
+                            f"idle time {socket_idle} seconds > max. idle "
+                            f"{self.socket_max_idle_seconds} seconds"
+                        )
+                        self.delete_socket(sock=dnssocket)
 
 
-def cleanup_socket_cache(socket_cache: SocketCache, housekeeping_thread: threading.Thread) -> None:
+def cleanup_socket_cache(socket_cache: SocketCache, housekeeping_thread: threading.Thread | None) -> None:
     """Close and delete all sockets and stop the housekeeping thread. Used on exit."""
-    logger.debug("SocketCache cleanup running, asking housekeeping thread to exit...")
-    socket_cache.exit_event.set()
-    logger.debug("Waiting for SocketCache housekeeping thread to exit...")
-    housekeeping_thread.join()
-    logger.debug("The SocketCache housekeeping thread exited cleanly.")
+    logger.debug("SocketCache cleanup running")
+    if housekeeping_thread:
+        logger.debug("Asking housekeeping thread to exit...")
+        socket_cache.housekeeping_exit_event.set()
+        logger.debug("Waiting for SocketCache housekeeping thread to exit...")
+        housekeeping_thread.join()
+        logger.debug("The SocketCache housekeeping thread exited cleanly.")
     if (
         len(socket_cache.plain_sockets)
         + len(socket_cache.dot_sockets)

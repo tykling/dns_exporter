@@ -30,6 +30,7 @@ def test_list_of_servers(prometheus_server, dns_exporter_param_config):
     for _ in range(15):
         r = requests.get(
             "http://127.0.0.1:9092/api/v1/query?query=dnsexp_dns_query_success==1",
+            timeout=5,
         )
         if len(r.json()["data"]["result"]) > 0 and r.json()["data"]["result"][0]["value"][1] == "1":
             break
@@ -53,6 +54,7 @@ def test_list_of_names(caplog, prometheus_server, dns_exporter_param_config):
     for _ in range(15):
         r = requests.get(
             "http://127.0.0.1:9092/api/v1/query?query=dnsexp_dns_query_success==1",
+            timeout=5,
         )
         if len(r.json()["data"]["result"]) > 0 and r.json()["data"]["result"][0]["value"][1] == "1":
             break

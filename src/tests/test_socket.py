@@ -40,6 +40,7 @@ def test_socket_reuse_enabled(dns_exporter_example_config, protocol, server):
             "protocol": protocol,
             "connection_reuse": True,
         },
+        timeout=5,
     )
     assert f'server="{protocol}://{server}:' in r.text
     assert "dnsexp_dns_query_success 1.0" in r.text
@@ -58,6 +59,7 @@ def test_socket_reuse_enabled_udptcp_large_reply(dns_exporter_example_config):
             "protocol": "udptcp",
             "connection_reuse": True,
         },
+        timeout=5,
     )
     assert 'transport="TCP"' in r.text
 
@@ -85,6 +87,7 @@ def test_socket_reuse_disabled(dns_exporter_example_config, protocol, server):
             "protocol": protocol,
             "connection_reuse": False,
         },
+        timeout=5,
     )
     assert f'server="{protocol}://{server}:' in r.text
     assert "dnsexp_dns_query_success 1.0" in r.text
@@ -114,6 +117,7 @@ def test_connection_label_reuse_false(protocol, server):
             "protocol": protocol,
             "connection_reuse": False,
         },
+        timeout=5,
     )
     assert f'server="{protocol}://{server}:' in r.text
     assert "dnsexp_dns_query_success 1.0" in r.text
@@ -133,7 +137,7 @@ def test_connection_label_reuse_false(protocol, server):
         ("doh3", "dns-unfiltered.adguard.com"),
     ],
 )
-def test_connection_label_reuse_true(protocol, server):
+def test_connection_label_reuse_true(protocol, server, dns_exporter_example_config_connection_label):
     """Make sure a connection label is added."""
     r = requests.get(
         "http://127.0.0.1:15353/query",
@@ -144,6 +148,7 @@ def test_connection_label_reuse_true(protocol, server):
             "protocol": protocol,
             "connection_reuse": True,
         },
+        timeout=5,
     )
     assert f'server="{protocol}://{server}:' in r.text
     assert "dnsexp_dns_query_success 1.0" in r.text
@@ -163,6 +168,7 @@ def test_connection_reuse_retry(caplog, dns_exporter_example_config, mock_get_dn
             "protocol": "tcp",
             "connection_reuse": True,
         },
+        timeout=5,
     )
     assert "failure reason is 'socket_error'" in caplog.text
 
@@ -180,6 +186,7 @@ def test_no_connection_reuse_retry(caplog, dns_exporter_example_config, mock_get
             "protocol": "tcp",
             "connection_reuse": False,
         },
+        timeout=5,
     )
     assert "failure reason is 'socket_error'" in caplog.text
 
@@ -197,12 +204,14 @@ def test_plain_socket_cache_delete(exporter, caplog):
         )
     )
     config = Config.create(name="test", **prepared)
-    sock = socket_cache.get_plaintext_socket(config=config)
+    cachekey = socket_cache.get_cache_key(config=config)
+    sock, reused = socket_cache.get_plaintext_socket(config=config)
     assert isinstance(sock, PlainSocket)
     assert isinstance(sock.socket, socket.socket)
-    assert len(socket_cache.plain_sockets) == 1
-    socket_cache.delete_socket(socket_cache.get_cache_key(config=config))
-    assert len(socket_cache.plain_sockets) == 0
+    assert not reused
+    assert len(socket_cache.plain_sockets[cachekey].sockets) == 1
+    socket_cache.delete_socket(sock=sock)
+    assert len(socket_cache.plain_sockets[cachekey].sockets) == 0
 
 
 def test_dot_socket_cache_delete(exporter, caplog):
@@ -218,12 +227,14 @@ def test_dot_socket_cache_delete(exporter, caplog):
         )
     )
     config = Config.create(name="test", **prepared)
-    sock = socket_cache.get_dot_socket(config=config, verify=True)
+    cachekey = socket_cache.get_cache_key(config=config)
+    sock, reused = socket_cache.get_dot_socket(config=config, verify=True)
     assert isinstance(sock, DoTSocket)
     assert isinstance(sock.socket, ssl.SSLSocket)
-    assert len(socket_cache.dot_sockets) == 1
-    socket_cache.delete_socket(socket_cache.get_cache_key(config=config))
-    assert len(socket_cache.dot_sockets) == 0
+    assert not reused
+    assert len(socket_cache.dot_sockets[cachekey].sockets) == 1
+    socket_cache.delete_socket(sock=sock)
+    assert len(socket_cache.dot_sockets[cachekey].sockets) == 0
 
 
 def test_doh_socket_cache_delete(exporter, caplog):
@@ -239,12 +250,14 @@ def test_doh_socket_cache_delete(exporter, caplog):
         )
     )
     config = Config.create(name="test", **prepared)
-    sock = socket_cache.get_doh_socket(config=config, verify=True)
+    cachekey = socket_cache.get_cache_key(config=config)
+    sock, reused = socket_cache.get_doh_socket(config=config, verify=True)
     assert isinstance(sock, DoHSocket)
     assert isinstance(sock.socket, httpx.Client)
-    assert len(socket_cache.doh_sockets) == 1
-    socket_cache.delete_socket(socket_cache.get_cache_key(config=config))
-    assert len(socket_cache.doh_sockets) == 0
+    assert not reused
+    assert len(socket_cache.doh_sockets[cachekey].sockets) == 1
+    socket_cache.delete_socket(sock=sock)
+    assert len(socket_cache.doh_sockets[cachekey].sockets) == 0
 
 
 def test_quic_socket_cache_delete(exporter, caplog):
@@ -262,18 +275,19 @@ def test_quic_socket_cache_delete(exporter, caplog):
         )
     )
     config = Config.create(name="test", **prepared)
-    sock = socket_cache.get_quic_socket(config=config, verify=True)
+    cachekey = socket_cache.get_cache_key(config=config)
+    sock, reused = socket_cache.get_quic_socket(config=config, verify=True)
     assert isinstance(sock, QUICSocket)
     assert isinstance(sock.socket, SyncQuicConnection)
-    assert len(socket_cache.quic_sockets) == 1
-
+    assert not reused
+    assert len(socket_cache.quic_sockets[cachekey].sockets) == 1, "expected 1 QUIC socket before deleting"
     # make sure detecting a closed connection works
     sock.socket._done = True  # noqa: SLF001
-    sock = socket_cache.get_quic_socket(config=config, verify=True)
+    sock, reused = socket_cache.get_quic_socket(config=config, verify=True)
     assert "Deleting stale QUIC socket" in caplog.text
-    assert len(socket_cache.quic_sockets) == 1
-    socket_cache.delete_socket(socket_cache.get_cache_key(config=config))
-    assert len(socket_cache.quic_sockets) == 0
+    assert len(socket_cache.quic_sockets[cachekey].sockets) == 1
+    socket_cache.delete_socket(sock=sock)
+    assert len(socket_cache.quic_sockets[cachekey].sockets) == 0
 
 
 def test_plain_socket_cache_key_equality(exporter, caplog):
@@ -335,17 +349,8 @@ def test_cache_metrics(exporter, caplog):
     assert "Updating SocketCache metrics for 1 plain_sockets" in caplog.text
 
 
-def test_socket_locking(dns_exporter_example_config_connection_label):
-    """Test socket locking under parallel use."""
-    qnames = ["example.com", "example.net", "example.org"]
-    with ThreadPoolExecutor(max_workers=3) as executor:
-        results = list(executor.map(tcp_query, qnames))
-    for r in results:
-        assert "dnsexp_dns_query_success 1.0" in r.text
-
-
 def tcp_query(qname) -> requests.get:
-    """Do a TCP query."""
+    """Do a tcp query."""
     return requests.get(
         "http://127.0.0.1:15353/query",
         params={
@@ -356,7 +361,92 @@ def tcp_query(qname) -> requests.get:
             "connection_reuse": True,
             "ip": "8.8.8.8",
         },
+        timeout=5,
     )
+
+
+def test_plain_socket_locking(dns_exporter_example_config_connection_label):
+    """Test plain socket locking under parallel use."""
+    qnames = ["example.com", "example.net", "example.org", "example.com", "example.net", "example.org"]
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        results = list(executor.map(tcp_query, qnames))
+    for r in results:
+        assert "dnsexp_dns_query_success 1.0" in r.text
+
+
+def dot_query(qname) -> requests.get:
+    """Do a DoT query."""
+    return requests.get(
+        "http://127.0.0.1:15353/query",
+        params={
+            "query_name": qname,
+            "server": "dns.google",
+            "family": "ipv4",
+            "protocol": "dot",
+            "connection_reuse": True,
+            "ip": "8.8.8.8",
+        },
+        timeout=5,
+    )
+
+
+def test_dot_socket_locking(dns_exporter_example_config_connection_label):
+    """Test dot socket locking under parallel use."""
+    qnames = ["example.com", "example.net", "example.org", "example.com", "example.net", "example.org"]
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        results = list(executor.map(dot_query, qnames))
+    for r in results:
+        assert "dnsexp_dns_query_success 1.0" in r.text
+
+
+def doh_query(qname) -> requests.get:
+    """Do a DoH query."""
+    return requests.get(
+        "http://127.0.0.1:15353/query",
+        params={
+            "query_name": qname,
+            "server": "dns.google",
+            "family": "ipv4",
+            "protocol": "doh",
+            "connection_reuse": True,
+            "ip": "8.8.8.8",
+        },
+        timeout=5,
+    )
+
+
+def test_doh_socket_locking(dns_exporter_example_config_connection_label):
+    """Test doh socket locking under parallel use."""
+    qnames = ["example.com", "example.net", "example.org", "example.com", "example.net", "example.org"]
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        results = list(executor.map(doh_query, qnames))
+    for r in results:
+        assert "dnsexp_dns_query_success 1.0" in r.text
+
+
+def doq_query(qname) -> requests.get:
+    """Do a DoQ query."""
+    return requests.get(
+        "http://127.0.0.1:15353/query",
+        params={
+            "query_name": qname,
+            "server": "dns-unfiltered.adguard.com",
+            "family": "ipv4",
+            "protocol": "doq",
+            "connection_reuse": True,
+            "ip": "94.140.14.141",
+        },
+        timeout=5,
+    )
+
+
+def test_doq_socket_locking(dns_exporter_example_config_connection_label):
+    """Test doq socket locking under parallel use."""
+    qnames = ["example.com", "example.net", "example.org", "example.com", "example.net", "example.org"]
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        results = list(executor.map(doq_query, qnames))
+    for r in results:
+        assert "dnsexp_dns_query_success 1.0" in r.text
 
 
 def test_plain_socket_cache_delete_oserror(exporter, caplog, mock_socket_close_oserror):
@@ -372,12 +462,13 @@ def test_plain_socket_cache_delete_oserror(exporter, caplog, mock_socket_close_o
         )
     )
     config = Config.create(name="test", **prepared)
-    sock = socket_cache.get_plaintext_socket(config=config)
+    cachekey = socket_cache.get_cache_key(config=config)
+    sock, _ = socket_cache.get_plaintext_socket(config=config)
     assert isinstance(sock, PlainSocket)
     assert isinstance(sock.socket, socket.socket)
-    assert len(socket_cache.plain_sockets) == 1
-    socket_cache.delete_socket(socket_cache.get_cache_key(config=config))
-    assert len(socket_cache.plain_sockets) == 0
+    assert len(socket_cache.plain_sockets[cachekey].sockets) == 1
+    socket_cache.delete_socket(sock=sock)
+    assert len(socket_cache.plain_sockets[cachekey].sockets) == 0
 
 
 def test_dot_socket_cache_delete_oserror(exporter, caplog, mock_socket_close_oserror):
@@ -393,12 +484,13 @@ def test_dot_socket_cache_delete_oserror(exporter, caplog, mock_socket_close_ose
         )
     )
     config = Config.create(name="test", **prepared)
-    sock = socket_cache.get_dot_socket(config=config, verify=True)
+    cachekey = socket_cache.get_cache_key(config=config)
+    sock, _ = socket_cache.get_dot_socket(config=config, verify=True)
     assert isinstance(sock, DoTSocket)
     assert isinstance(sock.socket, ssl.SSLSocket)
-    assert len(socket_cache.dot_sockets) == 1
-    socket_cache.delete_socket(socket_cache.get_cache_key(config=config))
-    assert len(socket_cache.dot_sockets) == 0
+    assert len(socket_cache.dot_sockets[cachekey].sockets) == 1
+    socket_cache.delete_socket(sock=sock)
+    assert len(socket_cache.dot_sockets[cachekey].sockets) == 0
 
 
 @pytest.mark.skipif(
@@ -421,7 +513,7 @@ def test_socket_cache_cleanup_thread_age():
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     ) as proc:
-        time.sleep(1)
+        time.sleep(2)
         if proc.poll():
             # process didn't start properly, bail out
             pytest.fail(
@@ -437,27 +529,30 @@ def test_socket_cache_cleanup_thread_age():
                 "ip": "8.8.8.8",
                 "connection_reuse": "true",
             },
+            timeout=5,
         )
         r = requests.get(
             "http://127.0.0.1:15354/metrics",
+            timeout=5,
         )
         assert (
-            'dnsexp_socket_uses_total{ip="8.8.8.8",protocol="udp",proxy="none",server="udp://dns.google:53",verify="none"} 1.0'
+            'dnsexp_socket_uses_total{index="0",ip="8.8.8.8",protocol="udp",proxy="none",server="udp://dns.google:53",verify="none"} 1.0'
             in r.text
         )
         time.sleep(3)
         r = requests.get(
             "http://127.0.0.1:15354/metrics",
+            timeout=5,
         )
         assert (
-            'dnsexp_socket_uses_total{ip="8.8.8.8",protocol="udp",proxy="none",server="udp://dns.google:53",verify="none"} 1.0'
+            'dnsexp_socket_uses_total{index="0",ip="8.8.8.8",protocol="udp",proxy="none",server="udp://dns.google:53",verify="none"} 1.0'
             not in r.text
         )
         ######################################
         proc.terminate()
         output = proc.stderr.read().decode()
         assert (
-            "Deleting socket SocketCacheKey(protocol='udp', server='udp://dns.google:53', ip='8.8.8.8', verify='none', proxy='none') due to age"
+            "Deleting socket SocketCacheKey(protocol='udp', server='udp://dns.google:53', ip='8.8.8.8', verify='none', proxy='none') index 0 due to age"
             in output
         )
 
@@ -482,7 +577,7 @@ def test_socket_cache_cleanup_thread_idle():
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     ) as proc:
-        time.sleep(1)
+        time.sleep(2)
         if proc.poll():
             # process didn't start properly, bail out
             pytest.fail(
@@ -498,26 +593,63 @@ def test_socket_cache_cleanup_thread_idle():
                 "ip": "8.8.8.8",
                 "connection_reuse": "true",
             },
+            timeout=5,
         )
         r = requests.get(
             "http://127.0.0.1:15354/metrics",
+            timeout=5,
         )
         assert (
-            'dnsexp_socket_uses_total{ip="8.8.8.8",protocol="udp",proxy="none",server="udp://dns.google:53",verify="none"} 1.0'
+            'dnsexp_socket_uses_total{index="0",ip="8.8.8.8",protocol="udp",proxy="none",server="udp://dns.google:53",verify="none"} 1.0'
             in r.text
         )
         time.sleep(3)
         r = requests.get(
             "http://127.0.0.1:15354/metrics",
+            timeout=5,
         )
         assert (
-            'dnsexp_socket_uses_total{ip="8.8.8.8",protocol="udp",proxy="none",server="udp://dns.google:53",verify="none"} 1.0'
+            'dnsexp_socket_uses_total{index="0",ip="8.8.8.8",protocol="udp",proxy="none",server="udp://dns.google:53",verify="none"} 1.0'
             not in r.text
         )
         ######################################
         proc.terminate()
         output = proc.stderr.read().decode()
         assert (
-            "Deleting socket SocketCacheKey(protocol='udp', server='udp://dns.google:53', ip='8.8.8.8', verify='none', proxy='none') with idle time"
+            "Deleting socket SocketCacheKey(protocol='udp', server='udp://dns.google:53', ip='8.8.8.8', verify='none', proxy='none') index 0 with idle time"
             in output
         )
+
+
+def test_socket_delete_retry(exporter, dns_exporter_example_config, mock_get_dns_response_tcp_eoferror, caplog):
+    """Make sure a socket is deleted if it raises an error."""
+    caplog.clear()
+    caplog.set_level(logging.DEBUG)
+    socket_cache = SocketCache()
+    prepared = exporter.prepare_config(
+        ConfigDict(
+            protocol="tcp",
+            server="dns.google",
+            query_name="example.com",
+            ip="8.8.8.8",
+            family="ipv4",
+        )
+    )
+    config = Config.create(name="test", **prepared)
+    sock, _ = socket_cache.get_plaintext_socket(config=config)
+    # make sure detecting a closed connection works
+    sock.socket.shutdown(socket.SHUT_RDWR)
+    sock.socket.close()
+    requests.get(
+        "http://127.0.0.1:25353/query",
+        params={
+            "query_name": "example.com",
+            "server": "dns.google",
+            "family": "ipv4",
+            "protocol": "tcp",
+            "ip": "8.8.8.8",
+            "connection_reuse": True,
+        },
+        timeout=5,
+    )
+    assert "failure reason is 'socket_error'" in caplog.text

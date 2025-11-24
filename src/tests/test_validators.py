@@ -37,6 +37,7 @@ def test_validate_rcode(dns_exporter_example_config, caplog):
             "query_name": "404.example.com",
             "family": "ipv4",
         },
+        timeout=5,
     )
     assert 'rcode="NXDOMAIN"' in r.text
     assert "dnsexp_dns_query_success 0.0" in r.text
@@ -52,6 +53,7 @@ def test_validate_rcode_2(dns_exporter_example_config, caplog):
             "family": "ipv4",
             "valid_rcodes": "NXDOMAIN,NOERROR",
         },
+        timeout=5,
     )
     assert 'rcode="NXDOMAIN"' in r.text
     assert "dnsexp_dns_query_success 1.0" in r.text
@@ -70,6 +72,7 @@ def test_validate_flags_fail_if_any_absent(dns_exporter_example_config, caplog):
             "family": "ipv4",
             "module": "has_ad",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
 
@@ -84,6 +87,7 @@ def test_validate_flags_fail_if_any_absent_2(dns_exporter_example_config, caplog
             "family": "ipv4",
             "module": "has_ad",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 1.0" in r.text
 
@@ -101,6 +105,7 @@ def test_validate_flags_fail_if_any_present(dns_exporter_example_config, caplog)
             "family": "ipv4",
             "module": "has_no_ad",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
 
@@ -115,6 +120,7 @@ def test_validate_flags_fail_if_any_present_2(dns_exporter_example_config, caplo
             "family": "ipv4",
             "module": "has_no_ad",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 1.0" in r.text
 
@@ -132,6 +138,7 @@ def test_validate_flags_fail_if_all_present(dns_exporter_example_config, caplog)
             "family": "ipv4",
             "module": "fail_not_auth",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
 
@@ -146,6 +153,7 @@ def test_validate_flags_fail_if_all_present_2(dns_exporter_example_config, caplo
             "family": "ipv4",
             "module": "fail_not_auth",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
 
@@ -161,6 +169,7 @@ def test_validate_flags_fail_if_all_present_3(dns_exporter_example_config, caplo
             "family": "ipv4",
             "module": "fail_recursive",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 1.0" in r.text
 
@@ -178,6 +187,7 @@ def test_validate_flags_fail_if_all_absent(dns_exporter_example_config, caplog):
             "family": "ipv4",
             "module": "fail_recursive",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
 
@@ -192,6 +202,7 @@ def test_validate_flags_fail_if_all_absent_2(dns_exporter_example_config, caplog
             "family": "ipv4",
             "module": "fail_recursive",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
 
@@ -206,6 +217,7 @@ def test_validate_flags_fail_if_all_absent_3(dns_exporter_example_config, caplog
             "family": "ipv4",
             "module": "fail_not_auth",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 1.0" in r.text
 
@@ -224,6 +236,7 @@ def test_validate_rrs_fail_if_matches_regexp(dns_exporter_example_config, caplog
             "query_type": "NS",
             "module": "fail_auth_k_root",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
 
@@ -239,6 +252,7 @@ def test_validate_rrs_fail_if_matches_regexp_2(dns_exporter_example_config, capl
             "query_type": "NS",
             "module": "fail_auth_k_root",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 1.0" in r.text
 
@@ -257,6 +271,7 @@ def test_validate_rrs_fail_if_all_match_regexp(dns_exporter_example_config, capl
             "query_type": "NS",
             "module": "fail_additional_root",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
 
@@ -272,6 +287,7 @@ def test_validate_rrs_fail_if_all_match_regexp_2(dns_exporter_example_config, ca
             "query_type": "NS",
             "module": "fail_additional_root",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 1.0" in r.text
 
@@ -290,6 +306,7 @@ def test_validate_rrs_fail_if_not_matches_regexp(dns_exporter_example_config, ca
             "query_type": "NS",
             "module": "fail_answer_root",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
 
@@ -305,6 +322,7 @@ def test_validate_rrs_fail_if_not_matches_regexp_2(dns_exporter_example_config, 
             "query_type": "NS",
             "module": "fail_additional_root",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 1.0" in r.text
 
@@ -323,6 +341,7 @@ def test_validate_rrs_fail_if_none_matches_regexp(dns_exporter_example_config, c
             "query_type": "NS",
             "module": "fail_answer_root_none",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
 
@@ -341,6 +360,7 @@ def test_validate_rrs_fail_if_none_matches_regexp_2(
             "query_type": "NS",
             "module": "fail_answer_root_none",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
 
@@ -356,6 +376,7 @@ def test_validate_rrs_fail_if_none_matches_regexp_3(dns_exporter_example_config,
             "query_type": "NS",
             "module": "fail_answer_root_none",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 1.0" in r.text
 

@@ -40,6 +40,7 @@ def test_proxy(dns_exporter_example_config, proxy_server, protocol, server):
             "protocol": protocol,
             "proxy": "socks5://127.0.0.1",
         },
+        timeout=5,
     )
     assert 'proxy="socks5://127.0.0.1:1080"' in r.text
     assert f'server="{protocol}://{server}:' in r.text
@@ -63,6 +64,7 @@ def test_proxy_fail(dns_exporter_example_config, proxy_server, protocol):
             "protocol": protocol,
             "proxy": "socks5://127.0.0.1:1081",
         },
+        timeout=5,
     )
     assert "dnsexp_dns_query_success 0.0" in r.text
 
@@ -79,6 +81,7 @@ def test_proxy_without_scheme(dns_exporter_example_config):
             "server": "dns.google",
             "proxy": "127.0.0.1:1080",
         },
+        timeout=5,
     )
     assert r.status_code == 200, "non-200 returncode"
 
@@ -92,6 +95,7 @@ def test_proxy_unknown_scheme(dns_exporter_example_config):
             "server": "dns.google",
             "proxy": "foo://127.0.0.1:1080",
         },
+        timeout=5,
     )
     assert r.status_code == 200, "non-200 returncode"
 
@@ -118,6 +122,7 @@ def test_proxy_module(dns_exporter_example_config, proxy_server):
             "protocol": "udp",
             "module": "socks1080",
         },
+        timeout=5,
     )
     assert 'proxy="socks5://127.0.0.1:1080"' in r.text
     assert 'server="udp://dns.google:53"' in r.text

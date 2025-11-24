@@ -169,6 +169,7 @@ def test_config_querystring_rcode(dns_exporter_example_config):
             "query_name": "example.com",
             "valid_rcodes": "NXDOMAIN",
         },
+        timeout=5,
     )
     config = r.json()
     assert config["valid_rcodes"] == ["NXDOMAIN"]
@@ -183,6 +184,7 @@ def test_config_querystring_rcode_2(dns_exporter_example_config):
             "query_name": "example.com",
             "valid_rcodes": "NXDOMAIN,NOERROR",
         },
+        timeout=5,
     )
     config = r.json()
     assert config["valid_rcodes"] == ["NXDOMAIN", "NOERROR"]
