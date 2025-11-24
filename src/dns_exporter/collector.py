@@ -436,7 +436,9 @@ class DNSCollector(Collector):
         with self.socket_lock:
             lock_time = time.perf_counter() - t
             if lock_time > 0.1:
-                logger.warning(f"Getting a lock for socket {socket_cache.get_cache_key(config=self.config)} took {lock_time} seconds")
+                logger.warning(
+                    f"Getting a lock for socket {socket_cache.get_cache_key(config=self.config)} took {lock_time} seconds"
+                )
             r = dns.query.udp(
                 q=self.query,
                 where=ip,
@@ -465,7 +467,9 @@ class DNSCollector(Collector):
         with self.socket_lock:
             lock_time = time.perf_counter() - t
             if lock_time > 0.1:
-                logger.warning(f"Getting a lock for socket {socket_cache.get_cache_key(config=self.config)} took {lock_time} seconds")
+                logger.warning(
+                    f"Getting a lock for socket {socket_cache.get_cache_key(config=self.config)} took {lock_time} seconds"
+                )
             r = dns.query.tcp(
                 q=self.query,
                 where=ip,
@@ -493,7 +497,9 @@ class DNSCollector(Collector):
         with self.socket_lock:
             lock_time = time.perf_counter() - t
             if lock_time > 0.1:
-                logger.warning(f"Getting a lock for socket {socket_cache.get_cache_key(config=self.config)} took {lock_time} seconds")
+                logger.warning(
+                    f"Getting a lock for socket {socket_cache.get_cache_key(config=self.config)} took {lock_time} seconds"
+                )
             r, tcp = dns.query.udp_with_fallback(
                 q=self.query,
                 where=ip,
@@ -533,7 +539,9 @@ class DNSCollector(Collector):
             with self.socket_lock:
                 lock_time = time.perf_counter() - t
                 if lock_time > 0.1:
-                    logger.warning(f"Getting a lock for socket {socket_cache.get_cache_key(config=self.config)} took {lock_time} seconds")
+                    logger.warning(
+                        f"Getting a lock for socket {socket_cache.get_cache_key(config=self.config)} took {lock_time} seconds"
+                    )
                 # DoT query, use the ip for where= and set tls hostname with server_hostname=
                 r = dns.query.tls(
                     q=self.query,
@@ -580,7 +588,9 @@ class DNSCollector(Collector):
             with self.socket_lock:
                 lock_time = time.perf_counter() - t
                 if lock_time > 0.1:
-                    logger.warning(f"Getting a lock for socket {socket_cache.get_cache_key(config=self.config)} took {lock_time} seconds")
+                    logger.warning(
+                        f"Getting a lock for socket {socket_cache.get_cache_key(config=self.config)} took {lock_time} seconds"
+                    )
                 r = dns.query.https(
                     q=self.query,
                     where=url,
@@ -643,7 +653,9 @@ class DNSCollector(Collector):
         with self.socket_lock:
             lock_time = time.perf_counter() - t
             if lock_time > 0.1:
-                logger.warning(f"Getting a lock for socket {socket_cache.get_cache_key(config=self.config)} took {lock_time} seconds")
+                logger.warning(
+                    f"Getting a lock for socket {socket_cache.get_cache_key(config=self.config)} took {lock_time} seconds"
+                )
             r = dns.query.https(
                 q=self.query,
                 where=url,
@@ -683,7 +695,9 @@ class DNSCollector(Collector):
         with self.socket_lock:
             lock_time = time.perf_counter() - t
             if lock_time > 0.1:
-                logger.warning(f"Getting a lock for socket {socket_cache.get_cache_key(config=self.config)} took {lock_time} seconds")
+                logger.warning(
+                    f"Getting a lock for socket {socket_cache.get_cache_key(config=self.config)} took {lock_time} seconds"
+                )
             r = dns.query.quic(
                 q=self.query,
                 where=ip,
