@@ -104,26 +104,28 @@ def dns_exporter_param_config(request):
     yield
     print(f"Stopping dns_exporter with config {request.param} on 127.0.0.1:15353 ...")
     proc.terminate()
+    time.sleep(5)
 
 
 @pytest.fixture(scope="session")
 def dns_exporter_example_config_connection_label():
     """Run a server with main() and with the example config with the connection label feature on."""
-    print("Running server with example config and connection label feature on 127.0.0.1:15353 ...")
+    print("Running server with example config and connection label feature on 127.0.0.1:15355 ...")
     os.environ["DNSEXP_CONNECTION_LABEL"] = "1"
     os.environ["COVERAGE_PROCESS_START"] = "1"
     # note: if running with stdout=subprocess.PIPE and debug mode the buffer can
     # get full which will hang the process with no further explanation.
-    proc = subprocess.Popen(args=["dns_exporter", "-d"])
+    proc = subprocess.Popen(args=["dns_exporter", "-d", "-p", "15355"])
     time.sleep(2)
     if proc.poll():
         # process didn't start properly, bail out
         pytest.fail(
-            "Unable to create test instance on 127.0.0.1:15353",
+            "Unable to create test instance on 127.0.0.1:15355",
         )
     yield
-    print("Stopping dns_exporter with connection label feature enabled on 127.0.0.1:15353 ...")
+    print("Stopping dns_exporter with connection label feature enabled on 127.0.0.1:15355 ...")
     proc.terminate()
+    time.sleep(5)
     del os.environ["DNSEXP_CONNECTION_LABEL"]
     del os.environ["COVERAGE_PROCESS_START"]
 

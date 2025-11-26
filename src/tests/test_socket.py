@@ -109,7 +109,7 @@ def test_socket_reuse_disabled(dns_exporter_example_config, protocol, server):
 def test_connection_label_reuse_false(protocol, server):
     """Make sure a connection label is added."""
     r = requests.get(
-        "http://127.0.0.1:15353/query",
+        "http://127.0.0.1:15355/query",
         params={
             "query_name": "example.com",
             "server": server,
@@ -140,7 +140,7 @@ def test_connection_label_reuse_false(protocol, server):
 def test_connection_label_reuse_true(protocol, server, dns_exporter_example_config_connection_label):
     """Make sure a connection label is added."""
     r = requests.get(
-        "http://127.0.0.1:15353/query",
+        "http://127.0.0.1:15355/query",
         params={
             "query_name": "example.com",
             "server": server,
@@ -352,7 +352,7 @@ def test_cache_metrics(exporter, caplog):
 def tcp_query(qname) -> requests.get:
     """Do a tcp query."""
     return requests.get(
-        "http://127.0.0.1:15353/query",
+        "http://127.0.0.1:15355/query",
         params={
             "query_name": qname,
             "server": "dns.google",
@@ -377,7 +377,7 @@ def test_plain_socket_locking(dns_exporter_example_config_connection_label):
 def dot_query(qname) -> requests.get:
     """Do a DoT query."""
     return requests.get(
-        "http://127.0.0.1:15353/query",
+        "http://127.0.0.1:15355/query",
         params={
             "query_name": qname,
             "server": "dns.google",
@@ -402,7 +402,7 @@ def test_dot_socket_locking(dns_exporter_example_config_connection_label):
 def doh_query(qname) -> requests.get:
     """Do a DoH query."""
     return requests.get(
-        "http://127.0.0.1:15353/query",
+        "http://127.0.0.1:15355/query",
         params={
             "query_name": qname,
             "server": "dns.google",
@@ -427,7 +427,7 @@ def test_doh_socket_locking(dns_exporter_example_config_connection_label):
 def doq_query(qname) -> requests.get:
     """Do a DoQ query."""
     return requests.get(
-        "http://127.0.0.1:15353/query",
+        "http://127.0.0.1:15355/query",
         params={
             "query_name": qname,
             "server": "dns-unfiltered.adguard.com",
