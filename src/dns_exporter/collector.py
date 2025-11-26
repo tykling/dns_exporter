@@ -273,7 +273,7 @@ class DNSCollector(Collector):
             self.increase_failure_reason_metric(failure_reason="", labels=self.labels)
             yield get_dns_success_metric(1)
         except ValidationError as E:
-            logger.exception(f"Validation failed: {E.args[1]}")
+            logger.debug(f"Validation failed: {E.args[1]}")
             self.increase_failure_reason_metric(failure_reason=E.args[1], labels=self.labels)
             yield get_dns_success_metric(0)
 
@@ -662,6 +662,7 @@ class DNSCollector(Collector):
         # get the rcode from the respose and validate it
         rcode = dns.rcode.to_text(response.rcode())
         if rcode not in self.config.valid_rcodes:
+            logger.info(f"Raising ValidationError: RCODE {rcode} not among valid_rcodes {self.config.valid_rcodes}")
             raise ValidationError(
                 "rcode_validator",
                 "invalid_response_rcode",
