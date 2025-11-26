@@ -557,7 +557,7 @@ class DNSCollector(Collector):
             reason = "certificate_error" if "CERTIFICATE_VERIFY_FAILED" in str(e) else "connection_error"
             logger.debug(f"Protocol doh raised exception, returning {reason}")
             raise ProtocolSpecificError(reason) from e
-        except httpx.ConnectTimeout as e:
+        except (httpx.ConnectTimeout, httpx.ReadTimeout) as e:
             # raised by doh on timeouts
             reason = "timeout"
             logger.debug(f"Protocol doh raised exception, returning {reason}")

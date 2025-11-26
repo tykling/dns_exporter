@@ -24,6 +24,7 @@ Changed
 - Some refactoring was done to ensure sockets are always closed when connection reuse is in use.
 - The ``udptcp`` protocol was refactored to be easier to understand and test.
 - Add timeout to all requests calls in tests.
+- Handle ``httpx.ReadTimeout`` in addition to ``httpx.ConnectTimeout`` exceptions in DoH code.
 
 
 v1.2.0-beta2 - 2025-11-17

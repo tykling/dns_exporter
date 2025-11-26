@@ -15,10 +15,11 @@ def test_cert_verify_fail(dns_exporter_example_config, protocol, caplog):
     r = requests.get(
         "http://127.0.0.1:25353/query",
         params={
-            "server": "91.239.100.100",
+            "server": "dns.google",
             "query_name": "example.com",
             "protocol": protocol,
             "family": "ipv4",
+            "ip": "94.140.14.140",
         },
         timeout=5,
     )
