@@ -313,14 +313,14 @@ The placeholder ``none`` is used for cases where there is no suitable value for 
 # labels used for socket cache metrics
 SOCKET_LABELS = ["protocol", "server", "ip", "verify", "proxy"]
 
-dnsexp_socket_count_total = Gauge(
-    name="dnsexp_socket_count_total",
+dnsexp_sockets_total = Gauge(
+    name="dnsexp_sockets_total",
     documentation=(
         "Gauge: The number of sockets in the internal SocketCache by protocol, server, ip, verify, and proxy."
     ),
     labelnames=SOCKET_LABELS,
 )
-"""``dnsexp_socket_count_total`` is a Gauge keeping track of the number of sockets in
+"""``dnsexp_sockets_total`` is a Gauge keeping track of the number of sockets in
 the internal socket cache.
 
 This metric has five labels:

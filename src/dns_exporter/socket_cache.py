@@ -22,7 +22,7 @@ from typing_extensions import Self
 
 from dns_exporter.metrics import (
     dnsexp_socket_age_seconds,
-    dnsexp_socket_count_total,
+    dnsexp_sockets_total,
     dnsexp_socket_idle_seconds,
     dnsexp_socket_receive_bytes_total,
     dnsexp_socket_transmit_bytes_total,
@@ -414,7 +414,7 @@ class SocketCache(Singleton):
             logger.debug(f"Updating SocketCache metrics for {len(sockets)} {sockettype}")
             for key, sock_lock in sockets.items():
                 # get the number of identical sockets
-                dnsexp_socket_count_total.labels(*key.labels).set(len(sock_lock.sockets))
+                dnsexp_sockets_total.labels(*key.labels).set(len(sock_lock.sockets))
                 # loop over each and get metrics for the specific socket
                 for sock in list(sock_lock.sockets):
                     # include sock.serial in labels for the rest of the metrics
@@ -482,7 +482,7 @@ class SocketCache(Singleton):
 
     def delete_metric(self, sock: PlainSocket | DoTSocket | DoHSocket | QUICSocket) -> None:
         """Delete metrics for a socketcache entry."""
-        dnsexp_socket_count_total.remove(*sock.cachekey.labels)
+        dnsexp_sockets_total.remove(*sock.cachekey.labels)
         labels = [*sock.cachekey.labels, sock.serial]
         dnsexp_socket_age_seconds.remove(*labels)
         dnsexp_socket_idle_seconds.remove(*labels)
