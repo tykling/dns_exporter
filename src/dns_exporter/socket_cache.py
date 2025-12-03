@@ -22,11 +22,11 @@ from typing_extensions import Self
 
 from dns_exporter.metrics import (
     dnsexp_socket_age_seconds,
-    dnsexp_sockets_total,
     dnsexp_socket_idle_seconds,
     dnsexp_socket_receive_bytes_total,
     dnsexp_socket_transmit_bytes_total,
     dnsexp_socket_uses_total,
+    dnsexp_sockets_total,
 )
 
 if TYPE_CHECKING:
