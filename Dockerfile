@@ -1,14 +1,29 @@
-#syntax=docker/dockerfile:1@sha256:b6afd42430b15f2d2a4c5a02b919e98a525b785b1aaff16747d2f623364e39b6
+#syntax=docker/dockerfile:1.20@sha256:26147acbda4f14c5add9946e2fd2ed543fc402884fd75146bd342a7f6271dc1d
 ARG TARGET_PLATFORM=linux/amd64
-FROM --platform=$TARGET_PLATFORM python:3.13-alpine@sha256:e5fa639e49b85986c4481e28faa2564b45aa8021413f31026c3856e5911618b1 AS builder
+FROM --platform=$TARGET_PLATFORM python:3.14-alpine@sha256:cc95388e96eeaa0a7dbf78d51d0d567cc0e9e2ae3ead2637877858de9b41a7bf AS builder
+ENV \
+PIP_DISABLE_PIP_VERSION_CHECK=1 \
+PIP_NO_COMPILE=1 \
+PIP_NO_WARN_SCRIPT_LOCATION=0 \
+PIP_ROOT_USER_ACTION=ignore
+
 # install dependenciess for building package
-RUN apk add -U -l -u bsd-compat-headers cargo gcc git libffi-dev musl-dev openssl-dev
-# install dns_exporter
-RUN --mount=type=bind,readwrite,source=/,target=/src pip install --user /src
+RUN apk add --update-cache --latest --upgrade --no-cache git
+RUN pip install -U pip --no-cache-dir
+RUN pip install -U build --no-cache-dir
+
+# build & install dns_exporter package
+RUN \
+--mount=type=bind,readwrite,source=/,target=/src \
+<<EOF
+python -m build -o /src/build /src
+pip install --user /src/build/dns_exporter-*.whl --no-cache-dir
+EOF
+
 # cleanup
 RUN find / | grep -E "(\/.cache$|\/__pycache__$|\.pyc$|\.pyo$)" | xargs rm -rf
 
-FROM --platform=$TARGET_PLATFORM python:3.13-alpine@sha256:e5fa639e49b85986c4481e28faa2564b45aa8021413f31026c3856e5911618b1 AS runtime
+FROM --platform=$TARGET_PLATFORM python:3.14-alpine@sha256:cc95388e96eeaa0a7dbf78d51d0d567cc0e9e2ae3ead2637877858de9b41a7bf AS runtime
 RUN \
 --mount=type=bind,from=builder,source=/root/.local,target=/tmp/.local \
 --mount=type=bind,source=/src/dns_exporter/dns_exporter_example.yml,target=/tmp/dns_exporter.yml \
@@ -24,8 +39,10 @@ chown -R nonroot:nonroot /home/nonroot
 # additional cleanup
 find / | grep -E "(\/.cache$|\/__pycache__$|\.pyc$|\.pyo$)" | xargs rm -rf
 EOF
+
 # expose dns_exporter default port
 EXPOSE 15353
+
 # switch to nonroot user for runtime
 USER nonroot
 ENTRYPOINT [ "/home/nonroot/.local/bin/dns_exporter" ]
