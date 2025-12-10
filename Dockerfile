@@ -1,6 +1,6 @@
 #syntax=docker/dockerfile:1.20@sha256:26147acbda4f14c5add9946e2fd2ed543fc402884fd75146bd342a7f6271dc1d
 ARG TARGET_PLATFORM=linux/amd64
-FROM --platform=$TARGET_PLATFORM python:3.14-alpine@sha256:cc95388e96eeaa0a7dbf78d51d0d567cc0e9e2ae3ead2637877858de9b41a7bf AS builder
+FROM --platform=$TARGET_PLATFORM python:3.14-alpine@sha256:2a77c2640cc80f5506babd027c883abc55f04d44173fd52eeacea9d3b978e811 AS builder
 ENV \
 PIP_DISABLE_PIP_VERSION_CHECK=1 \
 PIP_NO_COMPILE=1 \
@@ -23,7 +23,7 @@ EOF
 # cleanup
 RUN find / | grep -E "(\/.cache$|\/__pycache__$|\.pyc$|\.pyo$)" | xargs rm -rf
 
-FROM --platform=$TARGET_PLATFORM python:3.14-alpine@sha256:cc95388e96eeaa0a7dbf78d51d0d567cc0e9e2ae3ead2637877858de9b41a7bf AS runtime
+FROM --platform=$TARGET_PLATFORM python:3.14-alpine@sha256:2a77c2640cc80f5506babd027c883abc55f04d44173fd52eeacea9d3b978e811 AS runtime
 RUN \
 --mount=type=bind,from=builder,source=/root/.local,target=/tmp/.local \
 --mount=type=bind,source=/src/dns_exporter/dns_exporter_example.yml,target=/tmp/dns_exporter.yml \
