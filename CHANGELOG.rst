@@ -9,18 +9,26 @@ adheres to `Semantic
 Versioning <https://semver.org/spec/v2.0.0.html>`__.
 
 
+v1.2.1 - 2026-03-08
+-------------------
+
+Changed
+~~~~~~~
+- Change some unit tests to use donoevil.google.com instead of 404.example.com to trigger NXDOMAIN
+
+Fixed
+~~~~~
+- Pinned chardet to a version acceptable to requests (used in unit tests)
+
+
 v1.2.0 - 2026-03-08
 -------------------
 
 Changed
 ~~~~~~~
-- Change Dockerfile to use Python 3.14 and refactor it a bit, thanks @dallemon!
-- Change some unit tests to use donoevil.google.com instead of 404.example.com to trigger NXDOMAIN
-
-Fixed
-~~~~~
 - Change some unit tests to use different portnumbers to reduce risk of race conditions failing tests
-- Pinned chardet to a version acceptable to requests (used in unit tests)
+- Change Dockerfile to use Python 3.14 and refactor it a bit, thanks @dallemon!
+- Rename socket count metric from ``dnsexp_socket_count_total`` to ``dnsexp_sockets_total``
 
 
 v1.2.0-beta3 - 2025-11-26
@@ -28,7 +36,7 @@ v1.2.0-beta3 - 2025-11-26
 
 Added
 ~~~~~
-- The socket cache now keeps a deque (list) of sockets for each destination making it possible to have multiple sockets open for busy servers. A new ``index`` label has been added to the socket metrics, and a new ``dnsexp_sockets_total`` metric has been introduced to track the number of sockets.
+- The socket cache now keeps a deque (list) of sockets for each destination making it possible to have multiple sockets open for busy servers. A new ``index`` label has been added to the socket metrics, and a new ``dnsexp_socket_count_total`` metric has been introduced to track the number of sockets.
 
 Fixed
 ~~~~~
