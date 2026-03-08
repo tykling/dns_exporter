@@ -680,7 +680,7 @@ class DNSExporter(MetricsHandler):
         elif self.url.path == "/metrics":
             logger.debug("Returning exporter metrics for request to /metrics")
             socket_cache.update_metrics()
-            self.send_metric_response(registry=self.registry, query=self.qs)
+            self.send_metric_response(registry=self.registry, query=self.qs)  # type: ignore[arg-type]
 
         # the root just returns a bit of informational html
         elif self.url.path == "/":
