@@ -15,6 +15,7 @@ v1.2.0 - 2026-03-08
 Changed
 ~~~~~~~
 - Change Dockerfile to use Python 3.14 and refactor it a bit, thanks @dallemon!
+- Change some unit tests to use donoevil.google.com instead of 404.example.com to trigger NXDOMAIN
 
 Fixed
 ~~~~~
