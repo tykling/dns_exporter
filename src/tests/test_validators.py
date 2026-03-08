@@ -34,7 +34,7 @@ def test_validate_rcode(dns_exporter_example_config, caplog):
         "http://127.0.0.1:25353/query",
         params={
             "server": "dns.google",
-            "query_name": "404.example.com",
+            "query_name": "donoevil.google.com",
             "family": "ipv4",
         },
         timeout=5,
@@ -49,9 +49,9 @@ def test_validate_rcode_2(dns_exporter_example_config, caplog):
         "http://127.0.0.1:25353/query",
         params={
             "server": "dns.google",
-            "query_name": "404.example.com",
+            "query_name": "donoevil.google.com",
             "family": "ipv4",
-            "valid_rcodes": "NXDOMAIN,NOERROR",
+            "valid_rcodes": "NXDOMAIN",
         },
         timeout=5,
     )
