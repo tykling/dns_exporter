@@ -20,6 +20,7 @@ Changed
 Fixed
 ~~~~~
 - Change some unit tests to use different portnumbers to reduce risk of race conditions failing tests
+- Pinned chardet to a version acceptable to requests (used in unit tests)
 
 
 v1.2.0-beta3 - 2025-11-26
