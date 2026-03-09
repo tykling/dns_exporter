@@ -9,6 +9,14 @@ adheres to `Semantic
 Versioning <https://semver.org/spec/v2.0.0.html>`__.
 
 
+v1.2.2 - 2026-03-09
+-------------------
+
+Fixed
+~~~~~
+Fixed docker image builds on 32bit platforms, thanks @bb-Ricardo !
+
+
 v1.2.1 - 2026-03-08
 -------------------
 
