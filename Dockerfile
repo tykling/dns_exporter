@@ -7,8 +7,14 @@ PIP_NO_COMPILE=1 \
 PIP_NO_WARN_SCRIPT_LOCATION=0 \
 PIP_ROOT_USER_ACTION=ignore
 
-# install dependenciess for building package
-RUN apk add --update-cache --latest --upgrade --no-cache git
+# install dependencies for building package
+ARG TARGET_PLATFORM
+RUN \
+if [[ $TARGET_PLATFORM == "linux/386" || $TARGET_PLATFORM == "linux/arm/v7" ]]; then \
+  apk add --update-cache --latest --upgrade --no-cache git build-base libffi-dev musl-dev python3-dev libffi-dev openssl-dev cargo pkgconfig bsd-compat-headers; \
+else \
+  apk add --update-cache --latest --upgrade --no-cache git; \
+fi
 RUN pip install -U pip --no-cache-dir
 RUN pip install -U build --no-cache-dir
 
