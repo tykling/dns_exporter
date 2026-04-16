@@ -9,6 +9,7 @@ import argparse
 import logging
 import os
 import signal
+import socket
 import sys
 import threading
 import warnings
@@ -184,6 +185,22 @@ def initialise_socket_cache(args: argparse.Namespace) -> tuple[SocketCache, thre
     return socket_cache, housekeeping_thread
 
 
+def _get_best_family(host: str | bytes, port: int | str | bytes) -> socket.AddressFamily:
+    """Automatically select address family depending on address."""
+    # ThreadingHTTPServer defaults to AF_INET, which will not start properly if
+    # binding an ipv6 address is requested.
+    # This function is based on what upstream python did for http.server
+    # in https://github.com/python/cpython/pull/11767
+    infos = socket.getaddrinfo(
+        host,
+        port,
+        type=socket.SOCK_STREAM,
+        flags=socket.AI_PASSIVE,
+    )
+    family, _, _, _, _ = next(iter(infos))
+    return family
+
+
 def main(mockargs: list[str] | None = None) -> None:
     """Read config and start exporter."""
     # suppress warnings at runtime
@@ -257,7 +274,9 @@ def main(mockargs: list[str] | None = None) -> None:
         f"Ready to serve requests. Starting listener on {args.listen_ip} port {args.port}...",
     )
     try:
-        ThreadingHTTPServer((args.listen_ip, args.port), handler).serve_forever()
+        server_class = ThreadingHTTPServer
+        server_class.address_family = _get_best_family(args.listen_ip, args.port)
+        server_class((args.listen_ip, args.port), handler).serve_forever()
     except OSError:
         logger.exception(
             f"Unable to start listener, maybe port {args.port} is in use? bailing out",
