@@ -215,7 +215,7 @@ class SocketCache(Singleton):
 
     def get_cache_key(self, config: Config, force_protocol: str = "") -> SocketCacheKey:
         """Return a SocketCacheKey for identifying a socket."""
-        protocol = force_protocol if force_protocol else config.protocol
+        protocol = force_protocol or config.protocol
         if TYPE_CHECKING:  # pragma: no cover
             assert isinstance(config.server, urllib.parse.SplitResult)
         return SocketCacheKey(
@@ -228,7 +228,7 @@ class SocketCache(Singleton):
 
     def get_plaintext_socket(self, *, config: Config, force_protocol: str = "") -> tuple[PlainSocket, bool]:
         """Create+connect new/return existing locked+connected TCP or UDP PlainSocket object."""
-        protocol = force_protocol if force_protocol else config.protocol
+        protocol = force_protocol or config.protocol
         cachekey = self.get_cache_key(config=config, force_protocol=protocol)
         # check for existing socket
         if cachekey not in self.plain_sockets:
