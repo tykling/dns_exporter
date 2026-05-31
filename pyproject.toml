@@ -28,7 +28,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pre-commit == 4.4.0", "setuptools-scm == 9.2.2"]
+dev = ["pre-commit == 4.6.0", "setuptools-scm == 9.2.2"]
 test = [
     "chardet==5.2.0", # pinned for requests compatibility
     "coverage[toml]==7.11.3",
