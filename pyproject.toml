@@ -42,7 +42,7 @@ test = [
     "requests==2.34.2",
     "pytest-randomly==4.0.1",
     "tox==4.32.0",
-    "types-PyYAML==6.0.12.20250915",
+    "types-PyYAML==6.0.12.20260518",
 ]
 docs = ["Sphinx==8.1.3", "sphinx_changelog==1.6.0"]
 
