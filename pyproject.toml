@@ -33,7 +33,7 @@ test = [
     "chardet==7.4.3", # pinned for requests compatibility
     "coverage[toml]==7.11.3",
     "gera2ld.socks==0.5.0",
-    "prometheus-client==0.23.1",
+    "prometheus-client==0.25.0",
     "pytest==9.0.3",
     "pytest-cov==7.1.0",
     "pytest-mock==3.15.1",
