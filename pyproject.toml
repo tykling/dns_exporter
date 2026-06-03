@@ -40,7 +40,7 @@ test = [
     "pytest-order==1.4.0",
     "pytest-rerunfailures==16.1",
     "requests==2.34.2",
-    "pytest-randomly==4.0.1",
+    "pytest-randomly==4.1.0",
     "tox==4.32.0",
     "types-PyYAML==6.0.12.20260518",
 ]
