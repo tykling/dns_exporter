@@ -40,10 +40,12 @@ from dns_exporter.exceptions import (
 )
 from dns_exporter.metrics import (
     FAILURE_REASONS,
+    SOA_LABELS,
     TTL_LABELS,
     dnsexp_dns_queries_total,
     dnsexp_dns_responsetime_seconds,
     dnsexp_scrape_failures_total,
+    dnsexp_soa_serial,
     get_dns_qtime_metric,
     get_dns_success_metric,
     get_dns_ttl_metric,
@@ -264,6 +266,8 @@ class DNSCollector(Collector):
         # update internal exporter metric
         dnsexp_dns_responsetime_seconds.labels(**self.labels).observe(qtime)
 
+        self.get_soa_serial_metric(response=response)
+
         yield from self.yield_ttl_metrics(response=response)
 
         # validate response and yield remaining metrics
@@ -312,6 +316,18 @@ class DNSCollector(Collector):
         # yield all the ttl metrics
         logger.debug("yielding ttl metrics")
         yield ttl
+
+    def get_soa_serial_metric(self, response: Message) -> None:
+        """Register serial number of server and yield soa_serial metric."""
+        for section_name in ("answer", "authority"):
+            section = getattr(response, section_name)
+            for rrset in section:
+                if rrset.rdtype == dns.rdatatype.SOA:
+                    soa_serial = int(rrset[0].serial)
+                    soa_labels = {k: v for k, v in self.labels.items() if k in SOA_LABELS}
+                    dnsexp_soa_serial.labels(**soa_labels).set(soa_serial)
+                    return
+        return
 
     def get_dns_response(  # noqa: PLR0911 PLR0912 C901
         self,

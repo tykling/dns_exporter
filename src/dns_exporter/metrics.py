@@ -448,3 +448,21 @@ This metric has six labels:
 
 The placeholder ``none`` is used for cases where there is no suitable value for the label.
 """
+
+# soa stats
+
+# labels used for soa metrics
+SOA_LABELS = ["server", "ip", "query_name"]
+
+dnsexp_soa_serial = Gauge(
+    name="dnsexp_soa_serial",
+    documentation=("Gauge: SOA serial number returned by the server"),
+    labelnames=SOA_LABELS,
+)
+"""``dnsexp_soa_serial`` is a Gauge keeping track of the serial number of server in SOA query.
+
+This metric has three labels:
+        - ``server``
+        - ``ip``
+        - ``query_name``
+"""
