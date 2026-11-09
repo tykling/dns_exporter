@@ -197,7 +197,7 @@ class DNSCollector(Collector):
             )
             reason = str(e)
             self.increase_failure_reason_metric(failure_reason=reason, labels=self.labels)
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.warning(
                 f"""Caught an unknown exception while looking up qname {self.config.query_name} using server
                 {self.config.server.geturl()} and proxy {self.config.proxy.geturl() if self.config.proxy else "none"}
